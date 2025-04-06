@@ -52,6 +52,9 @@ venv/
 .venv/
 .python-version
 
+# aws sam
+.aws
+.aws-sam
 # AWS Amplify
 amplify/\#current-cloud-backend
 amplify/.config/local-*
