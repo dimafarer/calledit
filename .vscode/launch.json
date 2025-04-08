@@ -1,0 +1,54 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "aws-sam",
+            "request": "direct-invoke",
+            "name": "HelloWorldFunction",
+            "invokeTarget": {
+                "target": "template",
+                "templatePath": "${workspaceFolder}/backend/calledit-backend/template.yaml",
+                "logicalId": "HelloWorldFunction"
+            },
+            "lambda": {
+                "runtime": "python3.12",
+                "payload": {},
+                "environmentVariables": {}
+            },
+            "sam": {
+                "containerBuild": true,
+                "dockerNetwork": "bridge"
+            },
+            "env": {
+                "PATH": "/home/wsluser/.local/bin:/usr/local/bin:/usr/bin:${env:PATH}"
+            }
+        },
+        {
+            "type": "aws-sam",
+            "request": "direct-invoke",
+            "name": "PromptBedrock",
+            "invokeTarget": {
+                "target": "template",
+                "templatePath": "${workspaceFolder}/backend/calledit-backend/template.yaml",
+                "logicalId": "PromptBedrockFunction"
+            },
+            "lambda": {
+                "runtime": "python3.12",
+                "payload": {},
+            },
+            "sam": {
+                "containerBuild": true,
+                "dockerNetwork": "bridge"
+            },
+            "env": {
+                "PATH": "/home/wsluser/.local/bin:/usr/local/bin:/usr/bin:${env:PATH}",
+                "PYTHONPATH": "${workspaceFolder}",
+                "PYTHONARGS": "-Xfrozen_modules=off"
+            },
+            "aws": {
+                "credentials": "profile:default",
+                "region": "us-west-2"
+            }            
+        }        
+    ]
+}
