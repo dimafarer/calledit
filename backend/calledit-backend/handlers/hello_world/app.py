@@ -1,9 +1,27 @@
 import json
-
+import logging
+import boto3
+import os
 # import requests
+
+logger = logging.getLogger()
+def checkcreds():
+        # Log environment variables
+    logger.debug(f"AWS_PROFILE: {os.environ.get('AWS_PROFILE')}")
+    logger.debug(f"AWS_DEFAULT_REGION: {os.environ.get('AWS_DEFAULT_REGION')}")
+    logger.debug(f"AWS_ACCESS_KEY_ID: {os.environ.get('AWS_ACCESS_KEY_ID', 'Not set')[:5]}...")
+    
+    # Get the caller identity to verify credentials
+    sts = boto3.client('sts')
+    try:
+        caller_identity = sts.get_caller_identity()
+        logger.debug(f"Caller Identity: {caller_identity}")
+    except Exception as e:
+        logger.error(f"Error getting caller identity: {str(e)}")
 
 
 def lambda_handler(event, context):
+    checkcreds()
     """Sample pure Lambda function
 
     Parameters
@@ -32,7 +50,7 @@ def lambda_handler(event, context):
     #     print(e)
 
     #     raise e
-
+    print("hello world invoked")
     return {
         "statusCode": 200,
         "body": json.dumps({

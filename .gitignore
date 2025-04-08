@@ -73,7 +73,7 @@ amplifytools.xcconfig
 .secret-*
 
 # Editor directories and files
-.vscode/*
+# .vscode/*
 !.vscode/extensions.json
 .idea
 *.suo

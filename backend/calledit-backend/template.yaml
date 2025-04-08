@@ -6,7 +6,7 @@ Description: >
 
 Globals:
   Function:
-    Timeout: 3
+    Timeout: 60
     Tracing: Active
     LoggingConfig:
       LogFormat: JSON 
@@ -26,6 +26,31 @@ Resources:
           Type: Api 
           Properties:
             Path: /hello
+            Method: get
+    Metadata:
+      Debug: true             
+ 
+  PromptBedrockFunction:
+    Type: AWS::Serverless::Function 
+    Properties:
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - "bedrock:InvokeModel"
+                - "bedrock:ListFoundationModels"
+              Resource: "*"
+      CodeUri: handlers/prompt_bedrock/
+      Handler: prompt_bedrock.lambda_handler
+      Runtime: python3.12
+      Architectures:
+      - x86_64
+      Events:
+        HelloWorld:
+          Type: Api 
+          Properties:
+            Path: /prompt_bedrock
             Method: get
     Metadata:
       Debug: true             
