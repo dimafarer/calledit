@@ -13,15 +13,16 @@
             "lambda": {
                 "runtime": "python3.12",
                 "payload": {},
-                "environmentVariables": {}
+                "environmentVariables": {
+                    "PATH": "/home/wsluser/.local/bin:/usr/local/bin:/usr/bin:${env:PATH}",
+                    "PYTHONPATH": "${workspaceFolder}",
+                    "PYTHONARGS": "-Xfrozen_modules=off"
+                }
             },
             "sam": {
                 "containerBuild": true,
                 "dockerNetwork": "bridge"
             },
-            "env": {
-                "PATH": "/home/wsluser/.local/bin:/usr/local/bin:/usr/bin:${env:PATH}"
-            }
         },
         {
             "type": "aws-sam",
@@ -35,15 +36,15 @@
             "lambda": {
                 "runtime": "python3.12",
                 "payload": {},
+                "environmentVariables": {
+                    "PATH": "/home/wsluser/.local/bin:/usr/local/bin:/usr/bin:${env:PATH}",
+                    "PYTHONPATH": "${workspaceFolder}",
+                    "PYTHONARGS": "-Xfrozen_modules=off"
+                }                
             },
             "sam": {
                 "containerBuild": true,
                 "dockerNetwork": "bridge"
-            },
-            "env": {
-                "PATH": "/home/wsluser/.local/bin:/usr/local/bin:/usr/bin:${env:PATH}",
-                "PYTHONPATH": "${workspaceFolder}",
-                "PYTHONARGS": "-Xfrozen_modules=off"
             },
             "aws": {
                 "credentials": "profile:default",
