@@ -35,7 +35,9 @@
             },
             "lambda": {
                 "runtime": "python3.12",
-                "payload": {},
+                "payload": {
+                     "path": "${workspaceFolder}/backend/calledit-backend/events/event.json"
+                },
                 "environmentVariables": {
                     "PATH": "/home/wsluser/.local/bin:/usr/local/bin:/usr/bin:${env:PATH}",
                     "PYTHONPATH": "${workspaceFolder}",
@@ -50,6 +52,54 @@
                 "credentials": "profile:default",
                 "region": "us-west-2"
             }            
+        },
+        {
+            "type": "aws-sam",
+            "request": "direct-invoke",
+            "name": "API Gateway (Local)",
+            "invokeTarget": {
+                "target": "api",
+                "templatePath": "${workspaceFolder}/backend/calledit-backend/template.yaml",
+                "logicalId": "ServerlessRestApi"
+            },
+            "sam": {
+                "containerBuild": true,
+                "dockerNetwork": "bridge"
+            },
+            "api": {
+                "path": "/hello",
+                "httpMethod": "get",
+                "payload": {
+                    "json": {}
+                }
+            },
+            "aws": {
+                "credentials": "profile:default",
+                "region": "us-west-2"
+            },
+            "lambda": {
+                "runtime": "python3.12",
+                "environmentVariables": {
+                    "PATH": "/home/wsluser/.local/bin:/usr/local/bin:/usr/bin:${env:PATH}",
+                    "PYTHONPATH": "${workspaceFolder}",
+                    "PYTHONARGS": "-Xfrozen_modules=off"
+                }
+            }
+        },
+        {
+            "name": "Python: Attach to SAM API",
+            "type": "debugpy",
+            "request": "attach",
+            "connect": {
+                "host": "localhost",
+                "port": 5858
+            },
+            "pathMappings": [
+                {
+                    "localRoot": "${workspaceFolder}",
+                    "remoteRoot": "/var/task"
+                }
+            ]
         }        
     ]
 }
