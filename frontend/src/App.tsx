@@ -12,7 +12,8 @@ function App() {
       setIsLoading(true)
       const apiEndpoint = import.meta.env.VITE_APIGATEWAY
       const result = await axios.get(apiEndpoint, {
-        params: { prompt },
+        // params: { prompt },
+        params: { prompt: prompt }, // Explicitly naming the parameter 'prompt'
         headers: {
           'Content-Type': 'application/json',
         },

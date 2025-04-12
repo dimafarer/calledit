@@ -21,35 +21,39 @@ def checkcreds():
 
 
 def lambda_handler(event, context):
-    checkcreds()
-    """Sample pure Lambda function
+    # checkcreds()
+ 
+    if isinstance(event, dict):
+        # API Gateway request with queryStringParameters
+        if event.get('queryStringParameters') and 'prompt' in event['queryStringParameters']:
+            prompt = event['queryStringParameters']['prompt']
+        # API Gateway request with multiValueQueryStringParameters    
+        elif event.get('multiValueQueryStringParameters') and 'prompt' in event['multiValueQueryStringParameters']:
+            prompt = event['multiValueQueryStringParameters']['prompt'][0]
+        # Direct lambda invocation with prompt in body
+        elif 'prompt' in event:
+            prompt = event['prompt']
+        # API Gateway request with prompt in body
+        elif 'body' in event:
+            try:
+                body = json.loads(event['body'])
+                prompt = body.get('prompt')
+            except:
+                prompt = None
+        else:
+            prompt = None
+    else:
+        prompt = None
 
-    Parameters
-    ----------
-    event: dict, required
-        API Gateway Lambda Proxy Input Format
+    if not prompt:
+        return {
+            'statusCode': 400,
+            'headers': headers,
+            'body': json.dumps({'error': 'No prompt provided'})
+        }
 
-        Event doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-input-format
-
-    context: object, required
-        Lambda Context runtime methods and attributes
-
-        Context doc: https://docs.aws.amazon.com/lambda/latest/dg/python-context-object.html
-
-    Returns
-    ------
-    API Gateway Lambda Proxy Output Format: dict
-
-        Return doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html
-    """
-
-    # try:
-    #     ip = requests.get("http://checkip.amazonaws.com/")
-    # except requests.RequestException as e:
-    #     # Send some context about this error to Lambda Logs
-    #     print(e)
-
-    #     raise e
+ 
+ 
     print("hello world invoked")
     return {
         "statusCode": 200,
@@ -59,7 +63,7 @@ def lambda_handler(event, context):
             "Access-Control-Allow-Methods": "OPTIONS,POST,GET"
         },
         "body": json.dumps({
-            "message": "hello world",
+            "message": "hello world " + prompt,
             # "location": ip.text.replace("\n", "")
         }),
     }
