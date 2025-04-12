@@ -1,21 +1,39 @@
 #root {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media screen and (max-width: 480px) {
+  #root {
+    padding: 0.5rem;
+  }
 }
 
 .app-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2rem;
+  gap: 1.5rem;
   width: 100%;
   max-width: 800px;
   margin: 0 auto;
+  padding: 0 1rem;
+  box-sizing: border-box;
+}
+
+@media screen and (max-width: 480px) {
+  .app-container {
+    padding: 0 0.5rem;
+    gap: 1rem;
+  }
 }
 
 .input-container, .response-container {
   width: 100%;
+  box-sizing: border-box;
 }
 
 .text-box {
@@ -26,6 +44,14 @@
   font-size: 1rem;
   resize: vertical;
   font-family: inherit;
+  box-sizing: border-box;
+}
+
+@media screen and (max-width: 480px) {
+  .text-box {
+    padding: 0.75rem;
+    font-size: 0.9rem;
+  }
 }
 
 .button-container {
@@ -59,4 +85,7 @@ h1 {
   color: #213547;
   margin-bottom: 2rem;
 }
+
+
+
 
