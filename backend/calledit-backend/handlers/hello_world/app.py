@@ -10,7 +10,6 @@ def checkcreds():
     logger.debug(f"AWS_PROFILE: {os.environ.get('AWS_PROFILE')}")
     logger.debug(f"AWS_DEFAULT_REGION: {os.environ.get('AWS_DEFAULT_REGION')}")
     logger.debug(f"AWS_ACCESS_KEY_ID: {os.environ.get('AWS_ACCESS_KEY_ID', 'Not set')[:5]}...")
-    
     # Get the caller identity to verify credentials
     sts = boto3.client('sts')
     try:
@@ -20,41 +19,42 @@ def checkcreds():
         logger.error(f"Error getting caller identity: {str(e)}")
 
 
-def lambda_handler(event, context):
-    # checkcreds()
- 
+def get_event_property(event, prop_name):
     if isinstance(event, dict):
-        # API Gateway request with queryStringParameters
-        if event.get('queryStringParameters') and 'prompt' in event['queryStringParameters']:
-            prompt = event['queryStringParameters']['prompt']
-        # API Gateway request with multiValueQueryStringParameters    
-        elif event.get('multiValueQueryStringParameters') and 'prompt' in event['multiValueQueryStringParameters']:
-            prompt = event['multiValueQueryStringParameters']['prompt'][0]
-        # Direct lambda invocation with prompt in body
-        elif 'prompt' in event:
-            prompt = event['prompt']
-        # API Gateway request with prompt in body
+        if event.get('queryStringParameters') and prop_name in event['queryStringParameters']:
+            value = event['queryStringParameters'][prop_name]
+        elif event.get('multiValueQueryStringParameters') and prop_name in event['multiValueQueryStringParameters']:
+            value = event['multiValueQueryStringParameters'][prop_name][0]
+        # Direct lambda invocation with prop_name in body
+        elif prop_name in event:
+            value = event[prop_name]
+        # API Gateway request with prop_name in body
         elif 'body' in event:
             try:
                 body = json.loads(event['body'])
-                prompt = body.get('prompt')
+                value = body.get(prop_name)
             except:
-                prompt = None
+                value = None
         else:
-            prompt = None
+            value = None
     else:
-        prompt = None
-
-    if not prompt:
+        value = None
+    if not value:
         return {
             'statusCode': 400,
             'headers': headers,
-            'body': json.dumps({'error': 'No prompt provided'})
+            'body': json.dumps({'error': f'No {prop_name} provided'})
         }
+    else:
+        return value
 
- 
- 
+
+
+def lambda_handler(event, context):
     print("hello world invoked")
+    # checkcreds()
+    prompt = get_event_property(event, 'prompt')
+    
     return {
         "statusCode": 200,
         "headers": {
@@ -64,6 +64,5 @@ def lambda_handler(event, context):
         },
         "body": json.dumps({
             "message": "hello world " + prompt,
-            # "location": ip.text.replace("\n", "")
         }),
     }

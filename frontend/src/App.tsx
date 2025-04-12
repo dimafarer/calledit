@@ -12,13 +12,13 @@ function App() {
       setIsLoading(true)
       const apiEndpoint = import.meta.env.VITE_APIGATEWAY
       const result = await axios.get(apiEndpoint, {
-        // params: { prompt },
         params: { prompt: prompt }, // Explicitly naming the parameter 'prompt'
         headers: {
           'Content-Type': 'application/json',
         },
         withCredentials: false // Add this if you're not using credentials
       })
+      console.log('API Response:', result.data)
       setResponse(result.data)
     } catch (error) {
       console.error('Error:', error)
@@ -51,7 +51,7 @@ function App() {
       </div>
       <div className="response-container">
         <textarea
-          value={response.message}
+          value={response.results?.[0]?.outputText || 'unable to show results'}
           readOnly
           placeholder="Response will appear here..."
           rows={4}
