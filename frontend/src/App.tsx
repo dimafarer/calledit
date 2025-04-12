@@ -1,35 +1,65 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import axios from 'axios'
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [prompt, setPrompt] = useState('')
+  const [response, setResponse] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+
+  const handleSubmit = async () => {
+    try {
+      setIsLoading(true)
+      const apiEndpoint = import.meta.env.VITE_APIGATEWAY
+      const result = await axios.get(apiEndpoint, {
+        params: { prompt },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        withCredentials: false // Add this if you're not using credentials
+      })
+      setResponse(result.data)
+    } catch (error) {
+      console.error('Error:', error)
+      setResponse('Error occurred while processing your request')
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div className="app-container">
+      <h1>Prompt Response System</h1>
+      <div className="input-container">
+        <textarea
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="Enter your prompt here..."
+          rows={4}
+          className="text-box"
+        />
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
+      <div className="button-container">
+        <button 
+          onClick={handleSubmit}
+          disabled={isLoading || !prompt.trim()}
+          className="send-button"
+        >
+          {isLoading ? 'Sending...' : 'Send'}
         </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
       </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+      <div className="response-container">
+        <textarea
+          value={response.message}
+          readOnly
+          placeholder="Response will appear here..."
+          rows={4}
+          className="text-box"
+        />
+      </div>
+    </div>
   )
 }
 
 export default App
+

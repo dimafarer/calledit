@@ -60,7 +60,7 @@
             "invokeTarget": {
                 "target": "api",
                 "templatePath": "${workspaceFolder}/backend/calledit-backend/template.yaml",
-                "logicalId": "ServerlessRestApi"
+                "logicalId": "CallitAPI"
             },
             "sam": {
                 "containerBuild": true,
