@@ -2,9 +2,23 @@ import { useState } from 'react'
 import axios from 'axios'
 import './App.css'
 
+
+// Define interfaces for the response structure
+interface BedrockResult {
+  tokenCount: number
+  outputText: string
+  completionReason: string
+}
+
+interface BedrockResponse {
+  inputTextTokenCount: number
+  results: BedrockResult[]
+}
+
+
 function App() {
   const [prompt, setPrompt] = useState('')
-  const [response, setResponse] = useState('')
+  const [response, setResponse] = useState<BedrockResponse | string>('')
   const [isLoading, setIsLoading] = useState(false)
 
   const handleSubmit = async () => {
@@ -50,8 +64,12 @@ function App() {
         </button>
       </div>
       <div className="response-container">
-        <textarea
-          value={response.results?.[0]?.outputText || 'unable to show results'}
+      <textarea
+          value={
+            typeof response === 'string' 
+              ? response 
+              : response.results?.[0]?.outputText || 'unable to show results'
+          }
           readOnly
           placeholder="Response will appear here..."
           rows={4}
