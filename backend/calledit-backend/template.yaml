@@ -68,6 +68,32 @@ Resources:
     Metadata:
       Debug: true             
 
+  MakeCall:
+    Type: AWS::Serverless::Function 
+    Properties:
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - "bedrock:InvokeModel"
+                - "bedrock:ListFoundationModels"
+              Resource: "*"
+      CodeUri: handlers/make_call/
+      Handler: make_call.lambda_handler
+      Runtime: python3.12
+      Architectures:
+      - x86_64
+      Events:
+        HelloWorld:
+          Type: Api 
+          Properties:
+            Path: /make-call
+            Method: get
+            RestApiId: !Ref CallitAPI
+    Metadata:
+      Debug: true           
+
   ApplicationResourceGroup:
     Type: AWS::ResourceGroups::Group
     Properties:
