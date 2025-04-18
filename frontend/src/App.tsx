@@ -5,14 +5,13 @@ import './App.css'
 
 // Define interfaces for the response structure
 interface BedrockResult {
-  tokenCount: number
-  outputText: string
-  completionReason: string
+  tokenCount: number;
+  outputText: string;
+  completionReason: string;
 }
 
 interface BedrockResponse {
-  inputTextTokenCount: number
-  results: BedrockResult[]
+  results: BedrockResult[];
 }
 
 
@@ -65,16 +64,16 @@ function App() {
       </div>
       <div className="response-container">
       <textarea
-          value={
-            typeof response === 'string' 
-              ? response 
-              : response.results?.[0]?.outputText || 'unable to show results'
-          }
-          readOnly
-          placeholder="Response will appear here..."
-          rows={4}
-          className="text-box"
-        />
+        value={
+          typeof response === 'string' 
+            ? response 
+            : response.results?.[0]?.outputText || 'Unable to show results'
+        }
+        readOnly
+        placeholder="Response will appear here..."
+        rows={4}
+        className="text-box"
+      />
       </div>
     </div>
   )

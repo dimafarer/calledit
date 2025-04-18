@@ -2,46 +2,6 @@ import boto3
 import json
 from botocore.exceptions import ClientError, NoCredentialsError, PartialCredentialsError
 
-prompt_template = """
-Task: Convert a prediction into a structured verification format.
-
-Prediction: {user_prediction}
-
-Please create a JSON object with the following structure:
-{{
-    "prediction": {{
-        "id": "<uuid>",
-        "statement": "<original prediction>",
-        "date_made": "<current_date>",
-        "status": "pending",
-        "verification": {{
-            "due_date": "<when to verify>",
-            "method": {{
-                "source": "<specific source to check>",
-                "source_type": "<api|web|human_check>",
-                "endpoint": "<api_endpoint or url if applicable>",
-                "criteria": {{
-                    "success_condition": "<specific measurable criteria>",
-                    "failure_condition": "<specific measurable criteria>",
-                    "uncertain_condition": "<criteria for unclear results>"
-                }},
-                "verification_steps": ["<step by step verification process>"]
-            }}
-        }},
-        "result": {{
-            "verified_at": null,
-            "outcome": null,
-            "evidence": null
-        }}
-    }}
-}}
-
-Requirements:
-1. The verification_date must be specific and appropriate for the prediction
-2. Include source_type to help the agent determine how to verify
-3. Break down success/failure criteria explicitly
-4. Include specific, actionable endpoints where applicable
-"""
 
 headers = {
     'Access-Control-Allow-Origin': '*',
@@ -51,52 +11,6 @@ headers = {
 
 bedrock = boto3.client('bedrock-runtime')
 
-
-# def generate_structured_prediction(user_prediction):
-#     try:
-#         response = bedrock.invoke_model(
-#             modelId='us.amazon.nova-pro-v1:0',
-#             body=json.dumps({
-#                 "inputText": prompt_template.format(user_prediction=user_prediction),
-#                 "textGenerationConfig": {
-#                     "maxTokenCount": 1000,
-#                     "temperature": 0.2,
-#                     "topP": 0.9,
-#                     "stopSequences": []
-#                 }
-#             })
-#         )
-#         # Log raw response for debugging
-#         print(f"Raw response from bedrock: {response}")
-        
-#         # Properly handle the response stream
-#         response_body = json.loads(response['body'].read().decode('utf-8'))
-        
-#         # Log parsed response for debugging
-#         print(f"Parsed response body: {response_body}")
-        
-#         # Extract the completion from the response
-#         if 'results' in response_body:  # Nova/Titan format
-#             return response_body
-#         else:
-#             print(f"Unexpected response format: {response_body}")
-#             raise ValueError("Unexpected response format from model")
-            
-#     except ClientError as e:
-#         print(f"AWS service error: {str(e)}")
-#         raise
-#     except json.JSONDecodeError as e:
-#         print(f"JSON parsing error: {str(e)}")
-#         print(f"Response content: {response['body'].read().decode('utf-8')}")
-#         raise
-#     except Exception as e:
-#         print(f"Unexpected error in generate_structured_prediction: {str(e)}")
-#         print(f"Error type: {type(e)}")
-#         import traceback
-#         print(f"Traceback: {traceback.format_exc()}")
-#         raise
-    
-    
     
 def generate_structured_prediction(user_prediction):
     try:
@@ -109,7 +23,6 @@ def generate_structured_prediction(user_prediction):
                 3. Specify how to verify the prediction"""
             }
         ]
-
         # Define the message list
         message_list = [
             {
@@ -127,7 +40,6 @@ def generate_structured_prediction(user_prediction):
                 ]
             }
         ]
-
         # Configure inference parameters
         inf_params = {
             "max_new_tokens": 1000,
@@ -135,34 +47,37 @@ def generate_structured_prediction(user_prediction):
             "top_p": 0.9,
             "top_k": 50
         }
-
         # Create the request body
         request_body = {
             "messages": message_list,
             "system": system_list,
             "inferenceConfig": inf_params
         }
-
         # Invoke the model
         response = bedrock.invoke_model(
             modelId='us.amazon.nova-pro-v1:0',
             body=json.dumps(request_body)
         )
-        
         # Parse the response
         response_body = json.loads(response['body'].read().decode('utf-8'))
+        # Extract the text content from the Nova response
+        text_content = response_body['output']['message']['content'][0]['text']
+        # The text content includes ```json and ``` markers, let's clean it up
+        json_str = text_content.replace('```json\n', '').replace('\n```', '')
+        # Parse the cleaned JSON string
+        prediction_json = json.loads(json_str)
         
-        # Extract the completion text
-        if 'output' in response_body:
-            return response_body['output']
-        else:
-            print(f"Unexpected response format: {response_body}")
-            raise ValueError("Unexpected response format from model")
+        return {
+            "results": [{
+                "outputText": json.dumps(prediction_json, indent=2),
+                "tokenCount": len(text_content.split()),
+                "completionReason": "COMPLETE"
+            }]
+        }
             
     except Exception as e:
         print(f"Error in generate_structured_prediction: {str(e)}")
-        raise    
-    
+        raise        
     
     
     
