@@ -68,11 +68,7 @@ def generate_structured_prediction(user_prediction):
         prediction_json = json.loads(json_str)
         
         return {
-            "results": [{
-                "outputText": json.dumps(prediction_json, indent=2),
-                "tokenCount": len(text_content.split()),
-                "completionReason": "COMPLETE"
-            }]
+            "results": [prediction_json]
         }
             
     except Exception as e:
