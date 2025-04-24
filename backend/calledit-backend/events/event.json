@@ -1,3 +1,9 @@
 {
-  "prompt": "What is the capital of New York?"
+  "body": {
+    "prediction": {
+      "prompt": "What is the capital of New York?",
+      "category": "Geography",
+      "confidence": "high"
+    }
+  }
 }

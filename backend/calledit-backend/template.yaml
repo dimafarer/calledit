@@ -94,19 +94,38 @@ Resources:
     Metadata:
       Debug: true           
 
-  ApplicationResourceGroup:
-    Type: AWS::ResourceGroups::Group
+  LogCall:
+    Type: AWS::Serverless::Function 
     Properties:
-      Name:
-        Fn::Sub: ApplicationInsights-SAM-${AWS::StackName}
-      ResourceQuery:
-        Type: CLOUDFORMATION_STACK_1_0
-  ApplicationInsightsMonitoring:
-    Type: AWS::ApplicationInsights::Application
-    Properties:
-      ResourceGroupName:
-        Ref: ApplicationResourceGroup
-      AutoConfigurationEnabled: 'true'
+      CodeUri: handlers/write_to_db/
+      Handler: write_to_db.lambda_handler
+      Runtime: python3.12
+      Architectures:
+      - x86_64
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: calledit-db
+      Events:
+        HelloWorld:
+          Type: Api 
+          Properties:
+            Path: /log-call
+            Method: post
+            RestApiId: !Ref CallitAPI
+
+  # ApplicationResourceGroup:
+  #   Type: AWS::ResourceGroups::Group
+  #   Properties:
+  #     Name:
+  #       Fn::Sub: ApplicationInsights-SAM-${AWS::StackName}
+  #     ResourceQuery:
+  #       Type: CLOUDFORMATION_STACK_1_0
+  # ApplicationInsightsMonitoring:
+  #   Type: AWS::ApplicationInsights::Application
+  #   Properties:
+  #     ResourceGroupName:
+  #       Ref: ApplicationResourceGroup
+  #     AutoConfigurationEnabled: 'true'
 Outputs:
   HelloWorldApi:
     Description: API Gateway endpoint URL for Prod stage for Hello World function

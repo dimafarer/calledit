@@ -204,7 +204,7 @@ function App() {
           className="send-button"
           aria-busy={isLoading}
         >
-          {isLoading ? 'Sending...' : 'Send'}
+          {isLoading ? 'Generating...' : 'Make Call'}
         </button>
       </div>
       {/* Response display section */}
