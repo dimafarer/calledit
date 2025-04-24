@@ -10,6 +10,10 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 // Mock environment variables
 vi.stubEnv('VITE_APIGATEWAY', 'https://test-api.example.com');
 
+// Mock window.alert
+const mockAlert = vi.fn();
+window.alert = mockAlert;
+
 describe('App Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -126,8 +130,8 @@ describe('App Component', () => {
       );
     });
     
-    // Verify loading state changes
-    expect(mockedAxios.post).toHaveBeenCalledTimes(1);
+    // Verify alert was shown
+    expect(mockAlert).toHaveBeenCalledWith('Prediction logged successfully!');
   });
 
   it('handles API errors correctly', async () => {

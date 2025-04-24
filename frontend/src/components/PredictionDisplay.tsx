@@ -1,5 +1,5 @@
 import React from 'react';
-import { APIResponse, VerificationMethod, NovaResponse } from '../types';
+import { APIResponse, VerificationMethod } from '../types';
 import ErrorBoundary from './ErrorBoundary';
 
 interface PredictionDisplayProps {

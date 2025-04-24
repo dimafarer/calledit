@@ -1,16 +1,51 @@
 import React, { useState } from 'react';
+import axios from 'axios';
+import { APIResponse } from '../types';
 
 interface PredictionInputProps {
-  onSubmit: (prompt: string) => void;
   isLoading: boolean;
+  setResponse: React.Dispatch<React.SetStateAction<APIResponse | null>>;
+  setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  setError: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
-const PredictionInput: React.FC<PredictionInputProps> = ({ onSubmit, isLoading }) => {
+const PredictionInput: React.FC<PredictionInputProps> = ({ 
+  isLoading, 
+  setResponse, 
+  setIsLoading, 
+  setError 
+}) => {
   const [prompt, setPrompt] = useState('');
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (prompt.trim()) {
-      onSubmit(prompt);
+      try {
+        setIsLoading(true); // Start loading state
+        setError(null); // Clear any previous errors
+        const apiEndpoint = import.meta.env.VITE_APIGATEWAY+'/make-call'; // Get API URL from env
+        // Make GET request to API with prompt parameter
+        const result = await axios.get<APIResponse>(apiEndpoint, {
+          params: { prompt },
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        });
+        
+        console.log('API Response:', result.data);
+        
+        // Validate response data
+        if (result.data && result.data.results && result.data.results.length > 0) {
+          setResponse(result.data);
+        } else {
+          setError('Invalid response format from server');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        setError('Error occurred while processing your request');
+      } finally {
+        setIsLoading(false); // End loading state
+      }
     }
   };
 
