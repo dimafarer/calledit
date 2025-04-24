@@ -1,65 +1,105 @@
-import { useState } from 'react'
-import axios from 'axios'
-import './App.css'
+// Import necessary dependencies from React and other libraries
+import { useState } from 'react' // useState hook for managing component state
+import React from 'react' // Core React library
+import axios from 'axios' // HTTP client for making API requests
+import './App.css' // Component styles
 
-
-// Define interfaces for the response structure
+// TypeScript interfaces define the shape of our API response data
 interface VerificationMethod {
-  source: string | string[];
-  criteria: string | string[];
-  steps: string | string[];
+  source: string[]; // Array of verification sources
+  criteria: string[]; // Array of verification criteria  
+  steps: string[]; // Array of verification steps
 }
 
 interface NovaResponse {
-  prediction_statement: string;
-  verification_date: string;
-  verification_method: VerificationMethod;
-  initial_status: string;
+  prediction_statement: string; // The prediction text
+  verification_date: string; // When prediction will be verified
+  verification_method: VerificationMethod; // Nested verification details
+  initial_status: string; // Initial prediction status
 }
 
 interface APIResponse {
-  results: NovaResponse[];
+  results: NovaResponse[]; // Array of prediction responses
 }
 
+// Error Boundary Component - Catches and handles React rendering errors gracefully
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
 
+  // Static method called when error occurs during rendering
+  static getDerivedStateFromError(_: Error) {
+    return { hasError: true };
+  }
+
+  // Lifecycle method to log error details
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Error caught by boundary:', error, errorInfo);
+  }
+
+  render() {
+    // Display error UI if error occurred, otherwise render children
+    if (this.state.hasError) {
+      return (
+        <div className="error-boundary">
+          <h3>Something went wrong displaying the response.</h3>
+          <p>Please try again.</p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// Main App Component
 function App() {
-  const [prompt, setPrompt] = useState('')
-  const [response, setResponse] = useState<NovaResponse | string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  // State management using React hooks
+  const [prompt, setPrompt] = useState('') // Store user input
+  const [response, setResponse] = useState<APIResponse | null>(null) // Store API response
+  const [isLoading, setIsLoading] = useState(false) // Track loading state
+  const [error, setError] = useState<string | null>(null) // Store error messages
 
+  // Handler for form submission
   const handleSubmit = async () => {
     try {
-      setIsLoading(true)
-      const apiEndpoint = import.meta.env.VITE_APIGATEWAY
-      const result = await axios.get(apiEndpoint, {
+      setIsLoading(true) // Start loading state
+      setError(null) // Clear any previous errors
+      const apiEndpoint = import.meta.env.VITE_APIGATEWAY // Get API URL from env
+      // Make GET request to API with prompt parameter
+      const result = await axios.get<APIResponse>(apiEndpoint, {
         params: { prompt: prompt },
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         }
       })
+      
       console.log('API Response:', result.data)
       
-      // Extract the first result from the API response
-      const apiResponse = result.data as APIResponse
-      if (apiResponse.results && apiResponse.results.length > 0) {
-        setResponse(apiResponse.results[0])
+      // Validate response data
+      if (result.data && result.data.results && result.data.results.length > 0) {
+        setResponse(result.data)
       } else {
-        setResponse('No results found in the response')
+        setError('Invalid response format from server')
       }
     } catch (error) {
       console.error('Error:', error)
-      setResponse('Error occurred while processing your request')
+      setError('Error occurred while processing your request')
     } finally {
-      setIsLoading(false)
+      setIsLoading(false) // End loading state
     }
   }
 
-  const renderVerificationMethod = (method: VerificationMethod | undefined) => {
-    if (!method) {
-      return <div className="error-message">Verification method not available</div>;
+  // Helper function to render verification method details
+  const renderVerificationMethod = (method: VerificationMethod) => {
+    // Validate required data exists
+    if (!method || !method.source || !method.criteria || !method.steps) {
+      return <div className="error-message">Verification method data is incomplete</div>;
     }
     
+    // Render verification details in structured format
     return (
       <div className="verification-method">
         <div className="method-section">
@@ -67,10 +107,10 @@ function App() {
           <ul>
             {Array.isArray(method.source) ? (
               method.source.map((src, index) => (
-                <li key={`source-${index}`}>{src}</li>
+                <li key={`source-${index}`}>{String(src)}</li>
               ))
             ) : (
-              <li>{method.source}</li>
+              <li>No sources available</li>
             )}
           </ul>
         </div>
@@ -79,10 +119,10 @@ function App() {
           <ul>
             {Array.isArray(method.criteria) ? (
               method.criteria.map((criterion, index) => (
-                <li key={`criteria-${index}`}>{criterion}</li>
+                <li key={`criteria-${index}`}>{String(criterion)}</li>
               ))
             ) : (
-              <li>{method.criteria}</li>
+              <li>No criteria available</li>
             )}
           </ul>
         </div>
@@ -91,10 +131,10 @@ function App() {
           <ul>
             {Array.isArray(method.steps) ? (
               method.steps.map((step, index) => (
-                <li key={`step-${index}`}>{step}</li>
+                <li key={`step-${index}`}>{String(step)}</li>
               ))
             ) : (
-              <li>{method.steps}</li>
+              <li>No steps available</li>
             )}
           </ul>
         </div>
@@ -102,75 +142,85 @@ function App() {
     );
   };
 
+  // Helper function to render API response or appropriate message
   const renderResponse = () => {
-    if (typeof response === 'string') {
-      return <div className="error-message">{response}</div>
+    if (error) {
+      return <div className="error-message">{error}</div>;
     }
 
-    if (!response) {
-      return <div className="placeholder">Response will appear here...</div>
+    if (!response || !response.results || !response.results[0]) {
+      return <div className="placeholder">Enter a prediction above and click Send</div>;
     }
 
+    const novaResponse = response.results[0];
+
+    // Render structured response data
     return (
       <div className="structured-response">
         <div className="response-field">
           <h3>Prediction Statement:</h3>
-          <p>{response.prediction_statement}</p>
+          <p>{novaResponse.prediction_statement}</p>
         </div>
         <div className="response-field">
           <h3>Verification Date:</h3>
-          <p>{response.verification_date}</p>
+          <p>{novaResponse.verification_date}</p>
         </div>
         <div className="response-field">
           <h3>Verification Method:</h3>
-          {renderVerificationMethod(response.verification_method)}
+          {novaResponse.verification_method && (
+            <ErrorBoundary>
+              {renderVerificationMethod(novaResponse.verification_method)}
+            </ErrorBoundary>
+          )}
         </div>
         <div className="response-field">
           <h3>Initial Status:</h3>
-          <p>{response.initial_status}</p>
+          <p>{novaResponse.initial_status}</p>
         </div>
       </div>
-    )
-  }
+    );
+  };
 
+  // Component's main render method
   return (
     <div className="app-container">
-      <h1>Prompt Response System</h1>
+      <h1>Call It!!</h1>
+      {/* Input section */}
       <div className="input-container">
         <textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Enter your prompt here..."
+          placeholder="Enter your prediction here..."
           rows={4}
           className="text-box"
+          aria-label="Prediction input"
         />
       </div>
+      {/* Submit button section */}
       <div className="button-container">
         <button 
           onClick={handleSubmit}
           disabled={isLoading || !prompt.trim()}
           className="send-button"
+          aria-busy={isLoading}
         >
           {isLoading ? 'Sending...' : 'Send'}
         </button>
       </div>
+      {/* Response display section */}
       <div className="response-container">
-        {isLoading ? (
-          <div className="loading">Processing your request...</div>
-        ) : (
-          renderResponse()
-        )}
+        <ErrorBoundary>
+          {isLoading ? (
+            <div className="loading" role="status" aria-live="polite">
+              Processing your request...
+            </div>
+          ) : (
+            renderResponse()
+          )}
+        </ErrorBoundary>
       </div>
     </div>
   )
 }
 
 export default App
-
-
-
-
-
-
-
-
