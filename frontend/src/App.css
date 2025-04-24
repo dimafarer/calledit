@@ -59,6 +59,7 @@
   display: flex;
   justify-content: center;
   margin: 1rem 0;
+  gap: 10px; /* Add spacing between buttons */
 }
 
 .send-button {
@@ -165,6 +166,13 @@ h1 {
   padding: 1rem;
 }
 
+.log-button-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
 @media screen and (max-width: 480px) {
   .structured-response {
     padding: 0.75rem;
@@ -183,3 +191,4 @@ h1 {
     padding: 0.25rem;
   }
 }
+
