@@ -10,7 +10,11 @@ import {
   PredictionInput, 
   PredictionDisplay, 
   LogCallButton,
+  LoginButton,
 } from './components'
+
+// Import auth provider
+import { AuthProvider } from './contexts/AuthContext'
 
 // Main App Component
 function App() {
@@ -21,39 +25,48 @@ function App() {
 
   // Component's main render method
   return (
-    <div className="app-container">
-      <h1>Call It!!</h1>
-      
-      {/* Prediction Input Component */}
-      <PredictionInput 
-        isLoading={isLoading}
-        setResponse={setResponse}
-        setIsLoading={setIsLoading}
-        setError={setError}
-      />
-      
-      {/* Response display section */}
-      <div className="response-container">
-        <PredictionDisplay
-          response={response}
-          error={error}
-          isLoading={isLoading}
-        />
+    <AuthProvider>
+      <div className="app-container">
+        <h1>Call It!!</h1>
         
-        {/* Log Call Button Component */}
-        <LogCallButton
-          response={response}
+        {/* Prediction Input Component */}
+        <PredictionInput 
           isLoading={isLoading}
-          isVisible={!!(response && response.results && response.results.length > 0)}
+          setResponse={setResponse}
           setIsLoading={setIsLoading}
           setError={setError}
         />
+        
+        {/* Response display section */}
+        <div className="response-container">
+          <PredictionDisplay
+            response={response}
+            error={error}
+            isLoading={isLoading}
+          />
+          
+          {/* Log Call Button Component */}
+          <div className="buttons-container">
+            <LogCallButton
+              response={response}
+              isLoading={isLoading}
+              isVisible={true}
+              setIsLoading={setIsLoading}
+              setError={setError}
+            />
+            <LoginButton />
+          </div>
+        </div>
       </div>
-    </div>
+    </AuthProvider>
   )
 }
 
 export default App
+
+
+
+
 
 
 

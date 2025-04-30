@@ -166,11 +166,18 @@ h1 {
   padding: 1rem;
 }
 
-.log-button-container {
+.log-button-container, .login-button-container {
+  display: flex;
+  justify-content: center;
+  margin: 0 0.5rem;
+}
+
+.buttons-container {
   width: 100%;
   display: flex;
   justify-content: center;
   margin-top: 1.5rem;
+  gap: 1rem;
 }
 
 @media screen and (max-width: 480px) {
@@ -191,4 +198,5 @@ h1 {
     padding: 0.25rem;
   }
 }
+
 

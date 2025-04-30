@@ -65,6 +65,41 @@ describe('LogCallButton Component', () => {
     expect(screen.getByText('Log Call')).toBeInTheDocument();
   });
 
+  it('renders the button as disabled when no valid response data is available', () => {
+    render(
+      <LogCallButton 
+        response={null}
+        isLoading={false} 
+        isVisible={true}
+        setIsLoading={mockSetIsLoading}
+        setError={mockSetError}
+      />
+    );
+    
+    const button = screen.getByText('Log Call');
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('title', 'Make a prediction first');
+  });
+
+  it('shows error message when clicked with no valid response data', () => {
+    render(
+      <LogCallButton 
+        response={null}
+        isLoading={false} 
+        isVisible={true}
+        setIsLoading={mockSetIsLoading}
+        setError={mockSetError}
+      />
+    );
+    
+    // Try to click the button (even though it's disabled)
+    const logButton = screen.getByText('Log Call');
+    fireEvent.click(logButton);
+    
+    // Verify error message is set
+    expect(mockSetError).toHaveBeenCalledWith('No prediction data available to log. Please make a prediction first.');
+  });
+
   it('makes API call when button is clicked', async () => {
     // Mock API response
     const postMockResponse = {
@@ -154,3 +189,4 @@ describe('LogCallButton Component', () => {
     expect(button).toBeDisabled();
   });
 });
+

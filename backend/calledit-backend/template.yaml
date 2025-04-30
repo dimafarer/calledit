@@ -12,6 +12,7 @@ Globals:
       LogFormat: JSON 
   Api:
     TracingEnabled: true
+
 Resources:
   CallitAPI:
     Type: AWS::Serverless::Api
@@ -19,10 +20,16 @@ Resources:
       Name: CallitAPI
       StageName: Prod
       TracingEnabled: true
+      Auth:
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !GetAtt CognitoUserPool.Arn     
       Cors:
         AllowMethods: '''GET,POST,OPTIONS'''
         AllowHeaders: '''Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'''
         AllowOrigin: '''*'''
+        MaxAge: '''600'''
+        AllowCredentials: '''true'''
 
   HelloWorldFunction:
     Type: AWS::Serverless::Function 
@@ -113,19 +120,88 @@ Resources:
             Method: post
             RestApiId: !Ref CallitAPI
 
-  # ApplicationResourceGroup:
-  #   Type: AWS::ResourceGroups::Group
-  #   Properties:
-  #     Name:
-  #       Fn::Sub: ApplicationInsights-SAM-${AWS::StackName}
-  #     ResourceQuery:
-  #       Type: CLOUDFORMATION_STACK_1_0
-  # ApplicationInsightsMonitoring:
-  #   Type: AWS::ApplicationInsights::Application
-  #   Properties:
-  #     ResourceGroupName:
-  #       Ref: ApplicationResourceGroup
-  #     AutoConfigurationEnabled: 'true'
+  AuthTokenFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: handlers/auth_token/
+      Handler: auth_token.lambda_handler
+      Runtime: python3.12
+      Architectures:
+      - x86_64
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref CognitoUserPool
+          CLIENT_ID: !Ref UserPoolClient
+      Events:
+        AuthToken:
+          Type: Api
+          Properties:
+            Path: /auth/token
+            Method: post
+            RestApiId: !Ref CallitAPI
+
+
+  # Add this to your existing Resources section
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub ${AWS::StackName}-user-pool
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          RequireUppercase: true
+      # Add email configuration
+      EmailConfiguration:
+        EmailSendingAccount: COGNITO_DEFAULT
+      # Add verification message customization
+      EmailVerificationMessage: "Your verification code is {####}"
+      EmailVerificationSubject: "Your verification code"          
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref CognitoUserPool
+      ClientName: !Sub ${AWS::StackName}-client
+      GenerateSecret: false
+      # Add OAuth configuration
+      CallbackURLs: 
+        - http://localhost:5173
+        - https://d2k653cdpjxjdu.cloudfront.net
+      LogoutURLs:
+        - http://localhost:5173
+        - https://d2k653cdpjxjdu.cloudfront.net
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - email
+        - openid
+        - profile
+      AllowedOAuthFlowsUserPoolClient: true
+      SupportedIdentityProviders:
+        - COGNITO
+      # Enable authorization code grant flow
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_CUSTOM_AUTH
+      PreventUserExistenceErrors: ENABLED
+
+
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      UserPoolId: !Ref CognitoUserPool
+      Domain: !Sub ${AWS::StackName}-${AWS::AccountId}-domain
+
+
+
 Outputs:
   HelloWorldApi:
     Description: API Gateway endpoint URL for Prod stage for Hello World function
@@ -137,3 +213,18 @@ Outputs:
   HelloWorldFunctionIamRole:
     Description: Implicit IAM Role created for Hello World function
     Value: !GetAtt HelloWorldFunctionRole.Arn
+
+  # Add these to your existing Outputs section
+  UserPoolId:
+    Description: ID of the Cognito User Pool
+    Value: !Ref CognitoUserPool
+  UserPoolClientId:
+    Description: ID of the Cognito User Pool Client
+    Value: !Ref UserPoolClient
+  UserPoolDomain:
+    Description: Domain name of the Cognito User Pool
+    Value: !Sub ${AWS::StackName}-${AWS::AccountId}-domain.auth.${AWS::Region}.amazoncognito.com    
+  HostedUIURL:
+    Description: Hosted UI URL for sign-in
+    Value: !Sub https://${AWS::StackName}-${AWS::AccountId}-domain.auth.${AWS::Region}.amazoncognito.com/login?client_id=${UserPoolClient}&response_type=code&scope=email+openid+profile&redirect_uri=localhost:5173    
+

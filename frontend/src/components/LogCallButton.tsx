@@ -48,17 +48,24 @@ const LogCallButton: React.FC<LogCallButtonProps> = ({
       } finally {
         setIsLoading(false);
       }
+    } else {
+      // Handle case when there's no valid response data
+      setError('No prediction data available to log. Please make a prediction first.');
     }
   };
+
+  // Check if there's valid response data to determine if the button should be disabled
+  const isDisabled = isLoading || !(response && response.results && response.results.length > 0);
 
   return (
     <div className="log-button-container">
       <button 
         onClick={handleLogCall}
-        disabled={isLoading}
+        disabled={isDisabled}
         className="send-button"
         aria-label="Log call data"
         aria-busy={isLoading}
+        title={isDisabled && !isLoading ? "Make a prediction first" : ""}
       >
         {isLoading ? 'Logging...' : 'Log Call'}
       </button>
@@ -67,3 +74,4 @@ const LogCallButton: React.FC<LogCallButtonProps> = ({
 };
 
 export default LogCallButton;
+

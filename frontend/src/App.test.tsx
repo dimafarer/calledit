@@ -198,4 +198,25 @@ describe('App Component', () => {
       expect(screen.getByText('Error occurred while logging your prediction')).toBeInTheDocument();
     });
   });
+
+  it('renders the login button and toggles state when clicked', async () => {
+    render(<App />);
+    
+    // Check if login button is rendered
+    const loginButton = screen.getByText('Login');
+    expect(loginButton).toBeInTheDocument();
+    
+    // Click the login button to toggle state
+    fireEvent.click(loginButton);
+    
+    // Check if button text changed to "Logout"
+    expect(screen.getByText('Logout')).toBeInTheDocument();
+    
+    // Click again to toggle back
+    fireEvent.click(screen.getByText('Logout'));
+    
+    // Check if button text changed back to "Login"
+    expect(screen.getByText('Login')).toBeInTheDocument();
+  });
 });
+
