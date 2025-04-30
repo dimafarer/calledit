@@ -172,11 +172,11 @@ Resources:
       GenerateSecret: false
       # Add OAuth configuration
       CallbackURLs: 
-        - http://localhost:5173
-        - https://d2k653cdpjxjdu.cloudfront.net
+        - http://localhost:5173/
+        - https://d2k653cdpjxjdu.cloudfront.net/
       LogoutURLs:
-        - http://localhost:5173
-        - https://d2k653cdpjxjdu.cloudfront.net
+        - http://localhost:5173/
+        - https://d2k653cdpjxjdu.cloudfront.net/
       AllowedOAuthFlows:
         - code
       AllowedOAuthScopes:

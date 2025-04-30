@@ -15,6 +15,7 @@ import {
 
 // Import auth provider
 import { AuthProvider } from './contexts/AuthContext'
+import { TestAuth } from './components/TestAuth';
 
 // Main App Component
 function App() {
@@ -27,6 +28,10 @@ function App() {
   return (
     <AuthProvider>
       <div className="app-container">
+        <div>
+          <h1>Your App</h1>
+          <TestAuth />
+        </div>
         <h1>Call It!!</h1>
         
         {/* Prediction Input Component */}
