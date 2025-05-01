@@ -125,12 +125,27 @@ def lambda_handler(event, context):
         # Get current timestamp for SK
         timestamp = datetime.now().isoformat()
         # Create item to store in DynamoDB
+        # item = {
+        #     'PK': str(f'USER:{user_id}:Call:{timestamp}'),
+        #     'SK': str(timestamp),
+        #     'userId': user_id,  # Store the user ID separately for easier querying
+        #     **prediction  # Include all fields from prediction
+        # }
+        
         item = {
-            'PK': str(f'USER:{user_id}:Call:{timestamp}'),
-            'SK': str(timestamp),
-            'userId': user_id,  # Store the user ID separately for easier querying
+            'PK': f'USER:{user_id}',  # Clear entity type prefix
+            'SK': f'PREDICTION#{timestamp}',  # Organized hierarchy
+            'userId': user_id,  # Keep for GSI if needed
+            'status': 'PENDING',  # Add status field
+            'createdAt': timestamp,
+            'updatedAt': timestamp,
             **prediction  # Include all fields from prediction
         }
+
+        
+        
+        
+        
         # Write to DynamoDB
         response = table.put_item(Item=item)
         return {
