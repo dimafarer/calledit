@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import axios from 'axios';
 import LogCallButton from './LogCallButton';
 import { APIResponse } from '../types';
+import * as AuthContext from '../contexts/AuthContext';
 
 // Mock axios
 vi.mock('axios');
@@ -12,12 +13,18 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 const mockAlert = vi.fn();
 window.alert = mockAlert;
 
+// Mock AuthContext
+vi.mock('../contexts/AuthContext', () => ({
+  useAuth: vi.fn()
+}));
+
 // Mock environment variables
 vi.stubEnv('VITE_APIGATEWAY', 'https://test-api.example.com');
 
 describe('LogCallButton Component', () => {
   const mockSetIsLoading = vi.fn();
   const mockSetError = vi.fn();
+  const mockGetToken = vi.fn().mockReturnValue('mock-token');
   const mockResponse: APIResponse = {
     results: [
       {
@@ -35,6 +42,13 @@ describe('LogCallButton Component', () => {
   
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default mock for useAuth - authenticated
+    vi.mocked(AuthContext.useAuth).mockReturnValue({
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+      getToken: mockGetToken
+    });
   });
 
   it('renders nothing when isVisible is false', () => {
@@ -81,6 +95,54 @@ describe('LogCallButton Component', () => {
     expect(button).toHaveAttribute('title', 'Make a prediction first');
   });
 
+  it('renders the button as disabled when user is not authenticated', () => {
+    // Mock unauthenticated state
+    vi.mocked(AuthContext.useAuth).mockReturnValue({
+      isAuthenticated: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+      getToken: vi.fn().mockReturnValue(null)
+    });
+
+    render(
+      <LogCallButton 
+        response={mockResponse}
+        isLoading={false} 
+        isVisible={true}
+        setIsLoading={mockSetIsLoading}
+        setError={mockSetError}
+      />
+    );
+    
+    const button = screen.getByText('Log Call');
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('title', 'Log in first');
+  });
+
+  it('renders the button as disabled when both prediction and authentication are missing', () => {
+    // Mock unauthenticated state
+    vi.mocked(AuthContext.useAuth).mockReturnValue({
+      isAuthenticated: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+      getToken: vi.fn().mockReturnValue(null)
+    });
+
+    render(
+      <LogCallButton 
+        response={null}
+        isLoading={false} 
+        isVisible={true}
+        setIsLoading={mockSetIsLoading}
+        setError={mockSetError}
+      />
+    );
+    
+    const button = screen.getByText('Log Call');
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('title', 'Make a prediction and log in first');
+  });
+
   it('shows error message when clicked with no valid response data', () => {
     render(
       <LogCallButton 
@@ -100,7 +162,34 @@ describe('LogCallButton Component', () => {
     expect(mockSetError).toHaveBeenCalledWith('No prediction data available to log. Please make a prediction first.');
   });
 
-  it('makes API call when button is clicked', async () => {
+  it('shows error message when clicked with valid response but not authenticated', () => {
+    // Mock unauthenticated state
+    vi.mocked(AuthContext.useAuth).mockReturnValue({
+      isAuthenticated: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+      getToken: vi.fn().mockReturnValue(null)
+    });
+
+    render(
+      <LogCallButton 
+        response={mockResponse}
+        isLoading={false} 
+        isVisible={true}
+        setIsLoading={mockSetIsLoading}
+        setError={mockSetError}
+      />
+    );
+    
+    // Try to click the button (even though it's disabled)
+    const logButton = screen.getByText('Log Call');
+    fireEvent.click(logButton);
+    
+    // Verify error message is set
+    expect(mockSetError).toHaveBeenCalledWith('You must be logged in to log a prediction.');
+  });
+
+  it('makes API call with auth token when button is clicked', async () => {
     // Mock API response
     const postMockResponse = {
       data: {
@@ -137,7 +226,8 @@ describe('LogCallButton Component', () => {
         expect.objectContaining({
           headers: {
             'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'Authorization': 'Bearer mock-token'
           }
         })
       );

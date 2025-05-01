@@ -119,6 +119,8 @@ Resources:
             Path: /log-call
             Method: post
             RestApiId: !Ref CallitAPI
+            Auth:
+              Authorizer: CognitoAuthorizer
 
   AuthTokenFunction:
     Type: AWS::Serverless::Function

@@ -1,6 +1,7 @@
 import React from 'react';
 import axios from 'axios';
 import { APIResponse } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 
 interface LogCallButtonProps {
   response: APIResponse | null;
@@ -17,17 +18,28 @@ const LogCallButton: React.FC<LogCallButtonProps> = ({
   setIsLoading,
   setError
 }) => {
+  // Get authentication state from AuthContext
+  const { isAuthenticated, getToken } = useAuth();
+
   if (!isVisible) {
     return null;
   }
 
   const handleLogCall = async () => {
     if (response && response.results && response.results.length > 0) {
+      if (!isAuthenticated) {
+        setError('You must be logged in to log a prediction.');
+        return;
+      }
+
       try {
         setIsLoading(true);
         setError(null);
         const novaResponse = response.results[0];
         console.log('Sending to database:', novaResponse);
+        
+        // Get authentication token
+        const token = getToken();
         
         // Make POST request to API Gateway endpoint
         const apiEndpoint = import.meta.env.VITE_APIGATEWAY+'/log-call';
@@ -36,7 +48,8 @@ const LogCallButton: React.FC<LogCallButtonProps> = ({
         }, {
           headers: {
             'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : ''
           }
         });
         
@@ -54,8 +67,21 @@ const LogCallButton: React.FC<LogCallButtonProps> = ({
     }
   };
 
-  // Check if there's valid response data to determine if the button should be disabled
-  const isDisabled = isLoading || !(response && response.results && response.results.length > 0);
+  // Check if there's valid response data and user is authenticated to determine if the button should be enabled
+  const hasPrediction = response && response.results && response.results.length > 0;
+  const isDisabled = isLoading || !hasPrediction || !isAuthenticated;
+
+  // Determine the appropriate tooltip message based on what's missing
+  let tooltipMessage = "";
+  if (isDisabled && !isLoading) {
+    if (!hasPrediction && !isAuthenticated) {
+      tooltipMessage = "Make a prediction and log in first";
+    } else if (!hasPrediction) {
+      tooltipMessage = "Make a prediction first";
+    } else if (!isAuthenticated) {
+      tooltipMessage = "Log in first";
+    }
+  }
 
   return (
     <div className="log-button-container">
@@ -65,7 +91,7 @@ const LogCallButton: React.FC<LogCallButtonProps> = ({
         className="send-button"
         aria-label="Log call data"
         aria-busy={isLoading}
-        title={isDisabled && !isLoading ? "Make a prediction first" : ""}
+        title={tooltipMessage}
       >
         {isLoading ? 'Logging...' : 'Log Call'}
       </button>
