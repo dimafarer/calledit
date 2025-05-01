@@ -15,6 +15,7 @@ describe('PredictionInput Component', () => {
   const mockSetResponse = vi.fn();
   const mockSetIsLoading = vi.fn();
   const mockSetError = vi.fn();
+  const mockSetPrompt = vi.fn();
   
   beforeEach(() => {
     vi.clearAllMocks();
@@ -24,6 +25,8 @@ describe('PredictionInput Component', () => {
     render(
       <PredictionInput 
         isLoading={false} 
+        prompt=""
+        setPrompt={mockSetPrompt}
         setResponse={mockSetResponse}
         setIsLoading={mockSetIsLoading}
         setError={mockSetError}
@@ -38,6 +41,8 @@ describe('PredictionInput Component', () => {
     render(
       <PredictionInput 
         isLoading={false} 
+        prompt=""
+        setPrompt={mockSetPrompt}
         setResponse={mockSetResponse}
         setIsLoading={mockSetIsLoading}
         setError={mockSetError}
@@ -52,14 +57,13 @@ describe('PredictionInput Component', () => {
     render(
       <PredictionInput 
         isLoading={false} 
+        prompt="Test prediction"
+        setPrompt={mockSetPrompt}
         setResponse={mockSetResponse}
         setIsLoading={mockSetIsLoading}
         setError={mockSetError}
       />
     );
-    
-    const input = screen.getByPlaceholderText('Enter your prediction here...');
-    fireEvent.change(input, { target: { value: 'Test prediction' } });
     
     const button = screen.getByText('Make Call');
     expect(button).not.toBeDisabled();
@@ -88,15 +92,13 @@ describe('PredictionInput Component', () => {
     render(
       <PredictionInput 
         isLoading={false} 
+        prompt="Test input"
+        setPrompt={mockSetPrompt}
         setResponse={mockSetResponse}
         setIsLoading={mockSetIsLoading}
         setError={mockSetError}
       />
     );
-    
-    // Enter text in the input
-    const input = screen.getByPlaceholderText('Enter your prediction here...');
-    fireEvent.change(input, { target: { value: 'Test input' } });
     
     // Click the submit button
     const submitButton = screen.getByText('Make Call');
@@ -128,15 +130,13 @@ describe('PredictionInput Component', () => {
     render(
       <PredictionInput 
         isLoading={false} 
+        prompt="Test input"
+        setPrompt={mockSetPrompt}
         setResponse={mockSetResponse}
         setIsLoading={mockSetIsLoading}
         setError={mockSetError}
       />
     );
-    
-    // Enter text in the input
-    const input = screen.getByPlaceholderText('Enter your prediction here...');
-    fireEvent.change(input, { target: { value: 'Test input' } });
     
     // Click the submit button
     const submitButton = screen.getByText('Make Call');
@@ -159,15 +159,13 @@ describe('PredictionInput Component', () => {
     render(
       <PredictionInput 
         isLoading={false} 
+        prompt="Test input"
+        setPrompt={mockSetPrompt}
         setResponse={mockSetResponse}
         setIsLoading={mockSetIsLoading}
         setError={mockSetError}
       />
     );
-    
-    // Enter text in the input
-    const input = screen.getByPlaceholderText('Enter your prediction here...');
-    fireEvent.change(input, { target: { value: 'Test input' } });
     
     // Click the submit button
     const submitButton = screen.getByText('Make Call');
@@ -184,6 +182,8 @@ describe('PredictionInput Component', () => {
     render(
       <PredictionInput 
         isLoading={true} 
+        prompt="Test input"
+        setPrompt={mockSetPrompt}
         setResponse={mockSetResponse}
         setIsLoading={mockSetIsLoading}
         setError={mockSetError}
@@ -193,5 +193,23 @@ describe('PredictionInput Component', () => {
     expect(screen.getByText('Generating...')).toBeInTheDocument();
     const button = screen.getByText('Generating...');
     expect(button).toBeDisabled();
+  });
+
+  it('calls setPrompt when input value changes', () => {
+    render(
+      <PredictionInput 
+        isLoading={false} 
+        prompt=""
+        setPrompt={mockSetPrompt}
+        setResponse={mockSetResponse}
+        setIsLoading={mockSetIsLoading}
+        setError={mockSetError}
+      />
+    );
+    
+    const input = screen.getByPlaceholderText('Enter your prediction here...');
+    fireEvent.change(input, { target: { value: 'New prediction text' } });
+    
+    expect(mockSetPrompt).toHaveBeenCalledWith('New prediction text');
   });
 });

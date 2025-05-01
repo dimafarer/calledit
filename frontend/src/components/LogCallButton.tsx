@@ -10,6 +10,8 @@ interface LogCallButtonProps {
   isVisible: boolean;
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
+  setResponse: React.Dispatch<React.SetStateAction<APIResponse | null>>;
+  setPrompt: React.Dispatch<React.SetStateAction<string>>;
 }
 
 const LogCallButton: React.FC<LogCallButtonProps> = ({ 
@@ -17,7 +19,9 @@ const LogCallButton: React.FC<LogCallButtonProps> = ({
   isLoading, 
   isVisible,
   setIsLoading,
-  setError
+  setError,
+  setResponse,
+  setPrompt
 }) => {
   // Get authentication state from AuthContext
   const { isAuthenticated, getToken } = useAuth();
@@ -59,6 +63,13 @@ const LogCallButton: React.FC<LogCallButtonProps> = ({
         // Clear prediction data from local storage after successful log
         clearPredictionData();
         
+        // Clear the response state to update the UI
+        setResponse(null);
+        
+        // Clear the prompt text
+        setPrompt('');
+        
+        // Show success message
         alert('Prediction logged successfully!');
       } catch (error) {
         console.error('Error logging call:', error);

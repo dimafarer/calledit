@@ -14,16 +14,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Add this ref to track if we've already processed the code
   const codeProcessed = useRef(false);
   // Get these values from your Cognito setup
-  // const REGION = import.meta.env.VITE_AWS_REGION; // Your region
+  const REGION = import.meta.env.VITE_AWS_REGION; // Your region
   // const USER_POOL_ID = import.meta.env.VITE_COGNITO_USER_POOL_ID;
-  // const CLIENT_ID = import.meta.env.VITE_COGNITO_CLIENT_ID;
+  const CLIENT_ID = import.meta.env.VITE_COGNITO_CLIENT_ID;
   // const REDIRECT_URI = import.meta.env.VITE_COGNITO_REDIRECT_URI; // localhost or your CloudFront URL in prod
-  // const DOMAIN_PREFIX = import.meta.env.VITE_COGNITO_DOMAIN_PREFIX; 
+  const DOMAIN_PREFIX = import.meta.env.VITE_COGNITO_DOMAIN_PREFIX; 
 
-  const REGION = 'us-west-2';
-  const CLIENT_ID = '753gn25jle081ajqabpd4lbin9';
-  const DOMAIN_PREFIX = 'calledit-backend-894249332178-domain';
-  const REDIRECT_URI = 'http://localhost:5173/'; // Note the trailing slash
+  // const REGION = 'us-west-2';
+  // const CLIENT_ID = '753gn25jle081ajqabpd4lbin9';
+  // const DOMAIN_PREFIX = 'calledit-backend-894249332178-domain';
+  let REDIRECT_URI: string; 
+  //  write a conditinal that sets REDIRECT_URI if the react app is in developent made and set REDIRECT_URI to https://d2k653cdpjxjdu.cloudfront.net/ in produciton mode
+  if (import.meta.env.DEV) {
+    console.log('Development mode');
+    REDIRECT_URI = import.meta.env.VITE_COGNITO_DEV_REDIRECT_URI;
+  } else {
+    console.log('Production mode');
+    REDIRECT_URI = import.meta.env.VITE_COGNITO_PROD_REDIRECT_URI;
+  }
+
 
   const login = () => {
     const cognitoDomain = `https://${DOMAIN_PREFIX}.auth.${REGION}.amazoncognito.com`;

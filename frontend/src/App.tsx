@@ -15,7 +15,7 @@ import {
 
 // Import auth provider
 import { AuthProvider } from './contexts/AuthContext'
-import { TestAuth } from './components/TestAuth';
+// import { TestAuth } from './components/TestAuth';
 
 // Import storage utilities
 import { getPredictionData, savePredictionData } from './utils/storageUtils';
@@ -27,6 +27,7 @@ function App() {
   const [response, setResponse] = useState<APIResponse | null>(() => getPredictionData()) 
   const [isLoading, setIsLoading] = useState(false) // Track loading state
   const [error, setError] = useState<string | null>(null) // Store error messages
+  const [prompt, setPrompt] = useState('') // Store the prediction input text
 
   // Save prediction data to local storage whenever it changes
   useEffect(() => {
@@ -44,15 +45,17 @@ function App() {
   return (
     <AuthProvider>
       <div className="app-container">
-        <div>
+        {/* <div>
           <h1>Your App</h1>
           <TestAuth />
-        </div>
+        </div> */}
         <h1>Call It!!</h1>
         
         {/* Prediction Input Component */}
         <PredictionInput 
           isLoading={isLoading}
+          prompt={prompt}
+          setPrompt={setPrompt}
           setResponse={handleSetResponse}
           setIsLoading={setIsLoading}
           setError={setError}
@@ -74,6 +77,8 @@ function App() {
               isVisible={true}
               setIsLoading={setIsLoading}
               setError={setError}
+              setResponse={handleSetResponse}
+              setPrompt={setPrompt}
             />
             <LoginButton />
           </div>
@@ -84,6 +89,7 @@ function App() {
 }
 
 export default App
+
 
 
 

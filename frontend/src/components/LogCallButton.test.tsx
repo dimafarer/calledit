@@ -24,6 +24,8 @@ vi.stubEnv('VITE_APIGATEWAY', 'https://test-api.example.com');
 describe('LogCallButton Component', () => {
   const mockSetIsLoading = vi.fn();
   const mockSetError = vi.fn();
+  const mockSetResponse = vi.fn();
+  const mockSetPrompt = vi.fn();
   const mockGetToken = vi.fn().mockReturnValue('mock-token');
   const mockResponse: APIResponse = {
     results: [
@@ -59,6 +61,8 @@ describe('LogCallButton Component', () => {
         isVisible={false}
         setIsLoading={mockSetIsLoading}
         setError={mockSetError}
+        setResponse={mockSetResponse}
+        setPrompt={mockSetPrompt}
       />
     );
     
@@ -73,6 +77,8 @@ describe('LogCallButton Component', () => {
         isVisible={true}
         setIsLoading={mockSetIsLoading}
         setError={mockSetError}
+        setResponse={mockSetResponse}
+        setPrompt={mockSetPrompt}
       />
     );
     
@@ -87,6 +93,8 @@ describe('LogCallButton Component', () => {
         isVisible={true}
         setIsLoading={mockSetIsLoading}
         setError={mockSetError}
+        setResponse={mockSetResponse}
+        setPrompt={mockSetPrompt}
       />
     );
     
@@ -111,6 +119,8 @@ describe('LogCallButton Component', () => {
         isVisible={true}
         setIsLoading={mockSetIsLoading}
         setError={mockSetError}
+        setResponse={mockSetResponse}
+        setPrompt={mockSetPrompt}
       />
     );
     
@@ -135,6 +145,8 @@ describe('LogCallButton Component', () => {
         isVisible={true}
         setIsLoading={mockSetIsLoading}
         setError={mockSetError}
+        setResponse={mockSetResponse}
+        setPrompt={mockSetPrompt}
       />
     );
     
@@ -151,6 +163,8 @@ describe('LogCallButton Component', () => {
         isVisible={true}
         setIsLoading={mockSetIsLoading}
         setError={mockSetError}
+        setResponse={mockSetResponse}
+        setPrompt={mockSetPrompt}
       />
     );
     
@@ -178,6 +192,8 @@ describe('LogCallButton Component', () => {
         isVisible={true}
         setIsLoading={mockSetIsLoading}
         setError={mockSetError}
+        setResponse={mockSetResponse}
+        setPrompt={mockSetPrompt}
       />
     );
     
@@ -205,6 +221,8 @@ describe('LogCallButton Component', () => {
         isVisible={true}
         setIsLoading={mockSetIsLoading}
         setError={mockSetError}
+        setResponse={mockSetResponse}
+        setPrompt={mockSetPrompt}
       />
     );
     
@@ -233,6 +251,12 @@ describe('LogCallButton Component', () => {
       );
     });
     
+    // Verify response state is cleared
+    expect(mockSetResponse).toHaveBeenCalledWith(null);
+    
+    // Verify prompt is cleared
+    expect(mockSetPrompt).toHaveBeenCalledWith('');
+    
     // Verify alert was shown and loading state was updated
     expect(mockAlert).toHaveBeenCalledWith('Prediction logged successfully!');
     expect(mockSetIsLoading).toHaveBeenCalledWith(false);
@@ -249,6 +273,8 @@ describe('LogCallButton Component', () => {
         isVisible={true}
         setIsLoading={mockSetIsLoading}
         setError={mockSetError}
+        setResponse={mockSetResponse}
+        setPrompt={mockSetPrompt}
       />
     );
     
@@ -261,6 +287,9 @@ describe('LogCallButton Component', () => {
       expect(mockSetError).toHaveBeenCalledWith('Error occurred while logging your prediction');
       expect(mockSetIsLoading).toHaveBeenCalledWith(false);
     });
+    
+    // Verify prompt is not cleared on error
+    expect(mockSetPrompt).not.toHaveBeenCalled();
   });
 
   it('shows loading state when isLoading is true', () => {
@@ -271,6 +300,8 @@ describe('LogCallButton Component', () => {
         isVisible={true}
         setIsLoading={mockSetIsLoading}
         setError={mockSetError}
+        setResponse={mockSetResponse}
+        setPrompt={mockSetPrompt}
       />
     );
     
@@ -279,4 +310,3 @@ describe('LogCallButton Component', () => {
     expect(button).toBeDisabled();
   });
 });
-

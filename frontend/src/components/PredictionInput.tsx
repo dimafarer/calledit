@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import axios from 'axios';
 import { APIResponse } from '../types';
 
 interface PredictionInputProps {
   isLoading: boolean;
+  prompt: string;
+  setPrompt: React.Dispatch<React.SetStateAction<string>>;
   setResponse: React.Dispatch<React.SetStateAction<APIResponse | null>>;
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
@@ -11,12 +13,12 @@ interface PredictionInputProps {
 
 const PredictionInput: React.FC<PredictionInputProps> = ({ 
   isLoading, 
+  prompt,
+  setPrompt,
   setResponse, 
   setIsLoading, 
   setError 
 }) => {
-  const [prompt, setPrompt] = useState('');
-
   const handleSubmit = async () => {
     if (prompt.trim()) {
       try {
