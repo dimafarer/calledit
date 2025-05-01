@@ -1,29 +1,31 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import LoginButton from './LoginButton';
 import { AuthProvider } from '../contexts/AuthContext';
 import * as authContext from '../contexts/AuthContext';
 
 // Mock the useAuth hook
-jest.mock('../contexts/AuthContext', () => ({
-  ...jest.requireActual('../contexts/AuthContext'),
-  useAuth: jest.fn(),
+vi.mock('../contexts/AuthContext', () => ({
+  ...vi.importActual('../contexts/AuthContext'),
+  useAuth: vi.fn(),
 }));
 
 describe('LoginButton', () => {
-  const mockLogin = jest.fn();
-  const mockLogout = jest.fn();
+  const mockLogin = vi.fn();
+  const mockLogout = vi.fn();
+  const mockGetToken = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
-  it('renders login button when not logged in', () => {
-    // Mock the useAuth hook to return not logged in
-    jest.spyOn(authContext, 'useAuth').mockReturnValue({
-      isLoggedIn: false,
-      user: null,
+  it('renders login button when not authenticated', () => {
+    // Mock the useAuth hook to return not authenticated
+    vi.spyOn(authContext, 'useAuth').mockReturnValue({
+      isAuthenticated: false,
       login: mockLogin,
       logout: mockLogout,
+      getToken: mockGetToken,
     });
 
     render(
@@ -37,13 +39,13 @@ describe('LoginButton', () => {
     expect(buttonElement.textContent).toBe('Login');
   });
 
-  it('renders logout button when logged in', () => {
-    // Mock the useAuth hook to return logged in
-    jest.spyOn(authContext, 'useAuth').mockReturnValue({
-      isLoggedIn: true,
-      user: { email: 'test@example.com' },
+  it('renders logout button when authenticated', () => {
+    // Mock the useAuth hook to return authenticated
+    vi.spyOn(authContext, 'useAuth').mockReturnValue({
+      isAuthenticated: true,
       login: mockLogin,
       logout: mockLogout,
+      getToken: mockGetToken,
     });
 
     render(
@@ -58,12 +60,12 @@ describe('LoginButton', () => {
   });
 
   it('calls login function when login button is clicked', () => {
-    // Mock the useAuth hook to return not logged in
-    jest.spyOn(authContext, 'useAuth').mockReturnValue({
-      isLoggedIn: false,
-      user: null,
+    // Mock the useAuth hook to return not authenticated
+    vi.spyOn(authContext, 'useAuth').mockReturnValue({
+      isAuthenticated: false,
       login: mockLogin,
       logout: mockLogout,
+      getToken: mockGetToken,
     });
 
     render(
@@ -80,12 +82,12 @@ describe('LoginButton', () => {
   });
 
   it('calls logout function when logout button is clicked', () => {
-    // Mock the useAuth hook to return logged in
-    jest.spyOn(authContext, 'useAuth').mockReturnValue({
-      isLoggedIn: true,
-      user: { email: 'test@example.com' },
+    // Mock the useAuth hook to return authenticated
+    vi.spyOn(authContext, 'useAuth').mockReturnValue({
+      isAuthenticated: true,
       login: mockLogin,
       logout: mockLogout,
+      getToken: mockGetToken,
     });
 
     render(

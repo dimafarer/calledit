@@ -2,6 +2,7 @@ import React from 'react';
 import axios from 'axios';
 import { APIResponse } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { clearPredictionData } from '../utils/storageUtils';
 
 interface LogCallButtonProps {
   response: APIResponse | null;
@@ -54,6 +55,10 @@ const LogCallButton: React.FC<LogCallButtonProps> = ({
         });
         
         console.log('Log response:', result.data);
+        
+        // Clear prediction data from local storage after successful log
+        clearPredictionData();
+        
         alert('Prediction logged successfully!');
       } catch (error) {
         console.error('Error logging call:', error);
@@ -100,4 +105,3 @@ const LogCallButton: React.FC<LogCallButtonProps> = ({
 };
 
 export default LogCallButton;
-

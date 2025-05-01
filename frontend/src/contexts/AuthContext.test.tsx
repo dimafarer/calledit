@@ -1,134 +1,133 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import { AuthProvider, useAuth } from './AuthContext';
-import * as authService from '../services/authService';
-
-// Mock the auth service
-jest.mock('../services/authService', () => ({
-  isAuthenticated: jest.fn(),
-  getUser: jest.fn(),
-  loginWithCognito: jest.fn(),
-  logout: jest.fn(),
-}));
 
 // Test component that uses the auth context
 const TestComponent = () => {
-  const { isLoggedIn, user, login, logout } = useAuth();
+  const { isAuthenticated, login, logout, getToken } = useAuth();
   
   return (
     <div>
-      <div data-testid="login-status">{isLoggedIn ? 'Logged In' : 'Logged Out'}</div>
-      <div data-testid="user-email">{user?.email || 'No User'}</div>
+      <div data-testid="auth-status">{isAuthenticated ? 'Authenticated' : 'Not Authenticated'}</div>
+      <div data-testid="token">{getToken() || 'No Token'}</div>
       <button onClick={login} data-testid="login-button">Login</button>
       <button onClick={logout} data-testid="logout-button">Logout</button>
     </div>
   );
 };
 
+// Mock localStorage
+const localStorageMock = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: vi.fn((key: string) => store[key] || null),
+    setItem: vi.fn((key: string, value: string) => {
+      store[key] = value;
+    }),
+    removeItem: vi.fn((key: string) => {
+      delete store[key];
+    }),
+    clear: vi.fn(() => {
+      store = {};
+    }),
+  };
+})();
+
+// Replace the global localStorage with our mock
+Object.defineProperty(window, 'localStorage', {
+  value: localStorageMock,
+});
+
+// Mock window.location
+const originalLocation = window.location;
+Object.defineProperty(window, 'location', {
+  writable: true,
+  value: {
+    href: '',
+    pathname: '/',
+    search: '',
+    hash: '',
+    replace: vi.fn(),
+    reload: vi.fn(),
+    assign: vi.fn(),
+  },
+});
+
 describe('AuthContext', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+    localStorageMock.clear();
+    window.location.href = '';
+    window.location.search = '';
   });
   
-  it('provides authentication status correctly when not authenticated', async () => {
-    // Mock isAuthenticated to return false
-    jest.spyOn(authService, 'isAuthenticated').mockResolvedValue(false);
-    jest.spyOn(authService, 'getUser').mockResolvedValue(null);
-    
-    await act(async () => {
-      render(
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>
-      );
+  afterAll(() => {
+    // Restore original location
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: originalLocation,
     });
-    
-    expect(screen.getByTestId('login-status').textContent).toBe('Logged Out');
-    expect(screen.getByTestId('user-email').textContent).toBe('No User');
   });
   
-  it('provides authentication status correctly when authenticated', async () => {
-    // Mock isAuthenticated to return true
-    jest.spyOn(authService, 'isAuthenticated').mockResolvedValue(true);
-    jest.spyOn(authService, 'getUser').mockResolvedValue({ email: 'test@example.com' });
+  it('provides authentication status correctly when not authenticated', () => {
+    render(
+      <AuthProvider>
+        <TestComponent />
+      </AuthProvider>
+    );
     
-    await act(async () => {
-      render(
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>
-      );
-    });
-    
-    expect(screen.getByTestId('login-status').textContent).toBe('Logged In');
-    expect(screen.getByTestId('user-email').textContent).toBe('test@example.com');
+    expect(screen.getByTestId('auth-status').textContent).toBe('Not Authenticated');
+    expect(screen.getByTestId('token').textContent).toBe('No Token');
   });
   
-  it('calls loginWithCognito when login is called', async () => {
-    jest.spyOn(authService, 'isAuthenticated').mockResolvedValue(false);
-    jest.spyOn(authService, 'getUser').mockResolvedValue(null);
+  it('provides authentication status correctly when authenticated', () => {
+    // Setup: Add token to localStorage
+    localStorageMock.getItem.mockReturnValue('mock-token');
     
-    await act(async () => {
-      render(
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>
-      );
-    });
+    render(
+      <AuthProvider>
+        <TestComponent />
+      </AuthProvider>
+    );
+    
+    expect(screen.getByTestId('auth-status').textContent).toBe('Authenticated');
+  });
+  
+  it('redirects to Cognito login when login is called', () => {
+    render(
+      <AuthProvider>
+        <TestComponent />
+      </AuthProvider>
+    );
     
     const loginButton = screen.getByTestId('login-button');
-    await act(async () => {
+    act(() => {
       loginButton.click();
     });
     
-    expect(authService.loginWithCognito).toHaveBeenCalledTimes(1);
+    expect(window.location.href).toContain('amazoncognito.com/login');
   });
   
-  it('calls logout when logout is called', async () => {
-    jest.spyOn(authService, 'isAuthenticated').mockResolvedValue(false);
-    jest.spyOn(authService, 'getUser').mockResolvedValue(null);
-    jest.spyOn(authService, 'logout').mockResolvedValue(undefined);
+  it('clears tokens when logout is called', () => {
+    // Setup: Add tokens to localStorage
+    localStorageMock.setItem('idToken', 'mock-id-token');
+    localStorageMock.setItem('accessToken', 'mock-access-token');
+    localStorageMock.setItem('refreshToken', 'mock-refresh-token');
     
-    await act(async () => {
-      render(
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>
-      );
-    });
+    render(
+      <AuthProvider>
+        <TestComponent />
+      </AuthProvider>
+    );
     
     const logoutButton = screen.getByTestId('logout-button');
-    await act(async () => {
+    act(() => {
       logoutButton.click();
     });
     
-    expect(authService.logout).toHaveBeenCalledTimes(1);
-  });
-  
-  it('updates auth state when storage event occurs', async () => {
-    // Mock isAuthenticated to initially return false
-    jest.spyOn(authService, 'isAuthenticated').mockResolvedValue(false);
-    jest.spyOn(authService, 'getUser').mockResolvedValue(null);
-    
-    await act(async () => {
-      render(
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>
-      );
-    });
-    
-    expect(screen.getByTestId('login-status').textContent).toBe('Logged Out');
-    
-    // Mock isAuthenticated to return true after storage event
-    jest.spyOn(authService, 'isAuthenticated').mockResolvedValue(true);
-    jest.spyOn(authService, 'getUser').mockResolvedValue({ email: 'test@example.com' });
-    
-    // Simulate storage event
-    await act(async () => {
-      window.dispatchEvent(new Event('storage'));
-    });
-    
-    expect(screen.getByTestId('login-status').textContent).toBe('Logged In');
-    expect(screen.getByTestId('user-email').textContent).toBe('test@example.com');
+    expect(localStorageMock.removeItem).toHaveBeenCalledWith('idToken');
+    expect(localStorageMock.removeItem).toHaveBeenCalledWith('accessToken');
+    expect(localStorageMock.removeItem).toHaveBeenCalledWith('refreshToken');
+    expect(screen.getByTestId('auth-status').textContent).toBe('Not Authenticated');
   });
 });

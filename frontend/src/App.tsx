@@ -1,5 +1,5 @@
 // Import necessary dependencies from React and other libraries
-import { useState } from 'react' // useState hook for managing component state
+import { useState, useEffect } from 'react' // useState and useEffect hooks for managing component state
 import './App.css' // Component styles
 
 // Import types
@@ -17,12 +17,28 @@ import {
 import { AuthProvider } from './contexts/AuthContext'
 import { TestAuth } from './components/TestAuth';
 
+// Import storage utilities
+import { getPredictionData, savePredictionData } from './utils/storageUtils';
+
 // Main App Component
 function App() {
   // State management using React hooks
-  const [response, setResponse] = useState<APIResponse | null>(null) // Store API response
+  // Initialize response state from local storage if available
+  const [response, setResponse] = useState<APIResponse | null>(() => getPredictionData()) 
   const [isLoading, setIsLoading] = useState(false) // Track loading state
   const [error, setError] = useState<string | null>(null) // Store error messages
+
+  // Save prediction data to local storage whenever it changes
+  useEffect(() => {
+    savePredictionData(response);
+  }, [response]);
+
+  // Custom response setter that updates state and saves to local storage
+  const handleSetResponse: React.Dispatch<React.SetStateAction<APIResponse | null>> = (newResponse) => {
+    setResponse(newResponse);
+    // Note: We don't need to explicitly call savePredictionData here
+    // as the useEffect above will handle that
+  };
 
   // Component's main render method
   return (
@@ -37,7 +53,7 @@ function App() {
         {/* Prediction Input Component */}
         <PredictionInput 
           isLoading={isLoading}
-          setResponse={setResponse}
+          setResponse={handleSetResponse}
           setIsLoading={setIsLoading}
           setError={setError}
         />
@@ -68,10 +84,6 @@ function App() {
 }
 
 export default App
-
-
-
-
 
 
 
