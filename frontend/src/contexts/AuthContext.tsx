@@ -15,16 +15,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const codeProcessed = useRef(false);
   // Get these values from your Cognito setup
   const REGION = import.meta.env.VITE_AWS_REGION; // Your region
-  // const USER_POOL_ID = import.meta.env.VITE_COGNITO_USER_POOL_ID;
   const CLIENT_ID = import.meta.env.VITE_COGNITO_CLIENT_ID;
-  // const REDIRECT_URI = import.meta.env.VITE_COGNITO_REDIRECT_URI; // localhost or your CloudFront URL in prod
   const DOMAIN_PREFIX = import.meta.env.VITE_COGNITO_DOMAIN_PREFIX; 
-
-  // const REGION = 'us-west-2';
-  // const CLIENT_ID = '753gn25jle081ajqabpd4lbin9';
-  // const DOMAIN_PREFIX = 'calledit-backend-894249332178-domain';
   let REDIRECT_URI: string; 
-  //  write a conditinal that sets REDIRECT_URI if the react app is in developent made and set REDIRECT_URI to https://d2k653cdpjxjdu.cloudfront.net/ in produciton mode
   if (import.meta.env.DEV) {
     console.log('Development mode');
     REDIRECT_URI = import.meta.env.VITE_COGNITO_DEV_REDIRECT_URI;
@@ -33,17 +26,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     REDIRECT_URI = import.meta.env.VITE_COGNITO_PROD_REDIRECT_URI;
   }
 
-
   const login = () => {
     const cognitoDomain = `https://${DOMAIN_PREFIX}.auth.${REGION}.amazoncognito.com`;
-    
     const queryParams = new URLSearchParams({
       client_id: CLIENT_ID,
       response_type: 'code',
       scope: 'email openid profile',
       redirect_uri: REDIRECT_URI,
     });
-  
     window.location.href = `${cognitoDomain}/login?${queryParams.toString()}`;
   };
 
@@ -61,9 +51,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const authCode = urlParams.get('code');
-
-    
-
     if (authCode && !codeProcessed.current) {
       // console.log('Received auth code:', authCode);
       codeProcessed.current = true;
@@ -71,7 +58,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const tokenEndpoint = `https://${DOMAIN_PREFIX}.auth.${REGION}.amazoncognito.com/oauth2/token`;
       // Log the exact redirect URI we're using
       console.log('Using redirect URI:', REDIRECT_URI);      
-
       // Make sure this matches exactly what's configured in Cognito
       const params = new URLSearchParams();
       params.append('grant_type', 'authorization_code');
@@ -97,11 +83,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           status: response.status,
           body: text
         });
-        
         if (!response.ok) {
           throw new Error(`Token exchange failed: ${text}`);
         }
-        
         return JSON.parse(text);
       })
       .then(data => {
