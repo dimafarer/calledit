@@ -112,17 +112,6 @@ const ListPredictions: React.FC<ListPredictionsProps> = ({ onNavigateToMake }) =
     <div className="list-predictions-container">
       <h2>My Predictions</h2>
       
-      {/* Button to navigate back to MakePredictions */}
-      <div className="navigation-button-container">
-        <button 
-          onClick={onNavigateToMake}
-          className="navigation-button"
-          aria-label="Make a new prediction"
-        >
-          Make New Prediction
-        </button>
-      </div>
-      
       {/* Display loading state */}
       {isLoading && (
         <div className="loading" role="status" aria-live="polite">

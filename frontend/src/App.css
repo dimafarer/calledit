@@ -101,6 +101,13 @@ h2 {
   text-align: center;
 }
 
+/* Improved contrast for dark mode */
+@media (prefers-color-scheme: dark) {
+  h1, h2 {
+    color: #e6e6e6;
+  }
+}
+
 .structured-response {
   width: 100%;
   display: flex;
@@ -243,6 +250,25 @@ h2 {
   line-height: 1.5;
 }
 
+/* Improved contrast for dark mode */
+@media (prefers-color-scheme: dark) {
+  .prediction-card {
+    background-color: #333333;
+  }
+  
+  .prediction-card h3 {
+    color: #e6e6e6;
+  }
+  
+  .prediction-details p {
+    color: #e6e6e6;
+  }
+  
+  .prediction-details p strong {
+    color: #a9d4ff;
+  }
+}
+
 .verification-details {
   margin-top: 1rem;
   padding: 1rem;
@@ -268,10 +294,44 @@ h2 {
   line-height: 1.4;
 }
 
+/* Improved contrast for dark mode */
+@media (prefers-color-scheme: dark) {
+  .verification-details {
+    background-color: #2a2a2a;
+    border-color: #444444;
+  }
+  
+  .verification-details h4 {
+    color: #a9d4ff;
+  }
+  
+  .verification-details ul {
+    color: #e6e6e6;
+  }
+  
+  /* Style for the summary element (accordion header) */
+  details summary {
+    color: #a9d4ff;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 0.5rem 0;
+  }
+  
+  details summary:hover {
+    color: #c5e1ff;
+  }
+}
+
 .no-predictions {
   text-align: center;
   color: #6c757d;
   padding: 2rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .no-predictions {
+    color: #b0b0b0;
+  }
 }
 
 .navigation-button-container {
@@ -283,6 +343,12 @@ h2 {
   justify-content: flex-end;
   width: 100%;
   margin-bottom: 1rem;
+}
+
+.header-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
 @media screen and (max-width: 480px) {
@@ -309,6 +375,29 @@ h2 {
   
   .verification-details {
     padding: 0.75rem;
+  }
+}
+
+/* Mobile dark mode specific styles */
+@media screen and (max-width: 480px) and (prefers-color-scheme: dark) {
+  .prediction-card {
+    background-color: #333333;
+  }
+  
+  .prediction-details p {
+    color: #e6e6e6;
+    font-size: 0.95rem;
+  }
+  
+  .prediction-details p strong {
+    color: #a9d4ff;
+    font-weight: 600;
+  }
+  
+  details summary {
+    font-size: 0.95rem;
+    padding: 0.6rem 0;
+    color: #a9d4ff;
   }
 }
 

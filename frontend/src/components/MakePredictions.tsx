@@ -55,14 +55,6 @@ const MakePredictions: React.FC<MakePredictionsProps> = ({ onNavigateToList }) =
             isVisible={true}
             setPrompt={setPrompt}
           />
-          
-          <button 
-            onClick={onNavigateToList}
-            className="navigation-button"
-            aria-label="View my predictions"
-          >
-            View My Predictions
-          </button>
         </div>
       </div>
     </div>
