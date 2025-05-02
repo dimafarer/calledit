@@ -1,0 +1,29 @@
+{
+    "requestContext": {
+      "authorizer": {
+        "claims": {
+          "sub": "12345678-abcd-efgh-ijkl-mnopqrstuvwx",
+          "email": "test.user@example.com",
+          "email_verified": "true",
+          "auth_time": "1234567890",
+          "cognito:username": "testuser",
+          "given_name": "Test",
+          "family_name": "User",
+          "custom:role": "user"
+        }
+      },
+      "identity": {
+        "sourceIp": "127.0.0.1",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+      },
+      "requestId": "test-request-123",
+      "httpMethod": "GET"
+    },
+    "headers": {
+      "Authorization": "Bearer fake-jwt-token"
+    },
+    "queryStringParameters": null,
+    "pathParameters": null,
+    "body": null
+  }
+  

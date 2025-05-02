@@ -138,7 +138,21 @@ export const clearTokens = (): void => {
  */
 export const getAccessToken = async (): Promise<string | null> => {
   try {
-    return localStorage.getItem(TOKEN_KEY);
+    const token = localStorage.getItem(TOKEN_KEY);
+    
+    if (!token) {
+      console.warn('No access token found in local storage');
+      return null;
+    }
+    
+    // Check if token is expired
+    const expiresAt = localStorage.getItem('token_expires_at');
+    if (expiresAt && Date.now() >= parseInt(expiresAt, 10)) {
+      console.warn('Access token has expired');
+      return null;
+    }
+    
+    return token;
   } catch (error) {
     console.error('Error getting access token:', error);
     return null;

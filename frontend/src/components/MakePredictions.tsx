@@ -30,7 +30,7 @@ const MakePredictions: React.FC<MakePredictionsProps> = ({ onNavigateToList }) =
 
   return (
     <div className="make-predictions-container">
-      <h2>Make a Prediction</h2>
+      <h2>Make a Call</h2>
       
       {/* Prediction Input Component */}
       <PredictionInput 

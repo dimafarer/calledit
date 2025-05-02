@@ -28,7 +28,7 @@ function App() {
   return (
     <AuthProvider>
       <div className="app-container">
-        <h1>Call It!!</h1>
+        <h1>Called It!!</h1>
         
         {/* Login button always visible at the top */}
         <div className="login-container">

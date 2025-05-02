@@ -121,6 +121,27 @@ Resources:
             RestApiId: !Ref CallitAPI
             Auth:
               Authorizer: CognitoAuthorizer
+              
+  ListPredictions:
+    Type: AWS::Serverless::Function 
+    Properties:
+      CodeUri: handlers/list_predictions/
+      Handler: list_predictions.lambda_handler
+      Runtime: python3.12
+      Architectures:
+      - x86_64
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: calledit-db
+      Events:
+        HelloWorld:
+          Type: Api 
+          Properties:
+            Path: /list-predictions
+            Method: get
+            RestApiId: !Ref CallitAPI
+            Auth:
+              Authorizer: CognitoAuthorizer
 
   AuthTokenFunction:
     Type: AWS::Serverless::Function

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { NovaResponse } from '../types';
+import { NovaResponse, APIResponse } from '../types';
+import { useAuth } from '../contexts/AuthContext';
+import axios from 'axios';
 
 interface ListPredictionsProps {
   onNavigateToMake: () => void;
@@ -9,52 +11,66 @@ const ListPredictions: React.FC<ListPredictionsProps> = ({ onNavigateToMake }) =
   const [predictions, setPredictions] = useState<NovaResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { isAuthenticated, getToken } = useAuth();
 
   // Load predictions when component mounts
   useEffect(() => {
-    // This is a stub implementation that will be replaced with actual DynamoDB data later
-    // For now, we'll just use some mock data
-    setIsLoading(true);
-    
-    // Simulate API call delay
-    setTimeout(() => {
-      const mockPredictions: NovaResponse[] = [
-        {
-          prediction_statement: "The price of Bitcoin will exceed $100,000 by December 2023",
-          verification_date: "2023-12-31",
-          verification_method: {
-            source: ["CoinMarketCap", "Binance", "Coinbase"],
-            criteria: ["Closing price on any major exchange exceeds $100,000"],
-            steps: ["Check price on December 31, 2023", "Document screenshots from multiple exchanges"]
-          },
-          initial_status: "Pending"
-        },
-        {
-          prediction_statement: "SpaceX will successfully land humans on Mars by 2026",
-          verification_date: "2026-12-31",
-          verification_method: {
-            source: ["NASA", "SpaceX official announcements", "International news coverage"],
-            criteria: ["Confirmed human landing on Mars surface", "Live video transmission from Mars"],
-            steps: ["Monitor SpaceX launches", "Verify through multiple news sources", "Check official space agency confirmations"]
-          },
-          initial_status: "Pending"
-        },
-        {
-          prediction_statement: "Artificial General Intelligence will be achieved by 2030",
-          verification_date: "2030-12-31",
-          verification_method: {
-            source: ["Academic publications", "Tech company announcements", "AI benchmark tests"],
-            criteria: ["System passes comprehensive Turing test", "Demonstrates general problem solving across domains"],
-            steps: ["Monitor AI research breakthroughs", "Evaluate against established AGI criteria", "Verify independent testing results"]
-          },
-          initial_status: "Pending"
+    const fetchPredictions = async () => {
+      if (!isAuthenticated) {
+        console.log('User not authenticated, skipping API call');
+        setError('You must be logged in to view predictions');
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        console.log('Fetching predictions from /list-predictions endpoint');
+        const token = getToken();
+        const apiEndpoint = import.meta.env.VITE_APIGATEWAY + '/list-predictions';
+        
+        const response = await axios.get<APIResponse>(apiEndpoint, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : ''
+          }
+        });
+
+        console.log('Received predictions response:', response);
+        setPredictions(response.data.results || []);
+        console.log(`Loaded ${response.data.results?.length || 0} predictions`);
+      } catch (err: any) {
+        console.error('Error fetching predictions:', err);
+        console.error('Error details:', err.message);
+        
+        // Provide more specific error messages based on the error type
+        if (err.response) {
+          console.error('Response status:', err.response.status);
+          console.error('Response data:', err.response.data);
+          
+          if (err.response.status === 401) {
+            setError('Authentication failed. Please log in again.');
+          } else if (err.response.status === 403) {
+            setError('You do not have permission to view these predictions.');
+          } else {
+            setError(`Server error (${err.response.status}): ${err.response.data?.error || 'Unknown error'}`);
+          }
+        } else if (err.request) {
+          // The request was made but no response was received (CORS issue)
+          setError('Unable to connect to the server. This might be due to network issues or CORS restrictions.');
+          console.error('CORS or network issue detected. Request details:', err.request);
+        } else {
+          setError('Failed to load predictions. Please try again later.');
         }
-      ];
-      
-      setPredictions(mockPredictions);
-      setIsLoading(false);
-    }, 1000);
-  }, []);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPredictions();
+  }, [isAuthenticated]);
 
   // Function to render a single prediction card
   const renderPredictionCard = (prediction: NovaResponse, index: number) => {

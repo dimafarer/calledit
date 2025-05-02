@@ -4,11 +4,46 @@ import json
 from botocore.exceptions import ClientError, NoCredentialsError, PartialCredentialsError
 from datetime import datetime
 
-headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
-}
+# List of allowed origins
+ALLOWED_ORIGINS = [
+    'http://localhost:5173',  # Local development
+    'https://d2k653cdpjxjdu.cloudfront.net',  # Production CloudFront
+]
+
+def get_cors_headers(event):
+    """
+    Generate CORS headers based on the origin of the request.
+    When credentials are enabled, Access-Control-Allow-Origin must be a specific origin, not '*'.
+    
+    Args:
+        event: Lambda event object containing request details
+        
+    Returns:
+        Dictionary of CORS headers
+    """
+    # Default headers with no specific origin
+    cors_headers = {
+        'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token',
+        'Access-Control-Allow-Methods': 'OPTIONS,POST,GET',
+        'Access-Control-Allow-Credentials': 'true'
+    }
+    
+    # Extract origin from request headers
+    origin = None
+    if 'headers' in event and event['headers'] is not None:
+        origin_header = event['headers'].get('origin') or event['headers'].get('Origin')
+        if origin_header and origin_header in ALLOWED_ORIGINS:
+            origin = origin_header
+    
+    # If we have a valid origin, add it to the headers
+    if origin:
+        cors_headers['Access-Control-Allow-Origin'] = origin
+    else:
+        # Fallback to the first allowed origin if no valid origin found
+        # This is safer than using '*' when credentials are enabled
+        cors_headers['Access-Control-Allow-Origin'] = ALLOWED_ORIGINS[0]
+    
+    return cors_headers
 
 
 def get_post_body_property(event, prop_name):
@@ -23,6 +58,9 @@ def get_post_body_property(event, prop_name):
     Returns:
         Value if found, or error response if not found/invalid
     """
+    # Get CORS headers for this request
+    cors_headers = get_cors_headers(event)
+    
     try:
         # Handle direct Lambda invocation where event might be the body itself
         if isinstance(event, dict):
@@ -51,7 +89,7 @@ def get_post_body_property(event, prop_name):
         # If we get here, property wasn't found
         return {
             'statusCode': 400,
-            'headers': headers,
+            'headers': cors_headers,
             'body': json.dumps({
                 'error': f'Required property "{prop_name}" not found in request body'
             })
@@ -60,7 +98,7 @@ def get_post_body_property(event, prop_name):
     except json.JSONDecodeError:
         return {
             'statusCode': 400,
-            'headers': headers,
+            'headers': cors_headers,
             'body': json.dumps({
                 'error': 'Invalid JSON in request body'
             })
@@ -68,7 +106,7 @@ def get_post_body_property(event, prop_name):
     except Exception as e:
         return {
             'statusCode': 500,
-            'headers': headers,
+            'headers': cors_headers,
             'body': json.dumps({
                 'error': f'Error processing request: {str(e)}'
             })
@@ -110,6 +148,17 @@ def get_user_from_cognito_context(event):
 
 # Call the function
 def lambda_handler(event, context):
+    # Get CORS headers for this request
+    cors_headers = get_cors_headers(event)
+    
+    # Handle OPTIONS request (preflight)
+    if event.get('httpMethod') == 'OPTIONS':
+        return {
+            'statusCode': 200,
+            'headers': cors_headers,
+            'body': ''
+        }
+    
     try:
         # Get user ID from Cognito context
         user_id = get_user_from_cognito_context(event)
@@ -118,6 +167,8 @@ def lambda_handler(event, context):
         prediction = get_post_body_property(event, 'prediction')
         # If get_post_body_property returned an error response, return it
         if isinstance(prediction, dict) and 'statusCode' in prediction:
+            # Update headers in the error response
+            prediction['headers'] = cors_headers
             return prediction
         # Initialize DynamoDB client
         dynamodb = boto3.resource('dynamodb')
@@ -150,12 +201,12 @@ def lambda_handler(event, context):
         response = table.put_item(Item=item)
         return {
             'statusCode': 200,
-            'headers': headers,
+            'headers': cors_headers,
             'body': json.dumps({'response': 'Prediction logged successfully'})
         }
     except Exception as e:
         return {
             'statusCode': 500,
-            'headers': headers,  # Include headers in error response
+            'headers': cors_headers,  # Include headers in error response
             'body': json.dumps({'error': str(e)})
         }
