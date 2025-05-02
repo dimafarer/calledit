@@ -1,56 +1,31 @@
-// Import necessary dependencies from React and other libraries
-import { useState } from 'react' // useState hook for managing component state
-import './App.css' // Component styles
-// Import components
-import { 
-  MakePredictions,
-  ListPredictions,
-  LoginButton
-} from './components'
-// Import auth provider
+import { useState } from 'react'
+import './App.css'
+import { MakePredictions, ListPredictions, LoginButton } from './components'
 import { AuthProvider } from './contexts/AuthContext'
 
-// Main App Component
 function App() {
-  // State to manage which component to display
-  const [currentView, setCurrentView] = useState<'make' | 'list'>('make');
+  const [currentView, setCurrentView] = useState<'make' | 'list'>('make')
 
-  // Navigation handlers
-  const handleNavigateToList = () => {
-    setCurrentView('list');
-  };
+  // Single navigation handler that accepts the view as parameter
+  const navigateTo = (view: 'make' | 'list') => setCurrentView(view)
 
-  const handleNavigateToMake = () => {
-    setCurrentView('make');
-  };
-
-  // Component's main render method
   return (
     <AuthProvider>
       <div className="app-container">
         <h1>Called It!!</h1>
         
-        {/* Login button always visible at the top */}
         <div className="login-container">
           <LoginButton />
         </div>
         
-        {/* Conditional rendering based on current view */}
-        {currentView === 'make' ? (
-          <MakePredictions onNavigateToList={handleNavigateToList} />
-        ) : (
-          <ListPredictions onNavigateToMake={handleNavigateToMake} />
-        )}
+        {/* Use component mapping for cleaner conditional rendering */}
+        {currentView === 'make' ? 
+          <MakePredictions onNavigateToList={() => navigateTo('list')} /> : 
+          <ListPredictions onNavigateToMake={() => navigateTo('make')} />
+        }
       </div>
     </AuthProvider>
   )
 }
 
 export default App
-
-
-
-
-
-
-

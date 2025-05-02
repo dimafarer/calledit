@@ -1,4 +1,3 @@
-import React from 'react';
 import axios from 'axios';
 import { APIResponse } from '../types';
 
@@ -20,36 +19,35 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
   setError 
 }) => {
   const handleSubmit = async () => {
-    if (prompt.trim()) {
-      try {
-        setIsLoading(true); // Start loading state
-        setError(null); // Clear any previous errors
-        const apiEndpoint = import.meta.env.VITE_APIGATEWAY+'/make-call'; // Get API URL from env
-        // Make GET request to API with prompt parameter
-        const result = await axios.get<APIResponse>(apiEndpoint, {
-          params: { prompt },
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          }
-        });
-        
-        console.log('API Response:', result.data);
-        
-        // Validate response data
-        if (result.data && result.data.results && result.data.results.length > 0) {
-          setResponse(result.data);
-        } else {
-          setError('Invalid response format from server');
+    if (!prompt.trim()) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const apiEndpoint = `${import.meta.env.VITE_APIGATEWAY}/make-call`;
+      const { data } = await axios.get<APIResponse>(apiEndpoint, {
+        params: { prompt },
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         }
-      } catch (error) {
-        console.error('Error:', error);
-        setError('Error occurred while processing your request');
-      } finally {
-        setIsLoading(false); // End loading state
+      });
+      
+      if (data?.results?.length > 0) {
+        setResponse(data);
+      } else {
+        setError('Invalid response format from server');
       }
+    } catch (error) {
+      console.error('Error:', error);
+      setError('Error occurred while processing your request');
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  const isDisabled = isLoading || !prompt.trim();
 
   return (
     <>
@@ -61,12 +59,13 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
           rows={4}
           className="text-box"
           aria-label="Prediction input"
+          disabled={isLoading}
         />
       </div>
       <div className="button-container">
         <button 
           onClick={handleSubmit}
-          disabled={isLoading || !prompt.trim()}
+          disabled={isDisabled}
           className="send-button"
           aria-busy={isLoading}
         >

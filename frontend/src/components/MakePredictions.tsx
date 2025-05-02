@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { APIResponse } from '../types';
 import PredictionInput from './PredictionInput';
 import PredictionDisplay from './PredictionDisplay';
@@ -10,39 +10,37 @@ interface MakePredictionsProps {
 }
 
 const MakePredictions: React.FC<MakePredictionsProps> = ({ onNavigateToList }) => {
-  // State management using React hooks
+  // Initialize state with lazy loading from storage
   const [response, setResponse] = useState<APIResponse | null>(() => getPredictionData());
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [prompt, setPrompt] = useState('');
+  const [prompt, setPrompt] = useState<string>('');
 
-  // Save prediction data to local storage whenever it changes
+  // Persist response data to storage when it changes
   useEffect(() => {
-    savePredictionData(response);
+    if (response !== null) {
+      savePredictionData(response);
+    }
   }, [response]);
 
-  // Custom response setter that updates state and saves to local storage
-  const handleSetResponse: React.Dispatch<React.SetStateAction<APIResponse | null>> = (newResponse) => {
-    setResponse(newResponse);
-    // Note: We don't need to explicitly call savePredictionData here
-    // as the useEffect above will handle that
+  // Common props for child components
+  const commonProps = {
+    isLoading,
+    setIsLoading,
+    setError,
+    setResponse,
   };
 
   return (
     <div className="make-predictions-container">
       <h2>Make a Call</h2>
       
-      {/* Prediction Input Component */}
       <PredictionInput 
-        isLoading={isLoading}
+        {...commonProps}
         prompt={prompt}
         setPrompt={setPrompt}
-        setResponse={handleSetResponse}
-        setIsLoading={setIsLoading}
-        setError={setError}
       />
       
-      {/* Response display section */}
       <div className="response-container">
         <PredictionDisplay
           response={response}
@@ -50,19 +48,14 @@ const MakePredictions: React.FC<MakePredictionsProps> = ({ onNavigateToList }) =
           isLoading={isLoading}
         />
         
-        {/* Buttons container */}
         <div className="buttons-container">
           <LogCallButton
+            {...commonProps}
             response={response}
-            isLoading={isLoading}
             isVisible={true}
-            setIsLoading={setIsLoading}
-            setError={setError}
-            setResponse={handleSetResponse}
             setPrompt={setPrompt}
           />
           
-          {/* Button to navigate to ListPredictions */}
           <button 
             onClick={onNavigateToList}
             className="navigation-button"
