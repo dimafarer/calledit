@@ -26,21 +26,8 @@ def mock_dynamodb_response():
     return {
         'Items': [
             {
-                'PK': 'USER:test-user-id:Call:2023-01-01T12:00:00',
-                'SK': '2023-01-01T12:00:00',
-                'userId': 'test-user-id',
-                'prediction_statement': 'Test prediction 1',
-                'verification_date': '2023-12-31',
-                'verification_method': {
-                    'source': ['Source 1', 'Source 2'],
-                    'criteria': ['Criteria 1'],
-                    'steps': ['Step 1', 'Step 2']
-                },
-                'initial_status': 'Pending'
-            },
-            {
-                'PK': 'USER:test-user-id:Call:2023-01-02T12:00:00',
-                'SK': '2023-01-02T12:00:00',
+                'PK': 'USER:test-user-id',
+                'SK': 'PREDICTION#2023-01-02T12:00:00',
                 'userId': 'test-user-id',
                 'prediction_statement': 'Test prediction 2',
                 'verification_date': '2024-12-31',
@@ -49,7 +36,22 @@ def mock_dynamodb_response():
                     'criteria': ['Criteria 2', 'Criteria 3'],
                     'steps': ['Step 3']
                 },
-                'initial_status': 'Pending'
+                'initial_status': 'Pending',
+                'createdAt': '2023-01-02T12:00:00'
+            },
+            {
+                'PK': 'USER:test-user-id',
+                'SK': 'PREDICTION#2023-01-01T12:00:00',
+                'userId': 'test-user-id',
+                'prediction_statement': 'Test prediction 1',
+                'verification_date': '2023-12-31',
+                'verification_method': {
+                    'source': ['Source 1', 'Source 2'],
+                    'criteria': ['Criteria 1'],
+                    'steps': ['Step 1', 'Step 2']
+                },
+                'initial_status': 'Pending',
+                'createdAt': '2023-01-01T12:00:00'
             }
         ]
     }
@@ -98,15 +100,21 @@ def test_lambda_handler_success(mock_boto3_resource, mock_event, mock_context, m
     assert 'results' in body
     assert len(body['results']) == 2
     
-    # Verify the predictions data
+    # Verify the predictions data and order (newest first)
     predictions = body['results']
-    assert predictions[0]['prediction_statement'] == 'Test prediction 1'
-    assert predictions[1]['prediction_statement'] == 'Test prediction 2'
+    # First prediction should be the newest one (2023-01-02)
+    assert predictions[0]['prediction_statement'] == 'Test prediction 2'
+    assert predictions[0]['created_at'] == '2023-01-02T12:00:00'
+    # Second prediction should be the older one (2023-01-01)
+    assert predictions[1]['prediction_statement'] == 'Test prediction 1'
+    assert predictions[1]['created_at'] == '2023-01-01T12:00:00'
     
     # Verify DynamoDB was queried correctly with the right format
     mock_table.query.assert_called_once()
     args, kwargs = mock_table.query.call_args
     assert 'KeyConditionExpression' in kwargs
+    assert 'ScanIndexForward' in kwargs
+    assert kwargs['ScanIndexForward'] is False  # Verify descending order
     
     # Extract the user_id from the mock event
     user_id = mock_event['requestContext']['authorizer']['claims']['sub']
@@ -146,6 +154,7 @@ def test_lambda_handler_query_format(mock_boto3_resource, mock_event, mock_conte
     """
     Test to specifically verify that the query is using the correct format
     without the ":Call:" suffix, which was the root cause of the issue.
+    Also verifies that ScanIndexForward is set to False for descending order.
     """
     # Setup mock DynamoDB table and query response
     mock_table = MagicMock()
@@ -175,3 +184,7 @@ def test_lambda_handler_query_format(mock_boto3_resource, mock_event, mock_conte
     # The key point: Make sure we're not using the old format with ":Call:" suffix
     # This is important because we want to match all records for this user, not just calls
     assert not f"'USER:{user_id}:Call:'" in key_condition_str
+    
+    # Verify that ScanIndexForward is set to False for descending order (newest first)
+    assert 'ScanIndexForward' in kwargs
+    assert kwargs['ScanIndexForward'] is False

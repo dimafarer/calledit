@@ -136,8 +136,10 @@ def lambda_handler(event, context):
         print(f"Querying DynamoDB for items with PK prefix USER:{user_id}")
         # Query DynamoDB for items with the user's ID
         print(f"Querying DynamoDB for predictions with PK USER:{user_id}")
+        # Use ScanIndexForward=False to sort in descending order (newest first)
         response = table.query(
-            KeyConditionExpression=Key('PK').eq(f'USER:{user_id}') & Key('SK').begins_with('PREDICTION#')
+            KeyConditionExpression=Key('PK').eq(f'USER:{user_id}') & Key('SK').begins_with('PREDICTION#'),
+            ScanIndexForward=False  # This will sort by SK in descending order (newest first)
         )
 
         print(f"DynamoDB query response: {json.dumps(response)}")
@@ -160,7 +162,9 @@ def lambda_handler(event, context):
                     'criteria': item.get('verification_method', {}).get('criteria', []),
                     'steps': item.get('verification_method', {}).get('steps', [])
                 },
-                'initial_status': item.get('initial_status', 'Pending')
+                'initial_status': item.get('initial_status', 'Pending'),
+                'created_at': item.get('createdAt', ''),  # Include creation timestamp
+                'timestamp': item.get('createdAt', '')    # Alternative field name for compatibility
             }
             print(f"Formatted prediction: {json.dumps(prediction)}")
             predictions.append(prediction)
