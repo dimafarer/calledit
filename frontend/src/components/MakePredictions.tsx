@@ -4,6 +4,7 @@ import PredictionInput from './PredictionInput';
 import PredictionDisplay from './PredictionDisplay';
 import LogCallButton from './LogCallButton';
 import { getPredictionData, savePredictionData } from '../utils/storageUtils';
+import './MakePredictions.css';
 
 interface MakePredictionsProps {
   onNavigateToList: () => void;
@@ -35,6 +36,18 @@ const MakePredictions: React.FC<MakePredictionsProps> = ({ onNavigateToList: _on
     <div className="make-predictions-container">
       <h2>Make a Call</h2>
       
+      {/* Log Call Button at the top for mobile visibility */}
+      <div className="mobile-buttons-container">
+        {response && (
+          <LogCallButton
+            {...commonProps}
+            response={response}
+            isVisible={true}
+            setPrompt={setPrompt}
+          />
+        )}
+      </div>
+      
       <PredictionInput 
         {...commonProps}
         prompt={prompt}
@@ -48,7 +61,8 @@ const MakePredictions: React.FC<MakePredictionsProps> = ({ onNavigateToList: _on
           isLoading={isLoading}
         />
         
-        <div className="buttons-container">
+        {/* Keep the original button for desktop */}
+        <div className="desktop-buttons-container">
           <LogCallButton
             {...commonProps}
             response={response}
