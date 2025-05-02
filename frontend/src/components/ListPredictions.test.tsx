@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import ListPredictions from './ListPredictions';
 import * as apiService from '../services/apiService';
@@ -44,7 +44,8 @@ describe('ListPredictions Component', () => {
     user: { username: 'testuser' },
     login: vi.fn(),
     logout: vi.fn(),
-    loading: false
+    loading: false,
+    getToken: vi.fn(() => 'mock-token') 
   };
   
   const mockAuthContextUnauthenticated = {
@@ -52,7 +53,8 @@ describe('ListPredictions Component', () => {
     user: null,
     login: vi.fn(),
     logout: vi.fn(),
-    loading: false
+    loading: false,
+    getToken: vi.fn(() => null)
   };
   
   beforeEach(() => {
