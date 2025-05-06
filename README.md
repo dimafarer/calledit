@@ -1,46 +1,52 @@
-# Call It!! - AI-Powered Prediction Verification Platform
+# Called It - AI-Powered Prediction Verification Platform
 
-Call It!! is a web application that helps users make and verify predictions using AI technology. The platform enables users to create predictions, get AI-generated verification methods, and track the outcomes of their predictions over time.
+Called It is a serverless web application that helps users make and track predictions with AI-powered verification methods. The platform enables users to create predictions, automatically generates structured verification criteria, and allows tracking of prediction outcomes over time.
 
-The application combines a React-based frontend with a serverless AWS backend powered by AWS Lambda and Amazon Bedrock. Users can authenticate using Amazon Cognito, make predictions that are analyzed by AI to generate structured verification methods, and maintain a personal history of their predictions. The system provides a comprehensive verification framework that includes specific criteria, steps, and sources for validating each prediction.
+The application combines AWS serverless technologies with AI capabilities from Amazon Bedrock to provide an intuitive prediction management system. Key features include:
+- AI-assisted verification method generation using Amazon Bedrock
+- Secure user authentication via Amazon Cognito
+- Persistent storage of predictions in DynamoDB
+- Real-time prediction status tracking
+- Responsive React-based frontend with TypeScript
 
 ## Repository Structure
 ```
 .
-├── backend/                      # Backend serverless application
-│   └── calledit-backend/        
-│       ├── handlers/            # Lambda function handlers for different endpoints
+├── backend/                      # Serverless backend application
+│   └── calledit-backend/
+│       ├── handlers/            # Lambda function handlers
 │       │   ├── auth_token/      # Cognito token management
-│       │   ├── make_call/       # AI prediction generation using Bedrock
-│       │   ├── list_predictions/# Retrieval of user predictions
-│       │   └── write_to_db/     # Database operations for predictions
-│       ├── template.yaml        # AWS SAM template for infrastructure
-│       └── tests/               # Backend unit and integration tests
-├── frontend/                    # React frontend application
+│       │   ├── hello_world/     # Health check endpoint
+│       │   ├── list_predictions/# Prediction retrieval
+│       │   ├── make_call/       # Prediction creation with Bedrock
+│       │   ├── prompt_bedrock/  # Bedrock integration
+│       │   └── write_to_db/     # DynamoDB write operations
+│       ├── template.yaml        # AWS SAM infrastructure template
+│       └── tests/              # Backend test suites
+├── frontend/                    # React TypeScript frontend
 │   ├── src/
-│   │   ├── components/         # React components (predictions, auth, etc.)
-│   │   ├── contexts/          # React contexts for state management
-│   │   ├── services/         # API and authentication services
-│   │   └── utils/           # Utility functions and helpers
-│   └── package.json         # Frontend dependencies and scripts
+│   │   ├── components/         # React components
+│   │   ├── contexts/          # React contexts (auth)
+│   │   ├── services/          # API and auth services
+│   │   └── utils/             # Utility functions
+│   └── package.json           # Frontend dependencies
+└── docs/                       # Infrastructure documentation
 ```
 
 ## Usage Instructions
 ### Prerequisites
-- Node.js 16.x or later
-- Python 3.12
+- Node.js 16+ for frontend development
+- Python 3.12 for backend development
 - AWS CLI configured with appropriate credentials
-- AWS SAM CLI installed
-- Docker (for local development)
+- AWS SAM CLI for local development and deployment
+- Docker for local development (optional)
 
 ### Installation
 
-#### Backend
+#### Backend Setup
 ```bash
-# Navigate to backend directory
+# Install backend dependencies
 cd backend/calledit-backend
-
-# Install Python dependencies
 pip install -r requirements.txt
 
 # Deploy using SAM
@@ -48,103 +54,149 @@ sam build
 sam deploy --guided
 ```
 
-#### Frontend
+#### Frontend Setup
 ```bash
-# Navigate to frontend directory
+# Install frontend dependencies
 cd frontend
-
-# Install dependencies
 npm install
 
-# Create .env file from example
-cp .env.example .env
-
-# Update environment variables with your AWS configuration
 # Start development server
 npm run dev
 ```
 
 ### Quick Start
-1. Sign up for an account using the Cognito authentication system
-2. Navigate to the "Make a Call" section
-3. Enter your prediction in the input field
-4. Review the AI-generated verification method
-5. Save your prediction to track its outcome
+1. Configure AWS credentials and environment variables:
+```bash
+# Create .env file from template
+cp frontend/.env.example frontend/.env
+# Update with your AWS configuration
+```
+
+2. Deploy the backend:
+```bash
+cd backend/calledit-backend
+sam deploy --guided
+```
+
+3. Start the frontend development server:
+```bash
+cd frontend
+npm run dev
+```
+
+4. Navigate to http://localhost:5173 in your browser
 
 ### More Detailed Examples
 
-Making a Prediction:
+#### Making a Prediction
 ```typescript
-// Example prediction input
-const prediction = {
-  statement: "Company X will release a new product in Q3 2024",
-  verificationDate: "2024-09-30",
-  verificationMethod: {
-    sources: ["Official company announcements", "Press releases"],
-    criteria: ["Product announcement", "Release date confirmation"],
-    steps: ["Monitor company's official channels", "Track press releases"]
-  }
-};
+// Using the API service
+const response = await apiService.makeCall({
+  prompt: "Tesla stock will reach $300 by end of 2024",
+});
+
+// Response includes verification method
+console.log(response.verification_method);
+```
+
+#### Listing User Predictions
+```typescript
+// Fetch authenticated user's predictions
+const predictions = await apiService.listPredictions();
 ```
 
 ### Troubleshooting
 
-Common Issues:
+#### Common Issues
+
 1. Authentication Errors
-   - Error: "User is not authenticated"
-   - Solution: Ensure you're logged in and your tokens haven't expired
-   - Check browser console for specific error messages
+- Error: "User not authenticated"
+- Solution: Ensure Cognito user pool is properly configured and user is signed in
+- Check browser console for token expiration
 
-2. API Connection Issues
-   - Error: "Failed to fetch predictions"
-   - Solution: Verify API endpoint configuration in .env file
-   - Check network tab for specific HTTP errors
+2. API Gateway Issues
+- Error: CORS errors in browser console
+- Solution: Verify CORS settings in `template.yaml`
+- Ensure API Gateway endpoints are properly configured
 
-3. Prediction Submission Failures
-   - Error: "Failed to save prediction"
-   - Solution: 
-     - Verify DynamoDB permissions
-     - Check prediction format matches expected schema
-     - Enable debug logging: `localStorage.setItem('debug', 'true')`
+3. Bedrock Integration
+- Error: "Cannot invoke Bedrock model"
+- Solution: Check IAM permissions for Lambda functions
+- Verify Bedrock service availability in your region
+
+#### Debugging
+- Enable debug mode in SAM template:
+```yaml
+Metadata:
+  Debug: true
+```
+- Check CloudWatch logs for Lambda functions
+- Frontend debug logs: `localStorage.debug = 'calledit:*'`
 
 ## Data Flow
-The application follows a structured flow for handling predictions and verification:
+The application follows a serverless event-driven architecture where predictions are processed through AI verification and stored for tracking.
 
 ```ascii
-User Input -> Frontend -> API Gateway -> Lambda Functions -> Bedrock (AI) -> DynamoDB
-     ^                                                           |
-     |                                                          v
-     +---------------------------- Response --------------------->
+[Frontend] -> [API Gateway] -> [Lambda Functions] -> [Bedrock/DynamoDB]
+     ^                               |                      |
+     |                               |                      |
+     +-------------------------------+----------------------+
 ```
 
-Key Component Interactions:
-1. Frontend React components collect user input and manage state
-2. Authentication service handles Cognito integration
-3. API Gateway routes requests to appropriate Lambda functions
-4. Bedrock service generates structured verification methods
-5. DynamoDB stores prediction data and user history
-6. Lambda functions coordinate between services and handle business logic
+Key component interactions:
+1. Frontend authenticates via Cognito
+2. Authenticated requests route through API Gateway
+3. Lambda functions process requests and interact with services
+4. Bedrock generates verification methods for predictions
+5. DynamoDB stores prediction data and user associations
+6. API Gateway returns responses to frontend
+7. Frontend updates UI based on response data
 
 ## Infrastructure
 
 ![Infrastructure diagram](./docs/infra.svg)
-The application uses the following AWS resources:
+The application uses AWS SAM to define and deploy the following resources:
 
-Lambda Functions:
-- HelloWorldFunction: Basic health check endpoint
-- PromptBedrockFunction: Handles AI prompt generation
-- MakeCall: Processes prediction requests
-- LogCall: Stores predictions in DynamoDB
-- ListPredictions: Retrieves user predictions
-- AuthTokenFunction: Manages Cognito authentication
+### API Gateway
+- CallitAPI: Main REST API with Cognito authorizer
 
-API Gateway:
-- CallitAPI: Main API endpoint with Cognito authorizer
+### Lambda Functions
+- HelloWorldFunction: Health check endpoint
+- PromptBedrockFunction: Bedrock integration
+- MakeCall: Prediction creation
+- LogCall: DynamoDB write operations
+- ListPredictions: Prediction retrieval
+- AuthTokenFunction: Token management
 
-Authentication:
-- CognitoUserPool: User management and authentication
-- UserPoolClient: Client application configuration
-- UserPoolDomain: Hosted UI domain for authentication
+### Authentication
+- CognitoUserPool: User management
+- UserPoolClient: Application client
+- UserPoolDomain: Hosted UI domain
 
-Database:
-- DynamoDB table: Stores user predictions and verification data
+### Storage
+- DynamoDB table (calledit-db): Prediction storage
+
+## Deployment
+1. Prerequisites:
+- AWS CLI configured
+- SAM CLI installed
+- Node.js and Python installed
+
+2. Backend Deployment:
+```bash
+cd backend/calledit-backend
+sam build
+sam deploy --guided
+```
+
+3. Frontend Deployment:
+```bash
+cd frontend
+npm run build
+# Deploy build output to hosting service (e.g., S3/CloudFront)
+```
+
+4. Environment Configuration:
+- Update frontend environment variables with deployed backend URLs
+- Configure Cognito user pool settings
+- Set up CloudFront distribution (optional)

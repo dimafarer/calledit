@@ -2,10 +2,6 @@ digraph INFRA {
   node [ color = "black", fillcolor = "#E6E6E6", height =1, style = "filled,bold,rounded", fontname = "Arial" ];
   "CallitAPI" [ label = "CallitAPI
 (AWS::Serverless::Api)", shape =rectangle, fillcolor = "#E78F81" ];
-  "HelloWorldFunction" [ label = "HelloWorldFunction
-(AWS::Serverless::Function)", shape =rectangle, fillcolor = "#B7E0FF" ];
-  "PromptBedrockFunction" [ label = "PromptBedrockFunction
-(AWS::Serverless::Function)", shape =rectangle, fillcolor = "#B7E0FF" ];
   "MakeCall" [ label = "MakeCall
 (AWS::Serverless::Function)", shape =rectangle, fillcolor = "#B7E0FF" ];
   "LogCall" [ label = "LogCall
@@ -21,8 +17,6 @@ digraph INFRA {
   "UserPoolDomain" [ label = "UserPoolDomain
 (AWS::Cognito::UserPoolDomain)", shape =rectangle ];
   "CallitAPI" -> "CognitoUserPool";
-  "HelloWorldFunction" -> "CallitAPI";
-  "PromptBedrockFunction" -> "CallitAPI";
   "MakeCall" -> "CallitAPI";
   "LogCall" -> "CallitAPI";
   "LogCall" -> "CognitoUserPool";
