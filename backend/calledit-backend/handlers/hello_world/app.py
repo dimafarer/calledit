@@ -4,6 +4,12 @@ import boto3
 import os
 # import requests
 
+headers = {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Methods": "OPTIONS,POST,GET"
+        }
+
 logger = logging.getLogger()
 def checkcreds():
         # Log environment variables
@@ -53,16 +59,20 @@ def get_event_property(event, prop_name):
 def lambda_handler(event, context):
     print("hello world invoked")
     # checkcreds()
-    prompt = get_event_property(event, 'prompt')
+    prompt_result = get_event_property(event, 'prompt')
+    # Check if prompt_result is an error response
+    if isinstance(prompt_result, dict) and 'statusCode' in prompt_result:
+        return prompt_result  # Return the error response directly so call resource can see the error
     
     return {
         "statusCode": 200,
-        "headers": {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Headers": "Content-Type",
-            "Access-Control-Allow-Methods": "OPTIONS,POST,GET"
-        },
+        # "headers": {
+        #     "Access-Control-Allow-Origin": "*",
+        #     "Access-Control-Allow-Headers": "Content-Type",
+        #     "Access-Control-Allow-Methods": "OPTIONS,POST,GET"
+        # },
+        "headers" : headers,
         "body": json.dumps({
-            "message": "hello world " + prompt,
+            "message": "hello world " + prompt_result,
         }),
     }
