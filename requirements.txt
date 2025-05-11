@@ -3,6 +3,7 @@ boto3
 
 # jupyter notebooks
 ipykernel
+ipywidgets
 
 # testing
 pytest
