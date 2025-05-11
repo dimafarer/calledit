@@ -24,6 +24,11 @@ def lambda_handler(event, context):
             
         prompt = event['queryStringParameters']['prompt']
         
+        # Get current date and time
+        current_datetime = datetime.now()
+        formatted_date = current_datetime.strftime("%Y-%m-%d")
+        formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
+        
         # Initialize Bedrock client
         bedrock = boto3.client('bedrock-runtime')
         
@@ -38,9 +43,11 @@ def lambda_handler(event, context):
             "content": [{
                 "text": f"""Create a structured verification format for this prediction: {prompt}
                 
+                Today's date is {formatted_date} and the current time is {formatted_datetime}.
+                
                 Format the response as a JSON object with:
                 - prediction_statement
-                - verification_date
+                - verification_date (use a realistic future date based on the prediction and today's date)
                 - verification_method (source, criteria, steps)
                 - initial_status (pending)"""
             }]
@@ -83,6 +90,7 @@ def lambda_handler(event, context):
             sanitized_response = {
                 "prediction_statement": str(prediction_json.get("prediction_statement", "")),
                 "verification_date": str(prediction_json.get("verification_date", "")),
+                "creation_date": formatted_datetime,
                 "verification_method": {
                     "source": ensure_list(prediction_json.get("verification_method", {}).get("source", [])),
                     "criteria": ensure_list(prediction_json.get("verification_method", {}).get("criteria", [])),
