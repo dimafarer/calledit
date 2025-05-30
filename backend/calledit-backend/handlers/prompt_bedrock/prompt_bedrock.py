@@ -27,34 +27,88 @@ def bedrock_text_prompt(textGenerationConfig, prompt, modelId):
         return None
 
 
-def get_event_property(event, prop_name):
+def get_event_property(event, prop_name, max_depth=10):
+    """
+    Recursively search for prop_name in the event dictionary, no matter how deeply nested.
+    Returns the first occurrence found.
+    
+    Args:
+        event: The event dictionary to search in
+        prop_name: The property name to search for
+        max_depth: Maximum recursion depth to prevent stack overflow (default: 10)
+    """
+    # First check common API Gateway patterns
     if isinstance(event, dict):
+        # Check query parameters first
         if event.get('queryStringParameters') and prop_name in event['queryStringParameters']:
-            value = event['queryStringParameters'][prop_name]
-        elif event.get('multiValueQueryStringParameters') and prop_name in event['multiValueQueryStringParameters']:
-            value = event['multiValueQueryStringParameters'][prop_name][0]
-        # Direct lambda invocation with prop_name in body
-        elif prop_name in event:
-            value = event[prop_name]
-        # API Gateway request with prop_name in body
-        elif 'body' in event:
+            return event['queryStringParameters'][prop_name]
+        
+        if event.get('multiValueQueryStringParameters') and prop_name in event['multiValueQueryStringParameters']:
+            return event['multiValueQueryStringParameters'][prop_name][0]
+        
+        # Check if prop_name is directly in the event
+        if prop_name in event:
+            return event[prop_name]
+        
+        # Check if body is a string that needs to be parsed
+        if 'body' in event and isinstance(event['body'], str):
             try:
                 body = json.loads(event['body'])
-                value = body.get(prop_name)
-            except:
-                value = None
-        else:
-            value = None
-    else:
-        value = None
-    if not value:
-        return {
-            'statusCode': 400,
-            'headers': headers,
-            'body': json.dumps({'error': f'No {prop_name} provided'})
-        }
-    else:
-        return value
+                if isinstance(body, dict):
+                    # Recursively search in the parsed body
+                    result = search_dict(body, prop_name, max_depth)
+                    if result is not None:
+                        return result
+            except json.JSONDecodeError:
+                pass
+        
+        # Recursively search in all dictionary values
+        result = search_dict(event, prop_name, max_depth)
+        if result is not None:
+            return result
+    
+    # If we get here, we couldn't find the property
+    return {
+        'statusCode': 400,
+        'headers': headers,
+        'body': json.dumps({'error': f'No {prop_name} provided'})
+    }
+
+def search_dict(d, key, max_depth=10, current_depth=0):
+    """
+    Helper function to recursively search for a key in nested dictionaries.
+    
+    Args:
+        d: The dictionary to search in
+        key: The key to search for
+        max_depth: Maximum recursion depth to prevent stack overflow
+        current_depth: Current recursion depth
+    """
+    # Stop recursion if we've reached the maximum depth
+    if current_depth >= max_depth:
+        return None
+    
+    if not isinstance(d, dict):
+        return None
+    
+    # Direct match
+    if key in d:
+        return d[key]
+    
+    # Search in nested dictionaries
+    for k, v in d.items():
+        if isinstance(v, dict):
+            result = search_dict(v, key, max_depth, current_depth + 1)
+            if result is not None:
+                return result
+        elif isinstance(v, list):
+            for item in v:
+                if isinstance(item, dict):
+                    result = search_dict(item, key, max_depth, current_depth + 1)
+                    if result is not None:
+                        return result
+    
+    return None
 
 
 textGenerationConfig = {
@@ -102,3 +156,4 @@ def lambda_handler(event, context):
             'headers': headers,  # Include headers in error response
             'body': json.dumps({'error': str(e)})
         }
+        

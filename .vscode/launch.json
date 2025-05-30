@@ -12,7 +12,9 @@
             },
             "lambda": {
                 "runtime": "python3.12",
-                "payload": {},
+                "payload": {
+                     "path": "${workspaceFolder}/backend/calledit-backend/events/hiall.json"
+                },
                 "environmentVariables": {
                     "PATH": "/home/wsluser/.local/bin:/usr/local/bin:/usr/bin:${env:PATH}",
                     "PYTHONPATH": "${workspaceFolder}",
@@ -21,7 +23,8 @@
             },
             "sam": {
                 "containerBuild": true,
-                "dockerNetwork": "bridge"
+                "dockerNetwork": "bridge",
+                "localArguments": ["--skip-pull-image"]
             },
         },
         {
@@ -46,7 +49,8 @@
             },
             "sam": {
                 "containerBuild": true,
-                "dockerNetwork": "bridge"
+                "dockerNetwork": "bridge",
+                "localArguments": ["--skip-pull-image"]
             },
             "aws": {
                 "credentials": "profile:default",
@@ -56,21 +60,127 @@
         {
             "type": "aws-sam",
             "request": "direct-invoke",
-            "name": "API Gateway (Local)",
+            "name": "API Gateway Hello (Local)",
             "invokeTarget": {
-                "target": "api",
+                "target": "template",
                 "templatePath": "${workspaceFolder}/backend/calledit-backend/template.yaml",
-                "logicalId": "CallitAPI"
+                "logicalId": "HelloWorldFunction"
             },
             "sam": {
                 "containerBuild": true,
-                "dockerNetwork": "bridge"
+                "dockerNetwork": "bridge",
+                "localArguments": ["--skip-pull-image"]
             },
             "api": {
                 "path": "/hello",
                 "httpMethod": "get",
                 "payload": {
                     "json": {}
+                }
+            },
+            "aws": {
+                "credentials": "profile:default",
+                "region": "us-west-2"
+            },
+            "lambda": {
+                "runtime": "python3.12",
+                "environmentVariables": {
+                    "PATH": "/home/wsluser/.local/bin:/usr/local/bin:/usr/bin:${env:PATH}",
+                    "PYTHONPATH": "${workspaceFolder}",
+                    "PYTHONARGS": "-Xfrozen_modules=off"
+                },
+                "payload": {
+                     "path": "${workspaceFolder}/backend/calledit-backend/events/hiall.json"
+                },
+            }
+        },
+        {
+            "type": "aws-sam",
+            "request": "direct-invoke",
+            "name": "API Gateway Bedrock (Local)",
+            "invokeTarget": {
+                "target": "template",
+                "templatePath": "${workspaceFolder}/backend/calledit-backend/template.yaml",
+                "logicalId": "PromptBedrockFunction"
+            },
+            "sam": {
+                "containerBuild": true,
+                "dockerNetwork": "bridge",
+                "localArguments": ["--skip-pull-image"]
+            },
+            "api": {
+                "path": "/prompt_bedrock",
+                "httpMethod": "get",
+                "payload": {
+                    "json": {
+                        "prompt": "What is the capital of New York?"
+                    }
+                }
+            },
+            "aws": {
+                "credentials": "profile:default",
+                "region": "us-west-2"
+            },
+            "lambda": {
+                "runtime": "python3.12",
+                "environmentVariables": {
+                    "PATH": "/home/wsluser/.local/bin:/usr/local/bin:/usr/bin:${env:PATH}",
+                    "PYTHONPATH": "${workspaceFolder}",
+                    "PYTHONARGS": "-Xfrozen_modules=off"
+                }
+            }
+        },
+        {
+            "type": "aws-sam",
+            "request": "direct-invoke",
+            "name": "Strands Agent Lambda (Local)",
+            "invokeTarget": {
+                "target": "template",
+                "templatePath": "${workspaceFolder}/backend/calledit-backend/template.yaml",
+                "logicalId": "PromptAgent"
+            },
+            "lambda": {
+                "runtime": "python3.12",
+                "payload": {
+                     "path": "${workspaceFolder}/backend/calledit-backend/events/agent_event.json"
+                },
+                "environmentVariables": {
+                    "PATH": "/home/wsluser/.local/bin:/usr/local/bin:/usr/bin:${env:PATH}",
+                    "PYTHONPATH": "${workspaceFolder}",
+                    "PYTHONARGS": "-Xfrozen_modules=off"
+                }
+            },
+            "sam": {
+                "containerBuild": true,
+                "dockerNetwork": "bridge",
+                "localArguments": ["--skip-pull-image"]
+            },
+            "aws": {
+                "credentials": "profile:default",
+                "region": "us-west-2"
+            }
+        },
+        {
+            "type": "aws-sam",
+            "request": "direct-invoke",
+            "name": "API Gateway Strands Agent (Local)",
+            "invokeTarget": {
+                "target": "template",
+                "templatePath": "${workspaceFolder}/backend/calledit-backend/template.yaml",
+                "logicalId": "PromptAgent"
+            },
+            "sam": {
+                "containerBuild": true,
+                "dockerNetwork": "bridge",
+                "localArguments": ["--skip-pull-image"]
+            },
+            "api": {
+                "path": "/prompt_agent",
+                "httpMethod": "get",
+                "payload": {
+                    "json": {
+                        "prompt": "What time is it now? Calculate 42 * 17."
+                    }
                 }
             },
             "aws": {

@@ -73,7 +73,35 @@ Resources:
             Method: get
             RestApiId: !Ref CallitAPI
     Metadata:
-      Debug: true             
+      Debug: true  
+
+
+  PromptAgent:
+    Type: AWS::Serverless::Function 
+    Properties:
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - "bedrock:InvokeModel"
+                - "bedrock:InvokeModelWithResponseStream"
+                - "bedrock:ListFoundationModels"
+              Resource: "*"
+      CodeUri: handlers/prompt_agent/
+      Handler: agent.lambda_handler
+      Runtime: python3.12
+      Architectures:
+      - x86_64
+      Events:
+        HelloWorld:
+          Type: Api 
+          Properties:
+            Path: /prompt_agent
+            Method: get
+            RestApiId: !Ref CallitAPI
+    Metadata:
+      Debug: true                 
 
   MakeCall:
     Type: AWS::Serverless::Function 
