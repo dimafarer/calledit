@@ -25,7 +25,8 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
     setError(null);
     
     try {
-      const apiEndpoint = `${import.meta.env.VITE_APIGATEWAY}/make-call`;
+      // const apiEndpoint = `${import.meta.env.VITE_APIGATEWAY}/make-call`;
+      const apiEndpoint = `${import.meta.env.VITE_APIGATEWAY}/strands-make-call`;
       const { data } = await axios.get<APIResponse>(apiEndpoint, {
         params: { prompt },
         headers: {

@@ -1,0 +1,49 @@
+{
+  "resource": "/strands-make-call",
+  "path": "/strands-make-call",
+  "httpMethod": "GET",
+  "headers": {
+    "Accept": "application/json",
+    "Content-Type": "application/json"
+  },
+  "queryStringParameters": {
+    "prompt": "Bitcoin will reach $100,000 by the end of 2025"
+  },
+  "multiValueQueryStringParameters": {
+    "prompt": ["Bitcoin will reach $100,000 by the end of 2025"]
+  },
+  "pathParameters": null,
+  "stageVariables": null,
+  "requestContext": {
+    "resourceId": "123456",
+    "resourcePath": "/strands-make-call",
+    "httpMethod": "GET",
+    "extendedRequestId": "example-id",
+    "requestTime": "09/Apr/2024:12:34:56 +0000",
+    "path": "/Prod/strands-make-call",
+    "accountId": "123456789012",
+    "protocol": "HTTP/1.1",
+    "stage": "Prod",
+    "domainPrefix": "testPrefix",
+    "requestTimeEpoch": 1617971696000,
+    "requestId": "c6af9ac6-7b61-11e6-9a41-93e8deadbeef",
+    "identity": {
+      "cognitoIdentityPoolId": null,
+      "accountId": null,
+      "cognitoIdentityId": null,
+      "caller": null,
+      "sourceIp": "127.0.0.1",
+      "principalOrgId": null,
+      "accessKey": null,
+      "cognitoAuthenticationType": null,
+      "cognitoAuthenticationProvider": null,
+      "userArn": null,
+      "userAgent": "Custom User Agent String",
+      "user": null
+    },
+    "domainName": "testPrefix.testDomainName",
+    "apiId": "1234567890"
+  },
+  "body": null,
+  "isBase64Encoded": false
+}

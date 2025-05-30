@@ -101,7 +101,32 @@ Resources:
             Method: get
             RestApiId: !Ref CallitAPI
     Metadata:
-      Debug: true                 
+      Debug: true   
+
+  StrandsMakeCall:
+    Type: AWS::Serverless::Function 
+    Properties:
+      CodeUri: handlers/strands_make_call/
+      Handler: strands_make_call.lambda_handler
+      Runtime: python3.12
+      Architectures:
+      - x86_64
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - "bedrock:InvokeModel"
+                - "bedrock:InvokeModelWithResponseStream"
+                - "bedrock:ListFoundationModels"
+              Resource: "*"
+      Events:
+        MakeCall:
+          Type: Api 
+          Properties:
+            Path: /strands-make-call
+            Method: get
+            RestApiId: !Ref CallitAPI
 
   MakeCall:
     Type: AWS::Serverless::Function 
