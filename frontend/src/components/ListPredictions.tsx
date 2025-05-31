@@ -89,13 +89,30 @@ const ListPredictions: React.FC<ListPredictionsProps> = ({ onNavigateToMake }) =
     fetchPredictions();
   }, [isAuthenticated]);
 
+  // Function to format date to local time
+  const formatToLocalTime = (dateStr: string | undefined) => {
+    if (!dateStr) return "Not available";
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleString();
+    } catch (e) {
+      return dateStr; // Fall back to original string if parsing fails
+    }
+  };
+
   // Function to render a single prediction card
   const renderPredictionCard = (prediction: NovaResponse, index: number) => {
+    // Get prediction date from either prediction_date or creation_date for backward compatibility
+    const predictionDate = prediction.prediction_date || prediction.creation_date;
+    
     return (
       <div key={index} className="prediction-card">
         <h3>{prediction.prediction_statement}</h3>
         <div className="prediction-details">
-          <p><strong>Verification Date:</strong> {prediction.verification_date}</p>
+          {predictionDate && (
+            <p><strong>Prediction Date:</strong> {formatToLocalTime(predictionDate)}</p>
+          )}
+          <p><strong>Verification Date:</strong> {formatToLocalTime(prediction.verification_date)}</p>
           <p><strong>Status:</strong> {prediction.initial_status}</p>
           <details>
             <summary>Verification Method</summary>

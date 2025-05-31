@@ -157,14 +157,13 @@ def lambda_handler(event, context):
             prediction = {
                 'prediction_statement': item.get('prediction_statement', ''),
                 'verification_date': item.get('verification_date', ''),
+                'prediction_date': item.get('prediction_date', item.get('createdAt', '')),  # Use prediction_date or fall back to createdAt
                 'verification_method': {
                     'source': item.get('verification_method', {}).get('source', []),
                     'criteria': item.get('verification_method', {}).get('criteria', []),
                     'steps': item.get('verification_method', {}).get('steps', [])
                 },
-                'initial_status': item.get('initial_status', 'Pending'),
-                'created_at': item.get('createdAt', ''),  # Include creation timestamp
-                'timestamp': item.get('createdAt', '')    # Alternative field name for compatibility
+                'initial_status': item.get('initial_status', 'Pending')
             }
             print(f"Formatted prediction: {json.dumps(prediction)}")
             predictions.append(prediction)
