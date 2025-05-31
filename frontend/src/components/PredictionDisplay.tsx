@@ -108,11 +108,25 @@ const PredictionDisplay: React.FC<PredictionDisplayProps> = ({ response, error, 
     prediction_statement, 
     verification_date, 
     verification_method, 
-    initial_status 
+    initial_status,
+    timezone = "UTC"
   } = result;
   
   // Use prediction_date if available, otherwise fall back to creation_date
-  const predictionDate = result.prediction_date || result.creation_date;
+  const utcPredictionDate = result.prediction_date || result.creation_date;
+  
+  // Convert UTC dates to local timezone for display
+  const formatToLocalTime = (utcDateStr: string) => {
+    try {
+      const date = new Date(utcDateStr);
+      return date.toLocaleString();
+    } catch (e) {
+      return utcDateStr; // Fall back to original string if parsing fails
+    }
+  };
+  
+  const predictionDate = formatToLocalTime(utcPredictionDate);
+  const localVerificationDate = formatToLocalTime(verification_date);
 
   return (
     <ErrorBoundary>
@@ -127,7 +141,7 @@ const PredictionDisplay: React.FC<PredictionDisplayProps> = ({ response, error, 
         </div>
         <div className="response-field">
           <h3>Verification Date:</h3>
-          <p>{verification_date}</p>
+          <p>{localVerificationDate}</p>
         </div>
         <div className="response-field">
           <h3>Verification Method:</h3>

@@ -51,10 +51,13 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
     setError(null);
     
     try {
+      // Get user's timezone
+      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      
       // Using the strands-make-call endpoint for AI-powered prediction processing
       const apiEndpoint = `${import.meta.env.VITE_APIGATEWAY}/strands-make-call`;
       const { data } = await axios.get<APIResponse>(apiEndpoint, {
-        params: { prompt },
+        params: { prompt, timezone: userTimezone },
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'

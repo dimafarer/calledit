@@ -7,26 +7,30 @@ from strands import Agent, tool
 from strands_tools import current_time
 
 @tool
-def parse_relative_date(date_string: str) -> str:
+def parse_relative_date(date_string: str, timezone: str = "UTC") -> str:
     """
     Convert a relative date string to an actual date.
     
     Args:
         date_string (str): A relative date string like 'tomorrow', 'next week', 'in 3 months'
+        timezone (str): Timezone to use for parsing relative dates (default: UTC)
         
     Returns:
-        str: The parsed date in YYYY-MM-DD format
+        str: The parsed date in YYYY-MM-DD format in UTC
     """
-    import pytz
-    eastern = pytz.timezone('US/Eastern')
+    try:
+        tz = pytz.timezone(timezone)
+    except pytz.exceptions.UnknownTimeZoneError:
+        tz = pytz.UTC
     
     # Parse with timezone awareness
-    parsed_date = dateparser.parse(date_string, settings={'TIMEZONE': 'US/Eastern'})
+    parsed_date = dateparser.parse(date_string, settings={'TIMEZONE': timezone})
     if parsed_date:
-        return parsed_date.strftime("%Y-%m-%d")
+        # Return in UTC format for storage
+        return parsed_date.astimezone(pytz.UTC).strftime("%Y-%m-%d")
     else:
         # Default to 30 days in the future if parsing fails
-        return (datetime.now(pytz.timezone('US/Eastern')) + timedelta(days=30)).strftime("%Y-%m-%d")
+        return (datetime.now(tz) + timedelta(days=30)).astimezone(pytz.UTC).strftime("%Y-%m-%d")
 
 def lambda_handler(event, context):
     # Setup CORS headers
@@ -69,19 +73,33 @@ def lambda_handler(event, context):
         import urllib.parse
         prompt = urllib.parse.unquote(prompt)
     
-    # Get current date and time with timezone info
+    # Get current date and time in UTC
     from datetime import timezone
-    import pytz
     
-    # Use Eastern Time
-    eastern = pytz.timezone('US/Eastern')
-    current_datetime = datetime.now(timezone.utc).astimezone(eastern)
+    # Extract user timezone from request if available
+    user_timezone = "UTC"
+    if 'timezone' in event:
+        user_timezone = event['timezone']
+    elif event.get('queryStringParameters') and 'timezone' in event['queryStringParameters']:
+        user_timezone = event['queryStringParameters']['timezone']
+    elif 'body' in event and event['body']:
+        try:
+            if isinstance(event['body'], dict):
+                user_timezone = event['body'].get('timezone', "UTC")
+            else:
+                body = json.loads(event['body'])
+                user_timezone = body.get('timezone', "UTC")
+        except:
+            pass
+    
+    # Always store dates in UTC
+    current_datetime = datetime.now(timezone.utc)
     formatted_date = current_datetime.strftime("%Y-%m-%d")
     formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M:%S %Z")
     
-    # Create an agent with tools
+    # Create an agent with tools, passing user timezone
     agent = Agent(
-        tools=[current_time, parse_relative_date],
+        tools=[current_time, lambda date_string: parse_relative_date(date_string, user_timezone)],
         system_prompt="""You are a prediction verification expert. Your task is to:
             1. Analyze predictions
             2. Create structured verification criteria
@@ -111,12 +129,12 @@ def lambda_handler(event, context):
     {prompt}
 
     TODAY'S DATE: {formatted_date}
-    CURRENT TIME: {formatted_datetime}
+    CURRENT TIME: {formatted_datetime} (UTC)
+    USER TIMEZONE: {user_timezone}
 
     REQUIRED RESPONSE STRUCTURE:
     - prediction_statement: Clear restatement of the prediction
-    - prediction_date: Date, hour, and minute and time zone predition was made
-    - verification_date: Realistic future date and or time when this can be verified
+    - verification_date: Realistic future date and or time when this can be verified (in UTC)
     - verification_method: 
       - source: List of reliable sources to check
       - criteria: Specific measurable criteria
@@ -161,6 +179,7 @@ def lambda_handler(event, context):
             "prediction_statement": str(prediction_json.get("prediction_statement", "")),
             "verification_date": str(prediction_json.get("verification_date", "")),
             "prediction_date": formatted_datetime,
+            "timezone": "UTC",  # Explicitly mark that dates are in UTC
             "verification_method": {
                 "source": ensure_list(prediction_json.get("verification_method", {}).get("source", [])),
                 "criteria": ensure_list(prediction_json.get("verification_method", {}).get("criteria", [])),

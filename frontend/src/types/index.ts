@@ -32,11 +32,14 @@ export interface NovaResponse {
   /** The main prediction statement text */
   prediction_statement: string;
   
-  /** The date when the prediction was made */
+  /** The date when the prediction was made (in UTC) */
   prediction_date: string;
   
-  /** The date when the prediction should be verified */
+  /** The date when the prediction should be verified (in UTC) */
   verification_date: string;
+  
+  /** The timezone of the dates (default: UTC) */
+  timezone?: string;
   
   /** Detailed method for verifying the prediction */
   verification_method: VerificationMethod;
