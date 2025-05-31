@@ -1,6 +1,22 @@
 import axios from 'axios';
 import { APIResponse } from '../types';
 
+/**
+ * PredictionInput Component
+ * 
+ * This component provides the user interface for entering prediction text
+ * and submitting it to the API for processing.
+ * 
+ * Features:
+ * - Text area for entering prediction statements
+ * - Submit button with appropriate loading and disabled states
+ * - Error handling for API requests
+ * - Integration with the parent component's state management
+ * 
+ * The component makes API calls to the strands-make-call endpoint which
+ * processes the user's prediction text and returns structured prediction data.
+ */
+
 interface PredictionInputProps {
   isLoading: boolean;
   prompt: string;
@@ -18,6 +34,16 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
   setIsLoading, 
   setError 
 }) => {
+  /**
+   * Handles the submission of the prediction text to the API
+   * 
+   * This function:
+   * 1. Validates that the prompt is not empty
+   * 2. Sets loading state and clears any previous errors
+   * 3. Makes an API request to the strands-make-call endpoint
+   * 4. Updates the parent component with the response data
+   * 5. Handles any errors that occur during the process
+   */
   const handleSubmit = async () => {
     if (!prompt.trim()) return;
     
@@ -25,7 +51,7 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
     setError(null);
     
     try {
-      // const apiEndpoint = `${import.meta.env.VITE_APIGATEWAY}/make-call`;
+      // Using the strands-make-call endpoint for AI-powered prediction processing
       const apiEndpoint = `${import.meta.env.VITE_APIGATEWAY}/strands-make-call`;
       const { data } = await axios.get<APIResponse>(apiEndpoint, {
         params: { prompt },

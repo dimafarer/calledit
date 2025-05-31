@@ -1,6 +1,21 @@
 import { APIResponse, VerificationMethod } from '../types';
 import ErrorBoundary from './ErrorBoundary';
 
+/**
+ * PredictionDisplay Component
+ * 
+ * This component is responsible for rendering the structured prediction data
+ * returned from the API. It handles different states:
+ * 
+ * - Loading state: Shows a loading indicator
+ * - Error state: Displays error messages
+ * - Empty state: Shows a placeholder message
+ * - Data state: Renders the structured prediction with verification details
+ * 
+ * The component uses ErrorBoundary to catch and handle any rendering errors
+ * that might occur when displaying complex nested data structures.
+ */
+
 interface PredictionDisplayProps {
   response: APIResponse | null;
   error: string | null;
@@ -8,7 +23,13 @@ interface PredictionDisplayProps {
 }
 
 const PredictionDisplay: React.FC<PredictionDisplayProps> = ({ response, error, isLoading }) => {
-  // Render list items from array data
+  /**
+   * Renders a list of items with proper key assignment and empty state handling
+   * 
+   * @param items - Array of items to render as list items
+   * @param keyPrefix - Prefix for React key prop to ensure uniqueness
+   * @returns React elements representing the list items
+   */
   const renderList = (items: any[] | undefined, keyPrefix: string) => {
     if (!Array.isArray(items) || items.length === 0) {
       return <li>No data available</li>;
@@ -19,7 +40,14 @@ const PredictionDisplay: React.FC<PredictionDisplayProps> = ({ response, error, 
     ));
   };
   
-  // Render verification method section
+  /**
+   * Renders a section of the verification method with a title and list of items
+   * 
+   * @param title - The heading text for the section
+   * @param items - Array of items to display in the section
+   * @param keyPrefix - Prefix for React keys to ensure uniqueness
+   * @returns A structured section with heading and list
+   */
   const renderMethodSection = (title: string, items: any[] | undefined, keyPrefix: string) => (
     <div className="method-section">
       <h3>{title}:</h3>
@@ -27,7 +55,15 @@ const PredictionDisplay: React.FC<PredictionDisplayProps> = ({ response, error, 
     </div>
   );
 
-  // Render verification method details
+  /**
+   * Renders the complete verification method with all its sections
+   * 
+   * This function validates that all required data is present before rendering
+   * and displays an error message if any required data is missing.
+   * 
+   * @param method - The verification method object containing sources, criteria, and steps
+   * @returns The complete verification method UI or an error message
+   */
   const renderVerificationMethod = (method: VerificationMethod) => {
     if (!method || !method.source || !method.criteria || !method.steps) {
       return <div className="error-message">Verification method data is incomplete</div>;

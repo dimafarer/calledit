@@ -3,11 +3,28 @@ import { NovaResponse, APIResponse } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 
+/**
+ * ListPredictions Component
+ * 
+ * This component displays a list of the user's previously saved predictions.
+ * It requires authentication and fetches prediction data from the backend API.
+ * 
+ * Key features:
+ * - Fetches predictions when the component mounts if the user is authenticated
+ * - Displays loading states during API calls
+ * - Handles and displays various error conditions with specific messages
+ * - Renders each prediction in a structured card format with expandable details
+ * - Shows a message when no predictions are available
+ * 
+ * The component uses the AuthContext to get authentication status and tokens
+ * needed for making authenticated API requests.
+ */
+
 interface ListPredictionsProps {
   onNavigateToMake: () => void;
 }
 
-const ListPredictions: React.FC<ListPredictionsProps> = ({ onNavigateToMake: _onNavigateToMake }) => {
+const ListPredictions: React.FC<ListPredictionsProps> = ({ onNavigateToMake }) => {
   const [predictions, setPredictions] = useState<NovaResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

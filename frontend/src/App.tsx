@@ -3,7 +3,16 @@ import './App.css'
 import { MakePredictions, ListPredictions, LoginButton } from './components'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 
-// Navigation buttons component
+/**
+ * NavigationControls Component
+ * 
+ * This component renders the navigation buttons in the header of the application.
+ * It displays a toggle button to switch between making predictions and viewing predictions,
+ * but only when the user is authenticated. It also always displays the login/logout button.
+ * 
+ * @param currentView - The current active view ('make' or 'list')
+ * @param navigateTo - Function to change the current view
+ */
 const NavigationControls = ({ 
   currentView, 
   navigateTo 
@@ -29,6 +38,17 @@ const NavigationControls = ({
   );
 };
 
+/**
+ * AppContent Component
+ * 
+ * This is the main content container for the application that handles:
+ * 1. View state management between making and listing predictions
+ * 2. Automatic redirection to the make predictions view when a user logs out
+ * 3. Rendering the appropriate view based on the current state
+ * 
+ * The component uses the AuthContext to determine if a user is authenticated
+ * and conditionally renders different views based on authentication status.
+ */
 function AppContent() {
   const [currentView, setCurrentView] = useState<'make' | 'list'>('make');
   const { isAuthenticated } = useAuth();
@@ -60,6 +80,15 @@ function AppContent() {
   );
 }
 
+/**
+ * App Component
+ * 
+ * The root component of the application that wraps the main content
+ * with the AuthProvider to make authentication context available
+ * throughout the component tree.
+ * 
+ * @returns The wrapped application with authentication context
+ */
 function App() {
   return (
     <AuthProvider>

@@ -4,6 +4,26 @@ import { APIResponse } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { clearPredictionData } from '../utils/storageUtils';
 
+/**
+ * LogCallButton Component
+ * 
+ * This component provides functionality for users to save their predictions
+ * to the database. It requires authentication and handles the API interaction
+ * for storing prediction data.
+ * 
+ * Features:
+ * - Validates that the user is authenticated before allowing submission
+ * - Sends prediction data to the backend API with authentication token
+ * - Provides appropriate feedback during and after the submission process
+ * - Clears local prediction data after successful submission
+ * - Shows appropriate tooltips based on the current state (needs login, needs prediction)
+ * 
+ * The button is conditionally enabled/disabled based on:
+ * 1. Whether there is valid prediction data to submit
+ * 2. Whether the user is authenticated
+ * 3. Whether a submission is currently in progress
+ */
+
 interface LogCallButtonProps {
   response: APIResponse | null;
   isLoading: boolean;
@@ -30,6 +50,16 @@ const LogCallButton: React.FC<LogCallButtonProps> = ({
     return null;
   }
 
+  /**
+   * Handles the submission of prediction data to the database
+   * 
+   * This function:
+   * 1. Validates that there is prediction data to submit
+   * 2. Checks that the user is authenticated
+   * 3. Sends the prediction data to the backend API
+   * 4. Handles the response and updates the UI accordingly
+   * 5. Clears local data after successful submission
+   */
   const handleLogCall = async () => {
     if (response && response.results && response.results.length > 0) {
       if (!isAuthenticated) {

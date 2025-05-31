@@ -1,13 +1,42 @@
 import { createContext, useContext, useEffect, useState, useRef } from 'react';
 
+/**
+ * Authentication Context
+ * 
+ * This module provides authentication functionality for the application using
+ * AWS Cognito. It manages the authentication state, handles login/logout flows,
+ * and provides access to authentication tokens.
+ * 
+ * The context exposes:
+ * - Current authentication state
+ * - Login function that redirects to Cognito
+ * - Logout function that clears tokens
+ * - Function to retrieve the current ID token
+ */
+
+/**
+ * AuthContextType Interface
+ * 
+ * Defines the shape of the authentication context that will be
+ * available throughout the application.
+ */
 interface AuthContextType {
+  /** Whether the user is currently authenticated */
   isAuthenticated: boolean;
+  
+  /** Function to initiate the login flow */
   login: () => void;
+  
+  /** Function to log the user out */
   logout: () => void;
+  
+  /** Function to get the current ID token */
   getToken: () => string | null;
 }
 
-// Token storage keys
+/**
+ * Token storage keys for consistent access to localStorage items
+ */
 const TOKEN_KEYS = {
   ID: 'idToken',
   ACCESS: 'accessToken',
@@ -26,13 +55,31 @@ const ENV = {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/**
+ * AuthProvider Component
+ * 
+ * This component provides the authentication context to the application.
+ * It handles:
+ * - Initial authentication state based on stored tokens
+ * - Processing authentication code from Cognito redirect
+ * - Token exchange with Cognito
+ * - Login and logout functionality
+ * 
+ * @param children - The child components that will have access to the auth context
+ */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const codeProcessed = useRef(false);
   
-  // Cognito domain URL
+  // Cognito domain URL constructed from environment variables
   const cognitoDomain = `https://${ENV.DOMAIN_PREFIX}.auth.${ENV.REGION}.amazoncognito.com`;
 
+  /**
+   * Initiates the login flow by redirecting to the Cognito hosted UI
+   * 
+   * This function constructs the login URL with appropriate parameters
+   * and redirects the user's browser to begin the authentication process.
+   */
   const login = () => {
     const queryParams = new URLSearchParams({
       client_id: ENV.CLIENT_ID,
@@ -43,13 +90,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.location.href = `${cognitoDomain}/login?${queryParams.toString()}`;
   };
 
+  /**
+   * Logs the user out by removing all authentication tokens
+   * 
+   * This function:
+   * 1. Removes all tokens from local storage
+   * 2. Updates the authentication state
+   */
   const logout = () => {
     Object.values(TOKEN_KEYS).forEach(key => localStorage.removeItem(key));
     setIsAuthenticated(false);
   };
 
+  /**
+   * Retrieves the current ID token from local storage
+   * 
+   * @returns The ID token string or null if not available
+   */
   const getToken = () => localStorage.getItem(TOKEN_KEYS.ID);
 
+  /**
+   * Exchanges an authorization code for tokens with the Cognito token endpoint
+   * 
+   * This function:
+   * 1. Makes a POST request to the Cognito token endpoint
+   * 2. Exchanges the authorization code for ID, access, and refresh tokens
+   * 3. Stores the tokens in local storage
+   * 4. Updates the authentication state
+   * 5. Cleans up the URL by removing the authorization code
+   * 
+   * @param authCode - The authorization code received from Cognito after login
+   */
   const handleTokenExchange = async (authCode: string) => {
     try {
       const tokenEndpoint = `${cognitoDomain}/oauth2/token`;
@@ -111,6 +182,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * Custom hook to access the authentication context
+ * 
+ * This hook:
+ * 1. Accesses the AuthContext using React's useContext
+ * 2. Verifies that the hook is being used within an AuthProvider
+ * 3. Returns the authentication context with type safety
+ * 
+ * @returns The authentication context object
+ * @throws Error if used outside of an AuthProvider
+ */
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {

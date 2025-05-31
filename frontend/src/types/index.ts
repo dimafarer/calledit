@@ -1,17 +1,54 @@
-// TypeScript interfaces define the shape of our API response data
+/**
+ * Type Definitions for the Called It Application
+ * 
+ * This file contains TypeScript interfaces that define the shape of data
+ * used throughout the application, particularly for API responses.
+ */
+
+/**
+ * VerificationMethod Interface
+ * 
+ * Defines the structure for verification methods associated with predictions.
+ * Each method includes sources to check, criteria for verification, and steps to follow.
+ */
 export interface VerificationMethod {
-  source: string[]; // Array of verification sources
-  criteria: string[]; // Array of verification criteria  
-  steps: string[]; // Array of verification steps
+  /** Array of sources that can be used to verify the prediction */
+  source: string[];
+  
+  /** Array of criteria that determine if the prediction is verified */
+  criteria: string[];
+  
+  /** Array of steps to follow when verifying the prediction */
+  steps: string[];
 }
 
+/**
+ * NovaResponse Interface
+ * 
+ * Represents a single prediction with its associated verification details.
+ * This is the core data structure for individual predictions in the application.
+ */
 export interface NovaResponse {
-  prediction_statement: string; // The prediction text
-  verification_date: string; // When prediction will be verified
-  verification_method: VerificationMethod; // Nested verification details
-  initial_status: string; // Initial prediction status
+  /** The main prediction statement text */
+  prediction_statement: string;
+  
+  /** The date when the prediction should be verified */
+  verification_date: string;
+  
+  /** Detailed method for verifying the prediction */
+  verification_method: VerificationMethod;
+  
+  /** The initial status of the prediction (e.g., "Pending", "Verified") */
+  initial_status: string;
 }
 
+/**
+ * APIResponse Interface
+ * 
+ * The top-level response structure returned by the API endpoints.
+ * Contains an array of prediction responses.
+ */
 export interface APIResponse {
-  results: NovaResponse[]; // Array of prediction responses
+  /** Array of prediction responses */
+  results: NovaResponse[];
 }

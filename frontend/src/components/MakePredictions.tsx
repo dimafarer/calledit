@@ -6,11 +6,28 @@ import LogCallButton from './LogCallButton';
 import { getPredictionData, savePredictionData } from '../utils/storageUtils';
 import './MakePredictions.css';
 
+/**
+ * MakePredictions Component
+ * 
+ * This component serves as the main interface for users to create new predictions.
+ * It orchestrates several child components and manages the prediction data flow:
+ * 
+ * 1. PredictionInput - For entering prediction text and submitting to the API
+ * 2. PredictionDisplay - For showing the structured prediction response
+ * 3. LogCallButton - For saving predictions to the database (requires authentication)
+ * 
+ * The component handles:
+ * - Loading/saving prediction data from/to local storage
+ * - Managing loading and error states
+ * - Coordinating data flow between child components
+ * - Responsive layout for both mobile and desktop views
+ */
+
 interface MakePredictionsProps {
   onNavigateToList: () => void;
 }
 
-const MakePredictions: React.FC<MakePredictionsProps> = ({ onNavigateToList: _onNavigateToList }) => {
+const MakePredictions: React.FC<MakePredictionsProps> = ({ onNavigateToList }) => {
   // Initialize state with lazy loading from storage
   const [response, setResponse] = useState<APIResponse | null>(() => getPredictionData());
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -24,7 +41,7 @@ const MakePredictions: React.FC<MakePredictionsProps> = ({ onNavigateToList: _on
     }
   }, [response]);
 
-  // Common props for child components
+  // Common props for child components to reduce prop drilling
   const commonProps = {
     isLoading,
     setIsLoading,
