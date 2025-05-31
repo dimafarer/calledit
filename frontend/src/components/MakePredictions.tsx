@@ -27,7 +27,7 @@ interface MakePredictionsProps {
   onNavigateToList: () => void;
 }
 
-const MakePredictions: React.FC<MakePredictionsProps> = ({ onNavigateToList }) => {
+const MakePredictions: React.FC<MakePredictionsProps> = () => {
   // Initialize state with lazy loading from storage
   const [response, setResponse] = useState<APIResponse | null>(() => getPredictionData());
   const [isLoading, setIsLoading] = useState<boolean>(false);

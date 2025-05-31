@@ -33,7 +33,10 @@ export interface NovaResponse {
   prediction_statement: string;
   
   /** The date when the prediction was made (in UTC) */
-  prediction_date: string;
+  prediction_date?: string;
+  
+  /** Legacy field for backward compatibility */
+  creation_date?: string;
   
   /** The date when the prediction should be verified (in UTC) */
   verification_date: string;

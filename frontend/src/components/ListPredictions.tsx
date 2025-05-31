@@ -24,7 +24,7 @@ interface ListPredictionsProps {
   onNavigateToMake: () => void;
 }
 
-const ListPredictions: React.FC<ListPredictionsProps> = ({ onNavigateToMake }) => {
+const ListPredictions: React.FC<ListPredictionsProps> = () => {
   const [predictions, setPredictions] = useState<NovaResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

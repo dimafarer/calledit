@@ -31,6 +31,7 @@ describe('LogCallButton Component', () => {
     results: [
       {
         prediction_statement: 'Test prediction',
+        prediction_date: '2023-12-30',
         verification_date: '2023-12-31',
         verification_method: {
           source: ['Test source'],

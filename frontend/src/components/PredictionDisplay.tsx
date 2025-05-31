@@ -108,15 +108,15 @@ const PredictionDisplay: React.FC<PredictionDisplayProps> = ({ response, error, 
     prediction_statement, 
     verification_date, 
     verification_method, 
-    initial_status,
-    timezone = "UTC"
+    initial_status
   } = result;
   
   // Use prediction_date if available, otherwise fall back to creation_date
   const utcPredictionDate = result.prediction_date || result.creation_date;
   
   // Convert UTC dates to local timezone for display
-  const formatToLocalTime = (utcDateStr: string) => {
+  const formatToLocalTime = (utcDateStr: string | undefined) => {
+    if (!utcDateStr) return "Not available";
     try {
       const date = new Date(utcDateStr);
       return date.toLocaleString();
