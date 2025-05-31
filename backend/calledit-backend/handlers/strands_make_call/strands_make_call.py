@@ -2,6 +2,7 @@ import json
 import os
 from datetime import datetime, timedelta
 import dateparser
+import pytz
 from strands import Agent, tool
 from strands_tools import current_time
 
@@ -16,12 +17,16 @@ def parse_relative_date(date_string: str) -> str:
     Returns:
         str: The parsed date in YYYY-MM-DD format
     """
-    parsed_date = dateparser.parse(date_string)
+    import pytz
+    eastern = pytz.timezone('US/Eastern')
+    
+    # Parse with timezone awareness
+    parsed_date = dateparser.parse(date_string, settings={'TIMEZONE': 'US/Eastern'})
     if parsed_date:
         return parsed_date.strftime("%Y-%m-%d")
     else:
         # Default to 30 days in the future if parsing fails
-        return (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d")
+        return (datetime.now(pytz.timezone('US/Eastern')) + timedelta(days=30)).strftime("%Y-%m-%d")
 
 def lambda_handler(event, context):
     # Setup CORS headers
@@ -64,10 +69,15 @@ def lambda_handler(event, context):
         import urllib.parse
         prompt = urllib.parse.unquote(prompt)
     
-    # Get current date and time
-    current_datetime = datetime.now()
+    # Get current date and time with timezone info
+    from datetime import timezone
+    import pytz
+    
+    # Use Eastern Time
+    eastern = pytz.timezone('US/Eastern')
+    current_datetime = datetime.now(timezone.utc).astimezone(eastern)
     formatted_date = current_datetime.strftime("%Y-%m-%d")
-    formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
+    formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M:%S %Z")
     
     # Create an agent with tools
     agent = Agent(
@@ -105,7 +115,8 @@ def lambda_handler(event, context):
 
     REQUIRED RESPONSE STRUCTURE:
     - prediction_statement: Clear restatement of the prediction
-    - verification_date: Realistic future date when this can be verified
+    - prediction_date: Date, hour, and minute and time zone predition was made
+    - verification_date: Realistic future date and or time when this can be verified
     - verification_method: 
       - source: List of reliable sources to check
       - criteria: Specific measurable criteria
@@ -149,7 +160,7 @@ def lambda_handler(event, context):
         sanitized_response = {
             "prediction_statement": str(prediction_json.get("prediction_statement", "")),
             "verification_date": str(prediction_json.get("verification_date", "")),
-            "creation_date": formatted_datetime,
+            "prediction_date": formatted_datetime,
             "verification_method": {
                 "source": ensure_list(prediction_json.get("verification_method", {}).get("source", [])),
                 "criteria": ensure_list(prediction_json.get("verification_method", {}).get("criteria", [])),

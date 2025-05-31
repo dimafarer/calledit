@@ -32,6 +32,9 @@ export interface NovaResponse {
   /** The main prediction statement text */
   prediction_statement: string;
   
+  /** The date when the prediction was made */
+  prediction_date: string;
+  
   /** The date when the prediction should be verified */
   verification_date: string;
   

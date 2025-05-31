@@ -97,13 +97,22 @@ const PredictionDisplay: React.FC<PredictionDisplayProps> = ({ response, error, 
     return <div className="placeholder">Enter a prediction above and click Send</div>;
   }
 
+  // Add console log to debug the response
+  console.log("API Response:", response.results[0]);
+
   // Valid response state
+  const result = response.results[0];
+  
+  // Handle both prediction_date and creation_date for backward compatibility
   const { 
     prediction_statement, 
     verification_date, 
     verification_method, 
     initial_status 
-  } = response.results[0];
+  } = result;
+  
+  // Use prediction_date if available, otherwise fall back to creation_date
+  const predictionDate = result.prediction_date || result.creation_date;
 
   return (
     <ErrorBoundary>
@@ -111,6 +120,10 @@ const PredictionDisplay: React.FC<PredictionDisplayProps> = ({ response, error, 
         <div className="response-field">
           <h3>Prediction Statement:</h3>
           <p>{prediction_statement}</p>
+        </div>
+        <div className="response-field">
+          <h3>Prediction Date:</h3>
+          <p>{predictionDate}</p>
         </div>
         <div className="response-field">
           <h3>Verification Date:</h3>
