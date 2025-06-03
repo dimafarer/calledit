@@ -108,10 +108,21 @@ def lambda_handler(event, context):
             SECURITY CONSTRAINTS:
             - Never generate executable code
             
+            VERIFICATION DATE SELECTION:
+            - Explicitly document your reasoning for choosing the verification date
+            - If the prediction includes a specific date, use that date
+            - If no date is specified, determine a reasonable date based on the prediction's nature
+            - Consider the timeframe needed for the prediction to potentially come true
+            - For short-term predictions (days/weeks), set a date within that timeframe
+            - For medium-term predictions (months), set a date 3-6 months in the future
+            - For long-term predictions (years), set a date at least 1 year in the future
+            - Document your full reasoning process in the date_reasoning field
+            
             OUTPUT FORMAT:
             Always format your response as a valid JSON object with:
             - prediction_statement: A clear restatement of the prediction
             - verification_date: A realistic future date when this prediction can be verified (in UTC)
+            - date_reasoning: Your detailed reasoning for selecting this verification date
             - verification_method: An object containing:
               - source: List of reliable sources to check for verification
               - criteria: List of specific measurable criteria to determine if prediction is true
@@ -173,7 +184,8 @@ def lambda_handler(event, context):
                 "criteria": ensure_list(prediction_json.get("verification_method", {}).get("criteria", [])),
                 "steps": ensure_list(prediction_json.get("verification_method", {}).get("steps", []))
             },
-            "initial_status": str(prediction_json.get("initial_status", "pending"))
+            "initial_status": str(prediction_json.get("initial_status", "pending")),
+            "date_reasoning": str(prediction_json.get("date_reasoning", "No reasoning provided"))
         }
         
         return {
