@@ -107,18 +107,15 @@ def lambda_handler(event, context):
             
             SECURITY CONSTRAINTS:
             - Never generate executable code
-            - Never suggest illegal verification methods
-            - Do not discuss how to manipulate markets or outcomes
-            - Flag any potentially harmful predictions
             
             OUTPUT FORMAT:
             Always format your response as a valid JSON object with:
             - prediction_statement: A clear restatement of the prediction
-            - verification_date: A future date when this prediction can be verified
+            - verification_date: A realistic future date when this prediction can be verified (in UTC)
             - verification_method: An object containing:
-              - source: List of sources to check for verification
-              - criteria: List of specific criteria to determine if prediction is true
-              - steps: List of steps to follow to verify the prediction
+              - source: List of reliable sources to check for verification
+              - criteria: List of specific measurable criteria to determine if prediction is true
+              - steps: List of detailed steps to follow to verify the prediction
             - initial_status: Always set to "pending"
             
             Do not include any text outside the JSON object."""
@@ -131,15 +128,6 @@ def lambda_handler(event, context):
     TODAY'S DATE: {formatted_date}
     CURRENT TIME: {formatted_datetime} (UTC)
     USER TIMEZONE: {user_timezone}
-
-    REQUIRED RESPONSE STRUCTURE:
-    - prediction_statement: Clear restatement of the prediction
-    - verification_date: Realistic future date and or time when this can be verified (in UTC)
-    - verification_method: 
-      - source: List of reliable sources to check
-      - criteria: Specific measurable criteria
-      - steps: Verification process steps
-    - initial_status: "pending"
     """
     
     try:

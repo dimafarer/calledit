@@ -7,10 +7,10 @@
     "Content-Type": "application/json"
   },
   "queryStringParameters": {
-    "prompt": "miriam will fall asleep before the movie ends"
+    "prompt": "Strands will capture 50% of LangChain's market share"
   },
   "multiValueQueryStringParameters": {
-    "prompt": ["miriam will fall asleep before the movie ends"]
+    "prompt": ["Strands will capture 50% of LangChain's market share"]
   },
   "pathParameters": null,
   "stageVariables": null,
