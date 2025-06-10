@@ -108,9 +108,23 @@ def lambda_handler(event, context):
         formatted_date_local = formatted_date_utc
         formatted_datetime_local = formatted_datetime_utc
     
-    # Create an agent with tools, passing user timezone
+    # Create a timezone-aware wrapper for parse_relative_date
+    @tool
+    def parse_date_with_timezone(date_string: str) -> str:
+        """
+        Convert a relative date string to an actual date using the user's timezone.
+        
+        Args:
+            date_string (str): A relative date string like 'tomorrow', 'next week', 'in 3 months'
+            
+        Returns:
+            str: The parsed date in YYYY-MM-DD format in UTC
+        """
+        return parse_relative_date(date_string, user_timezone)
+    
+    # Create an agent with tools
     agent = Agent(
-        tools=[current_time, lambda date_string: parse_relative_date(date_string, user_timezone)],
+        tools=[current_time, parse_date_with_timezone],
         system_prompt="""You are a prediction verification expert. Your task is to:
             1. Analyze predictions
             2. Create structured verification criteria
