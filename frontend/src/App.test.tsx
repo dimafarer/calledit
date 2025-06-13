@@ -12,7 +12,7 @@ vi.mock('./contexts/AuthContext', () => ({
     getToken: vi.fn()
   }))
 }));
-
+// test
 // Mock the components
 vi.mock('./components/MakePredictions', () => ({
   default: vi.fn(() => (
