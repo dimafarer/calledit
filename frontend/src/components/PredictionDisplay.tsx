@@ -132,11 +132,11 @@ const PredictionDisplay: React.FC<PredictionDisplayProps> = ({ response, error, 
     <ErrorBoundary>
       <div className="structured-response">
         <div className="response-field">
-          <h3>Prediction Statement:</h3>
+          <h3>Call Statement:</h3>
           <p>{prediction_statement}</p>
         </div>
         <div className="response-field">
-          <h3>Prediction Date:</h3>
+          <h3>Call Date:</h3>
           <p>{predictionDate}</p>
         </div>
         <div className="response-field">

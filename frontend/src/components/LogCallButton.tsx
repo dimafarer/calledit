@@ -63,7 +63,7 @@ const LogCallButton: React.FC<LogCallButtonProps> = ({
   const handleLogCall = async () => {
     if (response && response.results && response.results.length > 0) {
       if (!isAuthenticated) {
-        setError('You must be logged in to log a prediction.');
+        setError('You must be logged in to log a call.');
         return;
       }
 
@@ -100,16 +100,16 @@ const LogCallButton: React.FC<LogCallButtonProps> = ({
         setPrompt('');
         
         // Show success message
-        alert('Prediction logged successfully!');
+        alert('Call logged successfully!');
       } catch (error) {
         console.error('Error logging call:', error);
-        setError('Error occurred while logging your prediction');
+        setError('Error occurred while logging your call');
       } finally {
         setIsLoading(false);
       }
     } else {
       // Handle case when there's no valid response data
-      setError('No prediction data available to log. Please make a prediction first.');
+      setError('No call data available to log. Please make a call first.');
     }
   };
 
@@ -121,9 +121,9 @@ const LogCallButton: React.FC<LogCallButtonProps> = ({
   let tooltipMessage = "";
   if (isDisabled && !isLoading) {
     if (!hasPrediction && !isAuthenticated) {
-      tooltipMessage = "Make a prediction and log in first";
+      tooltipMessage = "Make a call and log in first";
     } else if (!hasPrediction) {
-      tooltipMessage = "Make a prediction first";
+      tooltipMessage = "Make a call first";
     } else if (!isAuthenticated) {
       tooltipMessage = "Log in first";
     }

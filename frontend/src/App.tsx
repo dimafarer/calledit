@@ -28,9 +28,9 @@ const NavigationControls = ({
         <button 
           onClick={() => navigateTo(currentView === 'make' ? 'list' : 'make')}
           className="navigation-button"
-          aria-label={currentView === 'make' ? "View my predictions" : "Make new prediction"}
+          aria-label={currentView === 'make' ? "View my calls" : "Make new call"}
         >
-          {currentView === 'make' ? 'View My Predictions' : 'Make New Prediction'}
+          {currentView === 'make' ? 'View My Calls' : 'Make New Call'}
         </button>
       )}
       <LoginButton />

@@ -35,7 +35,7 @@ const ListPredictions: React.FC<ListPredictionsProps> = () => {
     const fetchPredictions = async () => {
       if (!isAuthenticated) {
         console.log('User not authenticated, skipping API call');
-        setError('You must be logged in to view predictions');
+        setError('You must be logged in to view calls');
         return;
       }
 
@@ -79,7 +79,7 @@ const ListPredictions: React.FC<ListPredictionsProps> = () => {
           setError('Unable to connect to the server. This might be due to network issues or CORS restrictions.');
           console.error('CORS or network issue detected. Request details:', err.request);
         } else {
-          setError('Failed to load predictions. Please try again later.');
+          setError('Failed to load calls. Please try again later.');
         }
       } finally {
         setIsLoading(false);
@@ -110,7 +110,7 @@ const ListPredictions: React.FC<ListPredictionsProps> = () => {
         <h3>{prediction.prediction_statement}</h3>
         <div className="prediction-details">
           {predictionDate && (
-            <p><strong>Prediction Date:</strong> {formatToLocalTime(predictionDate)}</p>
+            <p><strong>Call Date:</strong> {formatToLocalTime(predictionDate)}</p>
           )}
           <p><strong>Verification Date:</strong> {formatToLocalTime(prediction.verification_date)}</p>
           <p><strong>Status:</strong> {prediction.initial_status}</p>
@@ -144,12 +144,12 @@ const ListPredictions: React.FC<ListPredictionsProps> = () => {
 
   return (
     <div className="list-predictions-container">
-      <h2>My Predictions</h2>
+      <h2>My Calls</h2>
       
       {/* Display loading state */}
       {isLoading && (
         <div className="loading" role="status" aria-live="polite">
-          Loading your predictions...
+          Loading your calls...
         </div>
       )}
       
@@ -167,7 +167,7 @@ const ListPredictions: React.FC<ListPredictionsProps> = () => {
             predictions.map((prediction, index) => renderPredictionCard(prediction, index))
           ) : (
             <div className="no-predictions">
-              <p>You haven't made any predictions yet.</p>
+              <p>You haven't made any calls yet.</p>
             </div>
           )}
         </div>

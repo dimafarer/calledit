@@ -85,7 +85,7 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
         <textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Enter your prediction here..."
+          placeholder="Enter your call here..."
           rows={4}
           className="text-box"
           aria-label="Prediction input"
