@@ -8,16 +8,6 @@ import axios from 'axios';
  * 
  * This component displays a list of the user's previously saved predictions.
  * It requires authentication and fetches prediction data from the backend API.
- * 
- * Key features:
- * - Fetches predictions when the component mounts if the user is authenticated
- * - Displays loading states during API calls
- * - Handles and displays various error conditions with specific messages
- * - Renders each prediction in a structured card format with expandable details
- * - Shows a message when no predictions are available
- * 
- * The component uses the AuthContext to get authentication status and tokens
- * needed for making authenticated API requests.
  */
 
 interface ListPredictionsProps {
@@ -30,7 +20,7 @@ const ListPredictions: React.FC<ListPredictionsProps> = () => {
   const [error, setError] = useState<string | null>(null);
   const { isAuthenticated, getToken } = useAuth();
 
-  // Load predictions when component mounts
+  // Load predictions when component mounts or when navigated to
   useEffect(() => {
     const fetchPredictions = async () => {
       if (!isAuthenticated) {
@@ -60,13 +50,8 @@ const ListPredictions: React.FC<ListPredictionsProps> = () => {
         console.log(`Loaded ${response.data.results?.length || 0} predictions`);
       } catch (err: any) {
         console.error('Error fetching predictions:', err);
-        console.error('Error details:', err.message);
         
-        // Provide more specific error messages based on the error type
         if (err.response) {
-          console.error('Response status:', err.response.status);
-          console.error('Response data:', err.response.data);
-          
           if (err.response.status === 401) {
             setError('Authentication failed. Please log in again.');
           } else if (err.response.status === 403) {
@@ -75,9 +60,7 @@ const ListPredictions: React.FC<ListPredictionsProps> = () => {
             setError(`Server error (${err.response.status}): ${err.response.data?.error || 'Unknown error'}`);
           }
         } else if (err.request) {
-          // The request was made but no response was received (CORS issue)
-          setError('Unable to connect to the server. This might be due to network issues or CORS restrictions.');
-          console.error('CORS or network issue detected. Request details:', err.request);
+          setError('Unable to connect to the server. This might be due to network issues.');
         } else {
           setError('Failed to load calls. Please try again later.');
         }
@@ -86,6 +69,7 @@ const ListPredictions: React.FC<ListPredictionsProps> = () => {
       }
     };
 
+    // Always fetch when component mounts to ensure fresh data
     fetchPredictions();
   }, [isAuthenticated]);
 
@@ -96,13 +80,12 @@ const ListPredictions: React.FC<ListPredictionsProps> = () => {
       const date = new Date(dateStr);
       return date.toLocaleString();
     } catch (e) {
-      return dateStr; // Fall back to original string if parsing fails
+      return dateStr;
     }
   };
 
   // Function to render a single prediction card
   const renderPredictionCard = (prediction: NovaResponse, index: number) => {
-    // Get prediction date from either prediction_date or creation_date for backward compatibility
     const predictionDate = prediction.prediction_date || prediction.creation_date;
     
     return (

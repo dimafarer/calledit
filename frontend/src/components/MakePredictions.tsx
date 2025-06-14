@@ -15,19 +15,13 @@ import './MakePredictions.css';
  * 1. PredictionInput - For entering prediction text and submitting to the API
  * 2. PredictionDisplay - For showing the structured prediction response
  * 3. LogCallButton - For saving predictions to the database (requires authentication)
- * 
- * The component handles:
- * - Loading/saving prediction data from/to local storage
- * - Managing loading and error states
- * - Coordinating data flow between child components
- * - Responsive layout for both mobile and desktop views
  */
 
 interface MakePredictionsProps {
   onNavigateToList: () => void;
 }
 
-const MakePredictions: React.FC<MakePredictionsProps> = () => {
+const MakePredictions: React.FC<MakePredictionsProps> = ({ onNavigateToList }) => {
   // Initialize state with lazy loading from storage
   const [response, setResponse] = useState<APIResponse | null>(() => getPredictionData());
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -61,6 +55,7 @@ const MakePredictions: React.FC<MakePredictionsProps> = () => {
             response={response}
             isVisible={true}
             setPrompt={setPrompt}
+            onSuccessfulLog={onNavigateToList}
           />
         )}
       </div>
@@ -85,6 +80,7 @@ const MakePredictions: React.FC<MakePredictionsProps> = () => {
             response={response}
             isVisible={true}
             setPrompt={setPrompt}
+            onSuccessfulLog={onNavigateToList}
           />
         </div>
       </div>

@@ -17,11 +17,7 @@ import { clearPredictionData } from '../utils/storageUtils';
  * - Provides appropriate feedback during and after the submission process
  * - Clears local prediction data after successful submission
  * - Shows appropriate tooltips based on the current state (needs login, needs prediction)
- * 
- * The button is conditionally enabled/disabled based on:
- * 1. Whether there is valid prediction data to submit
- * 2. Whether the user is authenticated
- * 3. Whether a submission is currently in progress
+ * - Navigates to the list view after successful submission
  */
 
 interface LogCallButtonProps {
@@ -32,6 +28,7 @@ interface LogCallButtonProps {
   setError: React.Dispatch<React.SetStateAction<string | null>>;
   setResponse: React.Dispatch<React.SetStateAction<APIResponse | null>>;
   setPrompt: React.Dispatch<React.SetStateAction<string>>;
+  onSuccessfulLog?: () => void; // New callback prop for navigation
 }
 
 const LogCallButton: React.FC<LogCallButtonProps> = ({ 
@@ -41,7 +38,8 @@ const LogCallButton: React.FC<LogCallButtonProps> = ({
   setIsLoading,
   setError,
   setResponse,
-  setPrompt
+  setPrompt,
+  onSuccessfulLog
 }) => {
   // Get authentication state from AuthContext
   const { isAuthenticated, getToken } = useAuth();
@@ -52,13 +50,6 @@ const LogCallButton: React.FC<LogCallButtonProps> = ({
 
   /**
    * Handles the submission of prediction data to the database
-   * 
-   * This function:
-   * 1. Validates that there is prediction data to submit
-   * 2. Checks that the user is authenticated
-   * 3. Sends the prediction data to the backend API
-   * 4. Handles the response and updates the UI accordingly
-   * 5. Clears local data after successful submission
    */
   const handleLogCall = async () => {
     if (response && response.results && response.results.length > 0) {
@@ -99,8 +90,12 @@ const LogCallButton: React.FC<LogCallButtonProps> = ({
         // Clear the prompt text
         setPrompt('');
         
-        // Show success message
-        alert('Call logged successfully!');
+        // Navigate to list view if callback provided, otherwise show alert
+        if (onSuccessfulLog) {
+          onSuccessfulLog();
+        } else {
+          alert('Call logged successfully!');
+        }
       } catch (error) {
         console.error('Error logging call:', error);
         setError('Error occurred while logging your call');
