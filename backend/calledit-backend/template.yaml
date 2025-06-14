@@ -246,6 +246,11 @@ Resources:
       UserPoolId: !Ref CognitoUserPool
       ClientName: !Sub ${AWS::StackName}-client
       GenerateSecret: false
+      # Add token validity durations (in days)
+      RefreshTokenValidity: 30      # Extend from default 30 days to max allowed
+      AccessTokenValidity: 1        # Extend from default 1 hour to 1 day (max 1 day)
+      IdTokenValidity: 1            # Extend from default 1 hour to 1 day (max 1 day)
+      EnableTokenRevocation: true
       # Add OAuth configuration
       CallbackURLs: 
         - http://localhost:5173/
@@ -255,10 +260,12 @@ Resources:
         - https://d2k653cdpjxjdu.cloudfront.net/
       AllowedOAuthFlows:
         - code
+        - implicit
       AllowedOAuthScopes:
         - email
         - openid
         - profile
+        - aws.cognito.signin.user.admin
       AllowedOAuthFlowsUserPoolClient: true
       SupportedIdentityProviders:
         - COGNITO
@@ -267,6 +274,7 @@ Resources:
         - ALLOW_USER_SRP_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
         - ALLOW_CUSTOM_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
       PreventUserExistenceErrors: ENABLED
 
 
