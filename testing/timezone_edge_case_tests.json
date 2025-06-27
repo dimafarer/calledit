@@ -1,0 +1,70 @@
+{
+  "timezone_edge_case_tests": [
+    {
+      "id": 1,
+      "prompt": "The stock market will close above 5000 by market close today",
+      "challenge": "Market close time varies by timezone and market (4:00 PM EST for NYSE)",
+      "expected_behavior": "Should interpret as 4:00 PM Eastern Time, convert to user's local timezone"
+    },
+    {
+      "id": 2,
+      "prompt": "It will rain tomorrow morning",
+      "challenge": "Vague time reference - what constitutes 'morning'?",
+      "expected_behavior": "Should pick a specific morning time (e.g., 9:00 AM) for verification"
+    },
+    {
+      "id": 3,
+      "prompt": "The meeting will start at midnight",
+      "challenge": "Midnight ambiguity - start or end of day?",
+      "expected_behavior": "Should clarify as 12:00 AM (00:00) and specify which day"
+    },
+    {
+      "id": 4,
+      "prompt": "Sarah will call me back this evening",
+      "challenge": "Subjective time range - evening varies by person/season",
+      "expected_behavior": "Should pick specific evening time (e.g., 7:00 PM) in user's timezone"
+    },
+    {
+      "id": 5,
+      "prompt": "The package will arrive before noon tomorrow",
+      "challenge": "Cross-day boundary with specific time",
+      "expected_behavior": "Should set verification for 12:00 PM tomorrow in user's timezone"
+    },
+    {
+      "id": 6,
+      "prompt": "Bitcoin will hit $100k by end of business day",
+      "challenge": "Business day varies by timezone and industry",
+      "expected_behavior": "Should interpret as 5:00 PM local time on current business day"
+    },
+    {
+      "id": 7,
+      "prompt": "The sunrise will be beautiful at 6:30 AM",
+      "challenge": "Specific time but subjective outcome",
+      "expected_behavior": "Should set verification for exactly 6:30 AM in user's timezone"
+    },
+    {
+      "id": 8,
+      "prompt": "My flight will be delayed past its 11:45 PM departure time",
+      "challenge": "Specific time with 'past' - when to verify?",
+      "expected_behavior": "Should set verification slightly after 11:45 PM (e.g., 11:50 PM)"
+    },
+    {
+      "id": 9,
+      "prompt": "The restaurant will be busy during lunch rush",
+      "challenge": "Time range rather than specific time",
+      "expected_behavior": "Should pick peak lunch time (e.g., 12:30 PM) for verification"
+    },
+    {
+      "id": 10,
+      "prompt": "I'll finish this project by the end of the week",
+      "challenge": "Week boundary ambiguity - Friday 5 PM? Sunday midnight?",
+      "expected_behavior": "Should clarify as Friday 5:00 PM or Sunday 11:59 PM in user's timezone"
+    }
+  ],
+  "test_metadata": {
+    "created_date": "2025-06-27",
+    "user_timezone": "America/New_York",
+    "purpose": "Test timezone conversion and relative time interpretation edge cases",
+    "notes": "Each test should be run individually and results analyzed for correct timezone handling and time interpretation"
+  }
+}
