@@ -1,30 +1,30 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PredictionService } from '../services/predictionService';
+import { CallService } from '../services/callService';
 import LogCallButton from './LogCallButton';
 import { APIResponse } from '../types';
 
-interface StreamingPredictionProps {
+interface StreamingCallProps {
   webSocketUrl: string;
   onNavigateToList?: () => void;
 }
 
-const StreamingPrediction: React.FC<StreamingPredictionProps> = ({ webSocketUrl, onNavigateToList }) => {
+const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateToList }) => {
   const [prompt, setPrompt] = useState('');
   const [streamingText, setStreamingText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [prediction, setPrediction] = useState<any>(null);
+  const [call, setCall] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [response, setResponse] = useState<APIResponse | null>(null);
-  const predictionServiceRef = useRef<PredictionService | null>(null);
+  const callServiceRef = useRef<CallService | null>(null);
 
   useEffect(() => {
-    // Initialize the prediction service
-    predictionServiceRef.current = new PredictionService(webSocketUrl);
+    // Initialize the call service
+    callServiceRef.current = new CallService(webSocketUrl);
 
     // Clean up on unmount
     return () => {
-      if (predictionServiceRef.current) {
-        predictionServiceRef.current.cleanup();
+      if (callServiceRef.current) {
+        callServiceRef.current.cleanup();
       }
     };
   }, [webSocketUrl]);
@@ -32,7 +32,7 @@ const StreamingPrediction: React.FC<StreamingPredictionProps> = ({ webSocketUrl,
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!prompt.trim() || !predictionServiceRef.current) {
+    if (!prompt.trim() || !callServiceRef.current) {
       return;
     }
 
@@ -40,7 +40,7 @@ const StreamingPrediction: React.FC<StreamingPredictionProps> = ({ webSocketUrl,
     handleNewCall();
 
     try {
-      await predictionServiceRef.current.makePredictionWithStreaming(
+      await callServiceRef.current.makeCallWithStreaming(
         prompt,
         // Text chunk handler
         (text) => {
@@ -58,7 +58,7 @@ const StreamingPrediction: React.FC<StreamingPredictionProps> = ({ webSocketUrl,
             const parsedResponse = typeof finalResponse === 'string' 
               ? JSON.parse(finalResponse) 
               : finalResponse;
-            setPrediction(parsedResponse);
+            setCall(parsedResponse);
             
             // Format response for LogCallButton compatibility
             const apiResponse: APIResponse = {
@@ -68,7 +68,7 @@ const StreamingPrediction: React.FC<StreamingPredictionProps> = ({ webSocketUrl,
             setIsLoading(false);
           } catch (parseError) {
             console.error('Error parsing final response:', parseError);
-            setPrediction({ raw: finalResponse });
+            setCall({ raw: finalResponse });
             setIsLoading(false);
           }
         },
@@ -86,14 +86,14 @@ const StreamingPrediction: React.FC<StreamingPredictionProps> = ({ webSocketUrl,
 
   // Clear call data when starting new call
   const handleNewCall = () => {
-    setPrediction(null);
+    setCall(null);
     setResponse(null);
     setStreamingText('');
     setError(null);
   };
 
   return (
-    <div className="streaming-prediction" style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
+    <div className="streaming-call" style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
       <h2>Make a Call (Streaming)</h2>
       
       <form onSubmit={handleSubmit} style={{ marginBottom: '20px' }}>
@@ -165,7 +165,7 @@ const StreamingPrediction: React.FC<StreamingPredictionProps> = ({ webSocketUrl,
         </div>
       )}
       
-      {prediction && (
+      {call && (
         <div style={{ marginTop: '20px' }}>
           <h3>Call Details</h3>
           <div style={{ 
@@ -179,7 +179,7 @@ const StreamingPrediction: React.FC<StreamingPredictionProps> = ({ webSocketUrl,
               fontSize: '14px',
               margin: 0
             }}>
-              {JSON.stringify(prediction, null, 2)}
+              {JSON.stringify(call, null, 2)}
             </pre>
           </div>
           <div style={{ marginTop: '10px' }}>
@@ -200,4 +200,4 @@ const StreamingPrediction: React.FC<StreamingPredictionProps> = ({ webSocketUrl,
   );
 };
 
-export default StreamingPrediction;
+export default StreamingCall;

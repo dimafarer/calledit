@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import './App.css'
 import { MakePredictions, ListPredictions, LoginButton } from './components'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
-import StreamingPrediction from './components/StreamingPrediction'
+import StreamingCall from './components/StreamingCall'
 
 /**
  * NavigationControls Component
@@ -93,7 +93,7 @@ function AppContent() {
         <MakePredictions onNavigateToList={() => navigateTo('list')} />
       }
       {currentView === 'streaming' && 
-        <StreamingPrediction 
+        <StreamingCall 
           webSocketUrl={import.meta.env.VITE_WEBSOCKET_URL || ''} 
           onNavigateToList={() => navigateTo('list')}
         />
