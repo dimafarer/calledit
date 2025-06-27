@@ -176,7 +176,7 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
             </div>
             <div className="response-field">
               <h3>Call Date:</h3>
-              <p>{call.prediction_date || call.local_prediction_date || 'Not available'}</p>
+              <p>{call.prediction_date ? new Date(call.prediction_date).toLocaleString() : (call.local_prediction_date || 'Not available')}</p>
             </div>
             <div className="response-field">
               <h3>Verification Date:</h3>
