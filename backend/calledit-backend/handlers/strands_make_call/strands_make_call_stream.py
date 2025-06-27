@@ -154,22 +154,24 @@ def lambda_handler(event, context):
             
             VERIFICATION DATE SELECTION:
             - Explicitly document your reasoning for choosing the verification date
-            - IMPORTANT: Always consider the USER'S LOCAL TIMEZONE when reasoning about dates and times
-            - For same-day events, use the user's local date, not UTC date
-            - If the prediction includes a specific date, use that date in the user's timezone
-            - If no date is specified, determine a reasonable date based on the prediction's nature
+            - CRITICAL: When setting verification_date, you MUST convert from user's local timezone to UTC
+            - ALWAYS work in the user's local timezone first, then convert to UTC for storage
+            - For same-day events, use the user's local date and time, then convert to UTC
+            - If the prediction includes a specific time (like "3:00pm"), interpret it in the user's local timezone
+            - IMPORTANT: In your response text, do NOT add timezone labels like "UTC" or "PST" - just use the time as stated
+            - Example: User says "before 3:00pm" → Use "3:00pm" in text, but convert to UTC for verification_date field
             - Consider the timeframe needed for the prediction to potentially come true
             - For short-term predictions (days/weeks), set a date within that timeframe
             - For medium-term predictions (months), set a date 3-6 months in the future
             - For long-term predictions (years), set a date at least 1 year in the future
-            - For time-sensitive predictions (e.g., "today", "this evening"), use the end of day in the USER'S LOCAL TIMEZONE
             - Document your full reasoning process in the date_reasoning field, including timezone considerations
+            - In date_reasoning, explain timezone conversion but in the main response text, use times without timezone labels
             
             OUTPUT FORMAT:
             Always format your response as a valid JSON object with:
-            - prediction_statement: A clear restatement of the prediction
-            - verification_date: A realistic future date when this prediction can be verified (in UTC ISO format with Z suffix, e.g., "2025-06-03T23:59:59Z")
-            - date_reasoning: Your detailed reasoning for selecting this verification date, explicitly mentioning how you considered the user's local timezone
+            - prediction_statement: A clear restatement of the prediction (you may add explicit dates for clarity)
+            - verification_date: The verification date/time in UTC ISO format with Z suffix (e.g., "2025-06-03T23:59:59Z") - MUST be converted from user's local timezone
+            - date_reasoning: Your detailed reasoning for selecting this verification date, explicitly mentioning timezone conversion from user's local time to UTC
             - verification_method: An object containing:
               - source: List of reliable sources to check for verification
               - criteria: List of specific measurable criteria to determine if prediction is true
