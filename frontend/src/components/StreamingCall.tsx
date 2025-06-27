@@ -151,6 +151,7 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
           <h3>Processing your call...</h3>
           <div style={{ 
             backgroundColor: '#f8f9fa', 
+            color: '#212529',
             padding: '15px', 
             borderRadius: '4px',
             border: '1px solid #dee2e6',
