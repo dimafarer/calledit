@@ -192,11 +192,12 @@ export class PredictionService {
 
 ### React Component
 
-**Real-time UI Updates:**
+**Real-time UI Updates with LogCallButton Integration:**
 ```tsx
-const StreamingPrediction: React.FC = ({ webSocketUrl }) => {
+const StreamingPrediction: React.FC = ({ webSocketUrl, onNavigateToList }) => {
   const [streamingText, setStreamingText] = useState('');
   const [prediction, setPrediction] = useState<any>(null);
+  const [response, setResponse] = useState<APIResponse | null>(null);
   
   const handleSubmit = async (e: React.FormEvent) => {
     await predictionService.makePredictionWithStreaming(
@@ -209,6 +210,12 @@ const StreamingPrediction: React.FC = ({ webSocketUrl }) => {
       (finalResponse) => {
         const parsedResponse = JSON.parse(finalResponse);
         setPrediction(parsedResponse);
+        
+        // Format response for LogCallButton compatibility
+        const apiResponse: APIResponse = {
+          results: [parsedResponse]
+        };
+        setResponse(apiResponse);
         setIsLoading(false);
       },
       // Error handler
@@ -229,6 +236,16 @@ const StreamingPrediction: React.FC = ({ webSocketUrl }) => {
         <div className="prediction-result">
           <h3>Prediction Details</h3>
           <pre>{JSON.stringify(prediction, null, 2)}</pre>
+          <LogCallButton
+            response={response}
+            isLoading={isLoading}
+            isVisible={true}
+            setIsLoading={setIsLoading}
+            setError={setError}
+            setResponse={setResponse}
+            setPrompt={setPrompt}
+            onSuccessfulLog={onNavigateToList}
+          />
         </div>
       )}
     </div>
@@ -258,6 +275,12 @@ const StreamingPrediction: React.FC = ({ webSocketUrl }) => {
 - Current time tool for date context
 - Relative date parsing with timezone awareness
 - Extensible tool system via Strands
+
+### 5. Database Integration
+- Full integration with existing LogCallButton component
+- Automatic conversion of streaming predictions to APIResponse format
+- Seamless saving to DynamoDB via existing API endpoints
+- Navigation to list view after successful prediction save
 
 ## Example Streaming Session
 
@@ -327,4 +350,30 @@ Use the provided test script to verify WebSocket functionality:
 node test_websocket_strands.js
 ```
 
-This implementation provides a production-ready WebSocket streaming solution that significantly improves user experience by providing real-time feedback during AI prediction processing.
+## Issue Resolution: LogCallButton Integration
+
+### Problem
+Initially, the StreamingPrediction component had a placeholder save function that only logged to console. The Log Call button worked in the regular Make Call screen but not in the Streaming Call screen.
+
+### Root Cause
+The StreamingPrediction component was not using the existing LogCallButton component and API integration that handles authentication, database saving, and navigation.
+
+### Solution
+1. **Imported LogCallButton component** and APIResponse type
+2. **Added response state** to store predictions in the expected APIResponse format
+3. **Modified complete handler** to convert streaming predictions to APIResponse structure:
+   ```typescript
+   const apiResponse: APIResponse = {
+     results: [parsedResponse]
+   };
+   setResponse(apiResponse);
+   ```
+4. **Replaced placeholder button** with actual LogCallButton component
+5. **Added navigation callback** to redirect users to list view after successful save
+
+### Result
+The Log Call button now works identically in both Make Call and Streaming Call screens, providing consistent user experience and full database integration.
+
+---
+
+This implementation provides a production-ready WebSocket streaming solution that significantly improves user experience by providing real-time feedback during AI prediction processing, with full database integration and consistent UI behavior across all prediction creation methods.

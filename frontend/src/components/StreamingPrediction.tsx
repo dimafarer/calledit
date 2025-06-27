@@ -1,16 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PredictionService } from '../services/predictionService';
+import LogCallButton from './LogCallButton';
+import { APIResponse } from '../types';
 
 interface StreamingPredictionProps {
   webSocketUrl: string;
+  onNavigateToList?: () => void;
 }
 
-const StreamingPrediction: React.FC<StreamingPredictionProps> = ({ webSocketUrl }) => {
+const StreamingPrediction: React.FC<StreamingPredictionProps> = ({ webSocketUrl, onNavigateToList }) => {
   const [prompt, setPrompt] = useState('');
   const [streamingText, setStreamingText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [prediction, setPrediction] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [response, setResponse] = useState<APIResponse | null>(null);
   const predictionServiceRef = useRef<PredictionService | null>(null);
 
   useEffect(() => {
@@ -33,9 +37,7 @@ const StreamingPrediction: React.FC<StreamingPredictionProps> = ({ webSocketUrl 
     }
 
     setIsLoading(true);
-    setStreamingText('');
-    setPrediction(null);
-    setError(null);
+    handleNewPrediction();
 
     try {
       await predictionServiceRef.current.makePredictionWithStreaming(
@@ -57,6 +59,12 @@ const StreamingPrediction: React.FC<StreamingPredictionProps> = ({ webSocketUrl 
               ? JSON.parse(finalResponse) 
               : finalResponse;
             setPrediction(parsedResponse);
+            
+            // Format response for LogCallButton compatibility
+            const apiResponse: APIResponse = {
+              results: [parsedResponse]
+            };
+            setResponse(apiResponse);
             setIsLoading(false);
           } catch (parseError) {
             console.error('Error parsing final response:', parseError);
@@ -76,10 +84,12 @@ const StreamingPrediction: React.FC<StreamingPredictionProps> = ({ webSocketUrl 
     }
   };
 
-  const handleSavePrediction = () => {
-    // Implement logic to save the prediction to your backend
-    console.log('Saving prediction:', prediction);
-    // You can integrate this with your existing apiService
+  // Clear prediction data when starting new prediction
+  const handleNewPrediction = () => {
+    setPrediction(null);
+    setResponse(null);
+    setStreamingText('');
+    setError(null);
   };
 
   return (
@@ -172,20 +182,18 @@ const StreamingPrediction: React.FC<StreamingPredictionProps> = ({ webSocketUrl 
               {JSON.stringify(prediction, null, 2)}
             </pre>
           </div>
-          <button 
-            onClick={handleSavePrediction}
-            style={{
-              marginTop: '10px',
-              padding: '10px 20px',
-              backgroundColor: '#28a745',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
-            Log Call
-          </button>
+          <div style={{ marginTop: '10px' }}>
+            <LogCallButton
+              response={response}
+              isLoading={isLoading}
+              isVisible={true}
+              setIsLoading={setIsLoading}
+              setError={setError}
+              setResponse={setResponse}
+              setPrompt={setPrompt}
+              onSuccessfulLog={onNavigateToList}
+            />
+          </div>
         </div>
       )}
     </div>

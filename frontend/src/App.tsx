@@ -93,7 +93,10 @@ function AppContent() {
         <MakePredictions onNavigateToList={() => navigateTo('list')} />
       }
       {currentView === 'streaming' && 
-        <StreamingPrediction webSocketUrl={import.meta.env.VITE_WEBSOCKET_URL || ''} />
+        <StreamingPrediction 
+          webSocketUrl={import.meta.env.VITE_WEBSOCKET_URL || ''} 
+          onNavigateToList={() => navigateTo('list')}
+        />
       }
       {currentView === 'list' && 
         <ListPredictions onNavigateToMake={() => navigateTo('make')} />
