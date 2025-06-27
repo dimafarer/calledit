@@ -57,6 +57,71 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const getToken = () => localStorage.getItem(TOKEN_KEYS.ID);
 
+  const refreshTokens = async () => {
+    const refreshToken = localStorage.getItem(TOKEN_KEYS.REFRESH);
+    if (!refreshToken) {
+      logout();
+      return false;
+    }
+
+    try {
+      const tokenEndpoint = `${cognitoDomain}/oauth2/token`;
+      const params = new URLSearchParams({
+        grant_type: 'refresh_token',
+        client_id: ENV.CLIENT_ID,
+        refresh_token: refreshToken
+      });
+
+      const response = await fetch(tokenEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString(),
+      });
+
+      if (!response.ok) {
+        throw new Error('Token refresh failed');
+      }
+      
+      const data = await response.json();
+      
+      // Store new tokens with expiry
+      const expiresIn = data.expires_in || 86400;
+      const expiryTime = Date.now() + (expiresIn * 1000) - (5 * 60 * 1000);
+      
+      localStorage.setItem(TOKEN_KEYS.ID, data.id_token);
+      localStorage.setItem(TOKEN_KEYS.ACCESS, data.access_token);
+      localStorage.setItem(TOKEN_KEYS.EXPIRY, expiryTime.toString());
+      
+      // Update refresh token if provided
+      if (data.refresh_token) {
+        localStorage.setItem(TOKEN_KEYS.REFRESH, data.refresh_token);
+      }
+      
+      setIsAuthenticated(true);
+      return true;
+    } catch (error) {
+      console.error('Token refresh error:', error);
+      logout();
+      return false;
+    }
+  };
+
+  const checkAndRefreshToken = async () => {
+    const expiry = localStorage.getItem(TOKEN_KEYS.EXPIRY);
+    const refreshToken = localStorage.getItem(TOKEN_KEYS.REFRESH);
+    
+    if (!refreshToken) {
+      return false;
+    }
+    
+    // If token is expired or will expire in next 10 minutes
+    if (!expiry || parseInt(expiry) <= Date.now() + (10 * 60 * 1000)) {
+      return await refreshTokens();
+    }
+    
+    return true;
+  };
+
   const handleTokenExchange = async (authCode: string) => {
     try {
       const tokenEndpoint = `${cognitoDomain}/oauth2/token`;
@@ -106,15 +171,33 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       codeProcessed.current = true;
       handleTokenExchange(authCode);
     } else {
-      // Check if we have a valid token
-      const token = localStorage.getItem(TOKEN_KEYS.ID);
-      const expiry = localStorage.getItem(TOKEN_KEYS.EXPIRY);
+      // Try to refresh token on app startup
+      const initAuth = async () => {
+        const token = localStorage.getItem(TOKEN_KEYS.ID);
+        const refreshToken = localStorage.getItem(TOKEN_KEYS.REFRESH);
+        
+        if (token || refreshToken) {
+          const isValid = await checkAndRefreshToken();
+          if (isValid) {
+            setIsAuthenticated(true);
+          }
+        }
+      };
       
-      if (token && (!expiry || parseInt(expiry) > Date.now())) {
-        setIsAuthenticated(true);
-      }
+      initAuth();
     }
   }, []);
+
+  // Set up periodic token refresh
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    
+    const interval = setInterval(async () => {
+      await checkAndRefreshToken();
+    }, 5 * 60 * 1000); // Check every 5 minutes
+    
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
 
   return (
     <AuthContext.Provider value={{ isAuthenticated, login, logout, getToken }}>
