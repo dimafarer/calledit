@@ -1,0 +1,195 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { PredictionService } from '../services/predictionService';
+
+interface StreamingPredictionProps {
+  webSocketUrl: string;
+}
+
+const StreamingPrediction: React.FC<StreamingPredictionProps> = ({ webSocketUrl }) => {
+  const [prompt, setPrompt] = useState('');
+  const [streamingText, setStreamingText] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [prediction, setPrediction] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const predictionServiceRef = useRef<PredictionService | null>(null);
+
+  useEffect(() => {
+    // Initialize the prediction service
+    predictionServiceRef.current = new PredictionService(webSocketUrl);
+
+    // Clean up on unmount
+    return () => {
+      if (predictionServiceRef.current) {
+        predictionServiceRef.current.cleanup();
+      }
+    };
+  }, [webSocketUrl]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!prompt.trim() || !predictionServiceRef.current) {
+      return;
+    }
+
+    setIsLoading(true);
+    setStreamingText('');
+    setPrediction(null);
+    setError(null);
+
+    try {
+      await predictionServiceRef.current.makePredictionWithStreaming(
+        prompt,
+        // Text chunk handler
+        (text) => {
+          setStreamingText((prev) => prev + text);
+        },
+        // Tool use handler
+        (toolName, input) => {
+          setStreamingText((prev) => 
+            prev + `\n[Using tool: ${toolName}]\n`
+          );
+        },
+        // Complete handler
+        (finalResponse) => {
+          try {
+            const parsedResponse = typeof finalResponse === 'string' 
+              ? JSON.parse(finalResponse) 
+              : finalResponse;
+            setPrediction(parsedResponse);
+            setIsLoading(false);
+          } catch (parseError) {
+            console.error('Error parsing final response:', parseError);
+            setPrediction({ raw: finalResponse });
+            setIsLoading(false);
+          }
+        },
+        // Error handler
+        (errorMessage) => {
+          setError(errorMessage);
+          setIsLoading(false);
+        }
+      );
+    } catch (err) {
+      setError((err as Error).message);
+      setIsLoading(false);
+    }
+  };
+
+  const handleSavePrediction = () => {
+    // Implement logic to save the prediction to your backend
+    console.log('Saving prediction:', prediction);
+    // You can integrate this with your existing apiService
+  };
+
+  return (
+    <div className="streaming-prediction" style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
+      <h2>Make a Prediction (Streaming)</h2>
+      
+      <form onSubmit={handleSubmit} style={{ marginBottom: '20px' }}>
+        <div style={{ marginBottom: '10px' }}>
+          <label htmlFor="prediction-input" style={{ display: 'block', marginBottom: '5px' }}>
+            Your Prediction:
+          </label>
+          <textarea
+            id="prediction-input"
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Enter your prediction..."
+            rows={4}
+            disabled={isLoading}
+            style={{ 
+              width: '100%', 
+              padding: '10px', 
+              border: '1px solid #ccc', 
+              borderRadius: '4px',
+              fontSize: '14px'
+            }}
+          />
+        </div>
+        
+        <button 
+          type="submit" 
+          disabled={isLoading || !prompt.trim()} 
+          style={{
+            padding: '10px 20px',
+            backgroundColor: isLoading ? '#ccc' : '#007bff',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: isLoading ? 'not-allowed' : 'pointer'
+          }}
+        >
+          {isLoading ? 'Processing...' : 'Make Prediction'}
+        </button>
+      </form>
+      
+      {error && (
+        <div style={{ 
+          backgroundColor: '#f8d7da', 
+          color: '#721c24', 
+          padding: '10px', 
+          borderRadius: '4px',
+          marginBottom: '20px'
+        }}>
+          <p>Error: {error}</p>
+        </div>
+      )}
+      
+      {streamingText && (
+        <div style={{ marginBottom: '20px' }}>
+          <h3>Processing your prediction...</h3>
+          <div style={{ 
+            backgroundColor: '#f8f9fa', 
+            padding: '15px', 
+            borderRadius: '4px',
+            border: '1px solid #dee2e6',
+            whiteSpace: 'pre-wrap',
+            fontFamily: 'monospace',
+            fontSize: '14px',
+            maxHeight: '300px',
+            overflowY: 'auto'
+          }}>
+            {streamingText}
+          </div>
+        </div>
+      )}
+      
+      {prediction && (
+        <div style={{ marginTop: '20px' }}>
+          <h3>Prediction Details</h3>
+          <div style={{ 
+            backgroundColor: '#d4edda', 
+            padding: '15px', 
+            borderRadius: '4px',
+            border: '1px solid #c3e6cb'
+          }}>
+            <pre style={{ 
+              whiteSpace: 'pre-wrap', 
+              fontSize: '14px',
+              margin: 0
+            }}>
+              {JSON.stringify(prediction, null, 2)}
+            </pre>
+          </div>
+          <button 
+            onClick={handleSavePrediction}
+            style={{
+              marginTop: '10px',
+              padding: '10px 20px',
+              backgroundColor: '#28a745',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            Log Call
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default StreamingPrediction;

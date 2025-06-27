@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import './App.css'
 import { MakePredictions, ListPredictions, LoginButton } from './components'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import StreamingPrediction from './components/StreamingPrediction'
 
 /**
  * NavigationControls Component
@@ -17,21 +18,37 @@ const NavigationControls = ({
   currentView, 
   navigateTo 
 }: { 
-  currentView: 'make' | 'list', 
-  navigateTo: (view: 'make' | 'list') => void 
+  currentView: 'make' | 'list' | 'streaming', 
+  navigateTo: (view: 'make' | 'list' | 'streaming') => void 
 }) => {
   const { isAuthenticated } = useAuth();
   
   return (
     <div className="header-controls">
       {isAuthenticated && (
-        <button 
-          onClick={() => navigateTo(currentView === 'make' ? 'list' : 'make')}
-          className="navigation-button"
-          aria-label={currentView === 'make' ? "View my calls" : "Make new call"}
-        >
-          {currentView === 'make' ? 'View My Calls' : 'Make New Call'}
-        </button>
+        <>
+          <button 
+            onClick={() => navigateTo('make')}
+            className={`navigation-button ${currentView === 'make' ? 'active' : ''}`}
+            aria-label="Make new call"
+          >
+            Make Call
+          </button>
+          <button 
+            onClick={() => navigateTo('streaming')}
+            className={`navigation-button ${currentView === 'streaming' ? 'active' : ''}`}
+            aria-label="Make streaming call"
+          >
+            Streaming Call
+          </button>
+          <button 
+            onClick={() => navigateTo('list')}
+            className={`navigation-button ${currentView === 'list' ? 'active' : ''}`}
+            aria-label="View my calls"
+          >
+            View Calls
+          </button>
+        </>
       )}
       <LoginButton />
     </div>
@@ -50,18 +67,18 @@ const NavigationControls = ({
  * and conditionally renders different views based on authentication status.
  */
 function AppContent() {
-  const [currentView, setCurrentView] = useState<'make' | 'list'>('make');
+  const [currentView, setCurrentView] = useState<'make' | 'list' | 'streaming'>('make');
   const { isAuthenticated } = useAuth();
   
   // Effect to redirect to make predictions view when user logs out while on list view
   useEffect(() => {
-    if (!isAuthenticated && currentView === 'list') {
+    if (!isAuthenticated && (currentView === 'list' || currentView === 'streaming')) {
       setCurrentView('make');
     }
   }, [isAuthenticated, currentView]);
 
   // Single navigation handler that accepts the view as parameter
-  const navigateTo = (view: 'make' | 'list') => setCurrentView(view);
+  const navigateTo = (view: 'make' | 'list' | 'streaming') => setCurrentView(view);
 
   return (
     <div className="app-container">
@@ -72,8 +89,13 @@ function AppContent() {
       </div>
       
       {/* Use component mapping for cleaner conditional rendering */}
-      {currentView === 'make' ? 
-        <MakePredictions onNavigateToList={() => navigateTo('list')} /> : 
+      {currentView === 'make' && 
+        <MakePredictions onNavigateToList={() => navigateTo('list')} />
+      }
+      {currentView === 'streaming' && 
+        <StreamingPrediction webSocketUrl={import.meta.env.VITE_WEBSOCKET_URL || ''} />
+      }
+      {currentView === 'list' && 
         <ListPredictions onNavigateToMake={() => navigateTo('make')} />
       }
     </div>
