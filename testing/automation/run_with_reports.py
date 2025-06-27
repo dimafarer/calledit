@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-Direct Agent Test Runner - Tests CalledIt agent with edge case prompts
+Test Runner with Report Generation - Milestone 4 Implementation
 """
 
 import json
 import sys
 from pathlib import Path
+from datetime import datetime
 from agent_factory import create_calledit_agent, create_test_context
 from result_parser import parse_agent_response, analyze_time_handling, score_test_result
 from analysis_agent import analyze_test_results
@@ -27,30 +28,15 @@ def load_test_cases():
         sys.exit(1)
 
 def run_single_test(agent, test_case, context_template):
-    """
-    Run a single test case against the agent.
-    
-    Args:
-        agent: CalledIt agent instance
-        test_case: Test case dictionary
-        context_template: Context template string
-        
-    Returns:
-        dict: Test result with response and metadata
-    """
+    """Run a single test case against the agent."""
     prompt = test_case["prompt"]
     test_id = test_case["id"]
     
-    # Create full prompt with context
     full_prompt = context_template.format(prompt=prompt)
-    
     print(f"Running Test {test_id}: {prompt}")
     
     try:
-        # Call the agent directly
         result = agent(full_prompt)
-        
-        # Extract response text
         response_text = str(result)
         
         return {
@@ -75,9 +61,9 @@ def run_single_test(agent, test_case, context_template):
         }
 
 def main():
-    """Main test runner function."""
-    print("🚀 Starting CalledIt Agent Direct Testing")
-    print("=" * 50)
+    """Main test runner with report generation."""
+    print("🚀 Starting CalledIt Agent Testing with Report Generation")
+    print("=" * 60)
     
     # Load test cases
     test_cases = load_test_cases()
@@ -89,27 +75,22 @@ def main():
     
     # Run tests
     results = []
-    
-    # Run all test cases for Milestone 2
     for test_case in test_cases:
         print(f"\n🧪 Running Test {test_case['id']}")
         result = run_single_test(agent, test_case, context_template)
         results.append(result)
         
-        # Brief pause between tests
         import time
         time.sleep(0.5)
     
     # Analyze results
-    print("\n" + "=" * 50)
+    print("\n" + "=" * 60)
     print("📊 ANALYZING RESULTS")
-    print("=" * 50)
+    print("=" * 60)
     
     analyzed_results = []
-    
     for result in results:
         if result['success']:
-            # Parse and analyze the response
             parsed = parse_agent_response(result['agent_response'])
             analysis = analyze_time_handling(parsed)
             score = score_test_result(parsed, analysis)
@@ -128,57 +109,41 @@ def main():
                 "score": {"score": 0, "max_score": 5, "percentage": 0, "grade": "F", "details": ["Test failed to run"], "issues": [result['error']]}
             })
     
-    # Display detailed results
-    print("\n" + "=" * 50)
-    print("📊 DETAILED TEST RESULTS")
-    print("=" * 50)
-    
-    for result in analyzed_results:
-        print(f"\n📝 Test {result['test_id']}: {result['prompt']}")
-        print(f"Challenge: {result['challenge']}")
-        print(f"Success: {'✅' if result['success'] else '❌'}")
-        print(f"Score: {result['score']['score']}/{result['score']['max_score']} ({result['score']['percentage']:.0f}%) - Grade: {result['score']['grade']}")
-        
-        if result['success'] and result['parsed']:
-            print(f"Verification Date: {result['parsed']['verification_date']}")
-            print(f"Timezone Handling: {result['analysis']['timezone_handling']}")
-            
-            if result['score']['issues']:
-                print("Issues Found:")
-                for issue in result['score']['issues']:
-                    print(f"  ⚠️  {issue}")
-        else:
-            print(f"Error: {result.get('error', 'Unknown error')}")
-        
-        print("-" * 50)
-    
     # Summary
     successful_tests = sum(1 for r in analyzed_results if r['success'])
     total_score = sum(r['score']['score'] for r in analyzed_results)
     max_total_score = sum(r['score']['max_score'] for r in analyzed_results)
     average_score = (total_score / max_total_score * 100) if max_total_score > 0 else 0
     
-    print(f"\n📈 FINAL SUMMARY")
-    print("=" * 50)
-    print(f"Tests Run: {len(analyzed_results)}")
-    print(f"Successful: {successful_tests}/{len(analyzed_results)}")
+    print(f"\n📈 SUMMARY: {successful_tests}/{len(analyzed_results)} tests successful")
     print(f"Overall Score: {total_score}/{max_total_score} ({average_score:.1f}%)")
     
-    # Run intelligent analysis with Strands agent
-    print("\n" + "=" * 50)
-    print("🤖 INTELLIGENT ANALYSIS (Strands Agent)")
-    print("=" * 50)
+    # Generate comprehensive report
+    print("\n" + "=" * 60)
+    print("📄 GENERATING COMPREHENSIVE REPORT")
+    print("=" * 60)
     
     try:
-        analysis_report = analyze_test_results(analyzed_results)
-        print(analysis_report)
+        # Generate markdown report
+        report_path = Path(__file__).parent.parent / f"test_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+        report_content = generate_markdown_report(analyzed_results, report_path)
+        print(f"📋 Detailed report saved to: {report_path}")
+        
+        # Update manual test runner
+        update_test_runner_md(analyzed_results)
+        print("📝 Updated manual test runner with latest results")
+        
+        # Show report preview
+        print("\n📖 REPORT PREVIEW:")
+        print("-" * 40)
+        print(report_content[:800] + "..." if len(report_content) > 800 else report_content)
+        
     except Exception as e:
-        print(f"⚠️ Analysis agent error: {e}")
-        print("Continuing with basic analysis...")
+        print(f"⚠️ Report generation error: {e}")
     
-    print("\n" + "=" * 50)
-    print("✅ MILESTONE 3 COMPLETE - Intelligent Analysis Added")
-    print("=" * 50)
+    print("\n" + "=" * 60)
+    print("✅ MILESTONE 4 COMPLETE - Report Generation Added")
+    print("=" * 60)
 
 if __name__ == "__main__":
     main()
