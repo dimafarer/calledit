@@ -11,7 +11,7 @@ export class CallService {
   async makeCallWithStreaming(
     prompt: string,
     onTextChunk: (text: string) => void,
-    onToolUse: (toolName: string, input: any) => void,
+    onToolUse: (toolName: string) => void,
     onComplete: (finalResponse: any) => void,
     onError: (error: string) => void
   ): Promise<void> {
@@ -22,7 +22,7 @@ export class CallService {
       });
 
       this.webSocketService.onMessage('tool', (data) => {
-        onToolUse(data.name, data.input);
+        onToolUse(data.name);
       });
 
       this.webSocketService.onMessage('complete', (data) => {

@@ -47,7 +47,7 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
           setStreamingText((prev) => prev + text);
         },
         // Tool use handler
-        (toolName, input) => {
+        (toolName) => {
           setStreamingText((prev) => 
             prev + `\n[Using tool: ${toolName}]\n`
           );
@@ -168,19 +168,54 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
       {call && (
         <div style={{ marginTop: '20px' }}>
           <h3>Call Details</h3>
-          <div style={{ 
-            backgroundColor: '#d4edda', 
-            padding: '15px', 
-            borderRadius: '4px',
-            border: '1px solid #c3e6cb'
-          }}>
-            <pre style={{ 
-              whiteSpace: 'pre-wrap', 
-              fontSize: '14px',
-              margin: 0
-            }}>
-              {JSON.stringify(call, null, 2)}
-            </pre>
+          <div className="structured-response">
+            <div className="response-field">
+              <h3>Call Statement:</h3>
+              <p>{call.prediction_statement}</p>
+            </div>
+            <div className="response-field">
+              <h3>Call Date:</h3>
+              <p>{call.prediction_date || call.local_prediction_date || 'Not available'}</p>
+            </div>
+            <div className="response-field">
+              <h3>Verification Date:</h3>
+              <p>{call.verification_date ? new Date(call.verification_date).toLocaleString() : 'Not available'}</p>
+            </div>
+            <div className="response-field">
+              <h3>Verification Method:</h3>
+              {call.verification_method && (
+                <div className="verification-method">
+                  <div className="method-section">
+                    <h3>Sources:</h3>
+                    <ul>
+                      {call.verification_method.source?.map((item: string, index: number) => (
+                        <li key={`source-${index}`}>{item}</li>
+                      )) || <li>No sources available</li>}
+                    </ul>
+                  </div>
+                  <div className="method-section">
+                    <h3>Criteria:</h3>
+                    <ul>
+                      {call.verification_method.criteria?.map((item: string, index: number) => (
+                        <li key={`criteria-${index}`}>{item}</li>
+                      )) || <li>No criteria available</li>}
+                    </ul>
+                  </div>
+                  <div className="method-section">
+                    <h3>Steps:</h3>
+                    <ul>
+                      {call.verification_method.steps?.map((item: string, index: number) => (
+                        <li key={`step-${index}`}>{item}</li>
+                      )) || <li>No steps available</li>}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="response-field">
+              <h3>Initial Status:</h3>
+              <p>{call.initial_status}</p>
+            </div>
           </div>
           <div style={{ marginTop: '10px' }}>
             <LogCallButton

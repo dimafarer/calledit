@@ -47,7 +47,7 @@ const StreamingPrediction: React.FC<StreamingPredictionProps> = ({ webSocketUrl,
           setStreamingText((prev) => prev + text);
         },
         // Tool use handler
-        (toolName, input) => {
+        (toolName) => {
           setStreamingText((prev) => 
             prev + `\n[Using tool: ${toolName}]\n`
           );
