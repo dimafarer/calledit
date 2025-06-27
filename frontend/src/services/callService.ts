@@ -39,9 +39,23 @@ export class CallService {
         }
       });
 
-      // Connect and send the call request
+      // Connect and send the call request with timezone
       await this.webSocketService.connect();
-      await this.webSocketService.send('makecall', { prompt });
+      
+      // Detect timezone with error handling
+      let timezone: string;
+      try {
+        timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (!timezone) {
+          throw new Error('Timezone detection returned empty value');
+        }
+      } catch (error) {
+        const errorMsg = 'Failed to detect your timezone. Please refresh the page and try again.';
+        onError(errorMsg);
+        return;
+      }
+      
+      await this.webSocketService.send('makecall', { prompt, timezone });
     } catch (error) {
       onError((error as Error).message);
     }
