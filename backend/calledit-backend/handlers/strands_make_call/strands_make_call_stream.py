@@ -41,6 +41,15 @@ def lambda_handler(event, context):
     """
     print("WebSocket message event:", event)
     
+    # Define valid categories at the top level
+    valid_categories = [
+        "agent_verifiable",
+        "current_tool_verifiable", 
+        "strands_tool_verifiable",
+        "api_tool_verifiable",
+        "human_verifiable_only"
+    ]
+    
     # Extract connection ID for WebSocket
     connection_id = event.get('requestContext', {}).get('connectionId')
     domain_name = event.get('requestContext', {}).get('domainName')
@@ -143,6 +152,7 @@ def lambda_handler(event, context):
             1. Analyze predictions
             2. Create structured verification criteria
             3. Specify how to verify the prediction
+            4. Categorize the verifiability of each prediction
             
             TOOL USAGE:
             - Use current_time tool once to get the current date and time context
@@ -170,11 +180,33 @@ def lambda_handler(event, context):
             - Consider the timeframe needed for the prediction to potentially come true
             - Document your reasoning including time format conversion
             
+            VERIFIABILITY CATEGORIZATION:
+            You must categorize each prediction into exactly one of these 5 categories:
+            
+            1. **agent_verifiable** - Can be verified using pure reasoning/knowledge without external tools
+               Examples: "The sun will rise tomorrow", "2+2 equals 4", "Christmas 2025 falls on Thursday"
+            
+            2. **current_tool_verifiable** - Can be verified using only the current_time tool
+               Examples: "It's currently after 3pm", "Today is a weekday", "We're in January 2025"
+            
+            3. **strands_tool_verifiable** - Requires Strands library tools (calculator, python_repl, etc.)
+               Examples: "Calculate compound interest", "Parse complex data", "Mathematical computations"
+            
+            4. **api_tool_verifiable** - Requires external API calls or custom MCP integrations
+               Examples: "Bitcoin price will hit $100k", "Weather will be sunny", "Stock prices", "Sports scores"
+            
+            5. **human_verifiable_only** - Requires human observation, judgment, or subjective assessment
+               Examples: "This movie will be good", "I will feel happy", "The meeting will go well"
+            
+            Choose the category based on what verification method would be most practical and reliable.
+            
             OUTPUT FORMAT:
             Always format your response as a valid JSON object with:
             - prediction_statement: A clear restatement of the prediction (you may add explicit dates for clarity)
             - verification_date: The verification date/time in 24-hour local time format (e.g., "2025-06-27 15:00:00")
             - date_reasoning: Your detailed reasoning including how you converted 12-hour to 24-hour format
+            - verifiable_category: One of the 5 categories above (exact string match required)
+            - category_reasoning: Brief explanation of why you chose this verifiability category
             - verification_method: An object containing:
               - source: List of reliable sources to check for verification
               - criteria: List of specific measurable criteria to determine if prediction is true
@@ -233,6 +265,8 @@ def lambda_handler(event, context):
                 else:
                     raise ValueError("No JSON found in response")
         
+        print(f"Agent response parsed successfully with verifiability analysis")
+        
         # Convert verification_date from local time to UTC
         verification_date_local = prediction_json.get("verification_date", "")
         verification_date_utc = ""
@@ -259,6 +293,17 @@ def lambda_handler(event, context):
                 print(f"Error converting verification_date: {e}")
                 verification_date_utc = verification_date_local
         
+        print(f"Processing prediction with category analysis...")
+        print(f"Raw verifiable_category from agent: {prediction_json.get('verifiable_category', 'MISSING')}")
+        print(f"Valid categories: {valid_categories}")
+        
+        # Validate verifiability category
+        verifiable_category = prediction_json.get("verifiable_category", "")
+        if verifiable_category not in valid_categories:
+            # Fallback to human_verifiable_only if invalid/missing category
+            verifiable_category = "human_verifiable_only"
+            print(f"Invalid verifiability category, defaulting to human_verifiable_only")
+        
         # Ensure the prediction_json has the expected structure
         sanitized_response = {
             "prediction_statement": str(prediction_json.get("prediction_statement", "")),
@@ -267,6 +312,8 @@ def lambda_handler(event, context):
             "timezone": "UTC",
             "user_timezone": user_timezone,
             "local_prediction_date": formatted_datetime_local,
+            "verifiable_category": verifiable_category,
+            "category_reasoning": str(prediction_json.get("category_reasoning", "No reasoning provided")),
             "verification_method": {
                 "source": ensure_list(prediction_json.get("verification_method", {}).get("source", [])),
                 "criteria": ensure_list(prediction_json.get("verification_method", {}).get("criteria", [])),
@@ -284,6 +331,9 @@ def lambda_handler(event, context):
                 "content": json.dumps(sanitized_response)
             })
         )
+        
+        print(f"Final prediction categorized as: {verifiable_category}")
+        print(f"Category reasoning: {prediction_json.get('category_reasoning', 'No reasoning provided')}")
         
         return {
             'statusCode': 200,

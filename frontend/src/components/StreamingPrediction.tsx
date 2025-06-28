@@ -8,6 +8,62 @@ interface StreamingPredictionProps {
   onNavigateToList?: () => void;
 }
 
+// Helper function to display verifiability categories with icons and colors
+const getVerifiabilityDisplay = (category: string) => {
+  const categoryMap: Record<string, { icon: string; label: string; color: string; bgColor: string }> = {
+    'agent_verifiable': {
+      icon: '🧠',
+      label: 'Agent Verifiable',
+      color: '#155724',
+      bgColor: '#d4edda'
+    },
+    'current_tool_verifiable': {
+      icon: '⏰',
+      label: 'Time-Tool Verifiable',
+      color: '#004085',
+      bgColor: '#cce7ff'
+    },
+    'strands_tool_verifiable': {
+      icon: '🔧',
+      label: 'Strands-Tool Verifiable',
+      color: '#721c24',
+      bgColor: '#f8d7da'
+    },
+    'api_tool_verifiable': {
+      icon: '🌐',
+      label: 'API Verifiable',
+      color: '#856404',
+      bgColor: '#fff3cd'
+    },
+    'human_verifiable_only': {
+      icon: '👤',
+      label: 'Human Verifiable Only',
+      color: '#6f42c1',
+      bgColor: '#e2d9f3'
+    }
+  };
+  
+  const config = categoryMap[category] || categoryMap['human_verifiable_only'];
+  
+  return (
+    <span style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '6px',
+      padding: '4px 12px',
+      borderRadius: '16px',
+      fontSize: '14px',
+      fontWeight: '500',
+      color: config.color,
+      backgroundColor: config.bgColor,
+      border: `1px solid ${config.color}20`
+    }}>
+      <span>{config.icon}</span>
+      <span>{config.label}</span>
+    </span>
+  );
+};
+
 const StreamingPrediction: React.FC<StreamingPredictionProps> = ({ webSocketUrl, onNavigateToList }) => {
   const [prompt, setPrompt] = useState('');
   const [streamingText, setStreamingText] = useState('');
@@ -168,21 +224,79 @@ const StreamingPrediction: React.FC<StreamingPredictionProps> = ({ webSocketUrl,
       {prediction && (
         <div style={{ marginTop: '20px' }}>
           <h3>Call Details</h3>
+          
+          {/* User-friendly display */}
           <div style={{ 
-            backgroundColor: '#d4edda', 
-            padding: '15px', 
-            borderRadius: '4px',
-            border: '1px solid #c3e6cb'
+            backgroundColor: '#f8f9fa', 
+            padding: '20px', 
+            borderRadius: '8px',
+            border: '1px solid #dee2e6',
+            marginBottom: '15px'
           }}>
-            <pre style={{ 
-              whiteSpace: 'pre-wrap', 
-              fontSize: '14px',
-              margin: 0
-            }}>
-              {JSON.stringify(prediction, null, 2)}
-            </pre>
+            <div style={{ marginBottom: '15px' }}>
+              <strong>Prediction:</strong> {prediction.prediction_statement}
+            </div>
+            
+            <div style={{ marginBottom: '15px' }}>
+              <strong>Verification Date:</strong> {new Date(prediction.verification_date).toLocaleString()}
+            </div>
+            
+            <div style={{ marginBottom: '15px' }}>
+              <strong>Verifiability:</strong> {getVerifiabilityDisplay(prediction.verifiable_category)}
+            </div>
+            
+            {prediction.category_reasoning && (
+              <div style={{ marginBottom: '15px' }}>
+                <strong>Category Reasoning:</strong> 
+                <div style={{ 
+                  fontStyle: 'italic', 
+                  color: '#6c757d',
+                  marginTop: '5px',
+                  paddingLeft: '10px',
+                  borderLeft: '3px solid #dee2e6'
+                }}>
+                  {prediction.category_reasoning}
+                </div>
+              </div>
+            )}
+            
+            <div>
+              <strong>Status:</strong> 
+              <span style={{ 
+                color: '#856404',
+                backgroundColor: '#fff3cd',
+                padding: '2px 8px',
+                borderRadius: '4px',
+                fontSize: '12px',
+                marginLeft: '8px'
+              }}>
+                {prediction.initial_status.toUpperCase()}
+              </span>
+            </div>
           </div>
-          <div style={{ marginTop: '10px' }}>
+          
+          {/* Raw JSON (collapsible) */}
+          <details style={{ marginBottom: '15px' }}>
+            <summary style={{ cursor: 'pointer', fontWeight: 'bold', marginBottom: '10px' }}>
+              View Raw JSON
+            </summary>
+            <div style={{ 
+              backgroundColor: '#d4edda', 
+              padding: '15px', 
+              borderRadius: '4px',
+              border: '1px solid #c3e6cb'
+            }}>
+              <pre style={{ 
+                whiteSpace: 'pre-wrap', 
+                fontSize: '14px',
+                margin: 0
+              }}>
+                {JSON.stringify(prediction, null, 2)}
+              </pre>
+            </div>
+          </details>
+          
+          <div>
             <LogCallButton
               response={response}
               isLoading={isLoading}

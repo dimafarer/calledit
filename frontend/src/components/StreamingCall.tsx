@@ -8,6 +8,62 @@ interface StreamingCallProps {
   onNavigateToList?: () => void;
 }
 
+// Helper function to display verifiability categories with icons and colors
+const getVerifiabilityDisplay = (category: string) => {
+  const categoryMap: Record<string, { icon: string; label: string; color: string; bgColor: string }> = {
+    'agent_verifiable': {
+      icon: '🧠',
+      label: 'Agent Verifiable',
+      color: '#155724',
+      bgColor: '#d4edda'
+    },
+    'current_tool_verifiable': {
+      icon: '⏰',
+      label: 'Time-Tool Verifiable',
+      color: '#004085',
+      bgColor: '#cce7ff'
+    },
+    'strands_tool_verifiable': {
+      icon: '🔧',
+      label: 'Strands-Tool Verifiable',
+      color: '#721c24',
+      bgColor: '#f8d7da'
+    },
+    'api_tool_verifiable': {
+      icon: '🌐',
+      label: 'API Verifiable',
+      color: '#856404',
+      bgColor: '#fff3cd'
+    },
+    'human_verifiable_only': {
+      icon: '👤',
+      label: 'Human Verifiable Only',
+      color: '#6f42c1',
+      bgColor: '#e2d9f3'
+    }
+  };
+  
+  const config = categoryMap[category] || categoryMap['human_verifiable_only'];
+  
+  return (
+    <span style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '6px',
+      padding: '4px 12px',
+      borderRadius: '16px',
+      fontSize: '14px',
+      fontWeight: '500',
+      color: config.color,
+      backgroundColor: config.bgColor,
+      border: `1px solid ${config.color}20`
+    }}>
+      <span>{config.icon}</span>
+      <span>{config.label}</span>
+    </span>
+  );
+};
+
 const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateToList }) => {
   const [prompt, setPrompt] = useState('');
   const [streamingText, setStreamingText] = useState('');
@@ -182,6 +238,24 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
               <h3>Verification Date:</h3>
               <p>{call.verification_date ? new Date(call.verification_date).toLocaleString() : 'Not available'}</p>
             </div>
+            {call.verifiable_category && (
+              <div className="response-field">
+                <h3>Verifiability:</h3>
+                <p>{getVerifiabilityDisplay(call.verifiable_category)}</p>
+                {call.category_reasoning && (
+                  <div style={{ 
+                    fontStyle: 'italic', 
+                    color: '#6c757d',
+                    marginTop: '8px',
+                    paddingLeft: '12px',
+                    borderLeft: '3px solid #dee2e6',
+                    fontSize: '14px'
+                  }}>
+                    {call.category_reasoning}
+                  </div>
+                )}
+              </div>
+            )}
             <div className="response-field">
               <h3>Verification Method:</h3>
               {call.verification_method && (
