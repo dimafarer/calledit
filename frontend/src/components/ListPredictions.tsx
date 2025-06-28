@@ -14,6 +14,62 @@ interface ListPredictionsProps {
   onNavigateToMake: () => void;
 }
 
+// Helper function to display verifiability categories with icons and colors
+const getVerifiabilityDisplay = (category: string) => {
+  const categoryMap: Record<string, { icon: string; label: string; color: string; bgColor: string }> = {
+    'agent_verifiable': {
+      icon: '🧠',
+      label: 'Agent Verifiable',
+      color: '#155724',
+      bgColor: '#d4edda'
+    },
+    'current_tool_verifiable': {
+      icon: '⏰',
+      label: 'Time-Tool Verifiable',
+      color: '#004085',
+      bgColor: '#cce7ff'
+    },
+    'strands_tool_verifiable': {
+      icon: '🔧',
+      label: 'Strands-Tool Verifiable',
+      color: '#721c24',
+      bgColor: '#f8d7da'
+    },
+    'api_tool_verifiable': {
+      icon: '🌐',
+      label: 'API Verifiable',
+      color: '#856404',
+      bgColor: '#fff3cd'
+    },
+    'human_verifiable_only': {
+      icon: '👤',
+      label: 'Human Verifiable Only',
+      color: '#6f42c1',
+      bgColor: '#e2d9f3'
+    }
+  };
+  
+  const config = categoryMap[category] || categoryMap['human_verifiable_only'];
+  
+  return (
+    <span style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '6px',
+      padding: '4px 12px',
+      borderRadius: '16px',
+      fontSize: '14px',
+      fontWeight: '500',
+      color: config.color,
+      backgroundColor: config.bgColor,
+      border: `1px solid ${config.color}20`
+    }}>
+      <span>{config.icon}</span>
+      <span>{config.label}</span>
+    </span>
+  );
+};
+
 const ListPredictions: React.FC<ListPredictionsProps> = () => {
   const [predictions, setPredictions] = useState<NovaResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -96,6 +152,9 @@ const ListPredictions: React.FC<ListPredictionsProps> = () => {
             <p><strong>Call Date:</strong> {formatToLocalTime(predictionDate)}</p>
           )}
           <p><strong>Verification Date:</strong> {formatToLocalTime(prediction.verification_date)}</p>
+          {prediction.verifiable_category && (
+            <p><strong>Verifiability:</strong> {getVerifiabilityDisplay(prediction.verifiable_category)}</p>
+          )}
           <p><strong>Status:</strong> {prediction.initial_status}</p>
           <details>
             <summary>Verification Method</summary>

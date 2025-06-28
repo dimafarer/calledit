@@ -158,6 +158,8 @@ def lambda_handler(event, context):
                 'prediction_statement': item.get('prediction_statement', ''),
                 'verification_date': item.get('verification_date', ''),
                 'prediction_date': item.get('prediction_date', item.get('createdAt', '')),  # Use prediction_date or fall back to createdAt
+                'verifiable_category': item.get('verifiable_category', 'human_verifiable_only'),
+                'category_reasoning': item.get('category_reasoning', ''),
                 'verification_method': {
                     'source': item.get('verification_method', {}).get('source', []),
                     'criteria': item.get('verification_method', {}).get('criteria', []),
