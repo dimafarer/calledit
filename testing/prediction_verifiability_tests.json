@@ -1,0 +1,219 @@
+{
+  "prediction_verifiability_tests": {
+    "self_verifiable": [
+      {
+        "id": 1,
+        "prediction": "Miriam will be home by 3:00 PM",
+        "challenge": "Requires human observation or personal confirmation",
+        "verification_method": "Direct confirmation from Miriam or household members"
+      },
+      {
+        "id": 2,
+        "prediction": "I will finish reading this book tonight",
+        "challenge": "Personal activity that only the individual can confirm",
+        "verification_method": "Self-reporting with evidence (photo of completed book, etc.)"
+      },
+      {
+        "id": 3,
+        "prediction": "The meeting will be productive",
+        "challenge": "Subjective assessment requiring human judgment",
+        "verification_method": "Post-meeting survey or participant feedback"
+      },
+      {
+        "id": 4,
+        "prediction": "My friend will call me back today",
+        "challenge": "Personal communication requiring phone records",
+        "verification_method": "Phone call logs or personal confirmation"
+      },
+      {
+        "id": 5,
+        "prediction": "The restaurant will have good service tonight",
+        "challenge": "Subjective experience requiring customer assessment",
+        "verification_method": "Customer review or personal dining experience report"
+      },
+      {
+        "id": 6,
+        "prediction": "I will feel better after taking this medicine",
+        "challenge": "Personal health assessment only the individual can determine",
+        "verification_method": "Self-reported symptom improvement"
+      },
+      {
+        "id": 7,
+        "prediction": "The presentation will go well tomorrow",
+        "challenge": "Subjective success metric requiring human evaluation",
+        "verification_method": "Audience feedback or presenter self-assessment"
+      },
+      {
+        "id": 8,
+        "prediction": "My package will arrive damaged",
+        "challenge": "Physical condition assessment requiring visual inspection",
+        "verification_method": "Photo evidence and delivery condition report"
+      },
+      {
+        "id": 9,
+        "prediction": "The new employee will fit in well with the team",
+        "challenge": "Social dynamics requiring workplace observation",
+        "verification_method": "Team feedback and manager assessment after probation period"
+      },
+      {
+        "id": 10,
+        "prediction": "I will enjoy the movie we're seeing tonight",
+        "challenge": "Personal preference and entertainment value assessment",
+        "verification_method": "Post-viewing personal rating or review"
+      }
+    ],
+    "tool_verifiable": [
+      {
+        "id": 11,
+        "prediction": "Bitcoin will hit $1,000,000 by tomorrow",
+        "challenge": "Requires real-time financial data access",
+        "verification_method": "Cryptocurrency exchange API integration",
+        "potential_tool": "crypto_price_checker"
+      },
+      {
+        "id": 12,
+        "prediction": "It will rain in New York tomorrow",
+        "challenge": "Requires weather data and forecasting",
+        "verification_method": "Weather API or meteorological service integration",
+        "potential_tool": "weather_checker"
+      },
+      {
+        "id": 13,
+        "prediction": "The S&P 500 will close above 6000 today",
+        "challenge": "Requires stock market data access",
+        "verification_method": "Financial market API integration",
+        "potential_tool": "stock_market_checker"
+      },
+      {
+        "id": 14,
+        "prediction": "There will be a magnitude 5+ earthquake in California this week",
+        "challenge": "Requires seismic monitoring data",
+        "verification_method": "USGS earthquake API integration",
+        "potential_tool": "earthquake_monitor"
+      },
+      {
+        "id": 15,
+        "prediction": "The website will be down for more than 1 hour today",
+        "challenge": "Requires website monitoring and uptime tracking",
+        "verification_method": "Website monitoring service API",
+        "potential_tool": "website_uptime_checker"
+      },
+      {
+        "id": 16,
+        "prediction": "Tesla stock will drop by 5% before market close",
+        "challenge": "Requires real-time stock price monitoring",
+        "verification_method": "Stock price API with percentage calculation",
+        "potential_tool": "stock_price_monitor"
+      },
+      {
+        "id": 17,
+        "prediction": "The flight AA1234 will be delayed by more than 30 minutes",
+        "challenge": "Requires flight tracking data",
+        "verification_method": "Flight tracking API integration",
+        "potential_tool": "flight_status_checker"
+      },
+      {
+        "id": 18,
+        "prediction": "The temperature will exceed 90°F in Phoenix today",
+        "challenge": "Requires weather monitoring for specific location",
+        "verification_method": "Weather service API with temperature tracking",
+        "potential_tool": "temperature_monitor"
+      },
+      {
+        "id": 19,
+        "prediction": "GitHub will have a service outage lasting over 2 hours this week",
+        "challenge": "Requires service status monitoring",
+        "verification_method": "GitHub status API or service monitoring",
+        "potential_tool": "service_status_monitor"
+      },
+      {
+        "id": 20,
+        "prediction": "The USD/EUR exchange rate will fall below 0.95 today",
+        "challenge": "Requires currency exchange rate monitoring",
+        "verification_method": "Currency exchange API integration",
+        "potential_tool": "currency_rate_checker"
+      }
+    ],
+    "backlog_verifiable": [
+      {
+        "id": 21,
+        "prediction": "The new iPhone will be announced next month",
+        "challenge": "Requires monitoring news sources and Apple announcements",
+        "verification_method": "News aggregation and Apple press release monitoring",
+        "complexity": "Medium - requires news parsing and event detection"
+      },
+      {
+        "id": 22,
+        "prediction": "There will be a major data breach reported in the news this week",
+        "challenge": "Requires news monitoring and cybersecurity event tracking",
+        "verification_method": "Security news aggregation and breach database monitoring",
+        "complexity": "High - requires defining 'major' and reliable news sources"
+      },
+      {
+        "id": 23,
+        "prediction": "A new restaurant will open on Main Street before the end of the month",
+        "challenge": "Requires local business monitoring and permit tracking",
+        "verification_method": "Business license databases and local news monitoring",
+        "complexity": "High - requires location-specific data sources"
+      },
+      {
+        "id": 24,
+        "prediction": "The Federal Reserve will announce an interest rate change this quarter",
+        "challenge": "Requires monitoring Fed announcements and economic news",
+        "verification_method": "Federal Reserve press releases and economic news tracking",
+        "complexity": "Medium - requires official source monitoring"
+      },
+      {
+        "id": 25,
+        "prediction": "A celebrity will announce their retirement on social media today",
+        "challenge": "Requires social media monitoring and celebrity account tracking",
+        "verification_method": "Social media API integration and content analysis",
+        "complexity": "High - requires defining 'celebrity' and retirement announcement detection"
+      },
+      {
+        "id": 26,
+        "prediction": "A new COVID variant will be identified by WHO this month",
+        "challenge": "Requires health organization monitoring and variant tracking",
+        "verification_method": "WHO announcements and health authority press releases",
+        "complexity": "Medium - requires official health organization monitoring"
+      },
+      {
+        "id": 27,
+        "prediction": "A major tech company will announce layoffs exceeding 1000 employees this week",
+        "challenge": "Requires corporate news monitoring and employment data tracking",
+        "verification_method": "Corporate press releases and employment news aggregation",
+        "complexity": "Medium - requires defining 'major tech company' and reliable sources"
+      },
+      {
+        "id": 28,
+        "prediction": "A new streaming service will launch before the end of the year",
+        "challenge": "Requires entertainment industry monitoring and service launch tracking",
+        "verification_method": "Entertainment news and corporate announcement monitoring",
+        "complexity": "Medium - requires industry-specific news sources"
+      },
+      {
+        "id": 29,
+        "prediction": "A major sports trade will be announced in the next 48 hours",
+        "challenge": "Requires sports news monitoring and trade announcement tracking",
+        "verification_method": "Sports news aggregation and official team announcements",
+        "complexity": "High - requires defining 'major trade' and multiple sports coverage"
+      },
+      {
+        "id": 30,
+        "prediction": "A new AI model will be released by OpenAI, Google, or Anthropic this quarter",
+        "challenge": "Requires AI industry monitoring and product release tracking",
+        "verification_method": "Company press releases and AI industry news monitoring",
+        "complexity": "Medium - requires monitoring specific companies and AI announcements"
+      }
+    ]
+  },
+  "test_metadata": {
+    "created_date": "2025-06-27",
+    "purpose": "Test prediction verifiability categories and agent capability assessment",
+    "categories": {
+      "self_verifiable": "Predictions requiring human observation, personal confirmation, or subjective assessment",
+      "tool_verifiable": "Predictions that can be verified through APIs, data feeds, or automated monitoring tools",
+      "backlog_verifiable": "Predictions that could potentially be verified with complex tooling but require significant development effort"
+    }
+  }
+}

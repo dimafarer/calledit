@@ -1,0 +1,177 @@
+{
+  "refined_verifiability_categories": {
+    "agent_verifiable": {
+      "description": "Predictions the agent can verify using only its existing knowledge and reasoning capabilities, without any tools",
+      "examples": [
+        {
+          "id": 1,
+          "prediction": "2 + 2 equals 4",
+          "verification_approach": "Mathematical reasoning"
+        },
+        {
+          "id": 2,
+          "prediction": "Christmas will fall on December 25th this year",
+          "verification_approach": "Calendar knowledge"
+        },
+        {
+          "id": 3,
+          "prediction": "The word 'hello' has 5 letters",
+          "verification_approach": "Text analysis"
+        },
+        {
+          "id": 4,
+          "prediction": "Python is a programming language",
+          "verification_approach": "General knowledge"
+        },
+        {
+          "id": 5,
+          "prediction": "A leap year occurs every 4 years",
+          "verification_approach": "Calendar system knowledge"
+        }
+      ]
+    },
+    "current_tool_verifiable": {
+      "description": "Predictions the agent can verify using tools it currently has access to (like current_time)",
+      "examples": [
+        {
+          "id": 6,
+          "prediction": "It is currently after 3:00 PM",
+          "verification_approach": "Use current_time tool to check current time"
+        },
+        {
+          "id": 7,
+          "prediction": "Today is Friday",
+          "verification_approach": "Use current_time tool to determine day of week"
+        },
+        {
+          "id": 8,
+          "prediction": "We are in the month of June",
+          "verification_approach": "Use current_time tool to check current month"
+        },
+        {
+          "id": 9,
+          "prediction": "The year is 2025",
+          "verification_approach": "Use current_time tool to verify current year"
+        },
+        {
+          "id": 10,
+          "prediction": "It has been more than 1 hour since midnight",
+          "verification_approach": "Use current_time tool to calculate time elapsed since midnight"
+        }
+      ]
+    },
+    "strands_tool_verifiable": {
+      "description": "Predictions the agent could verify if it had access to existing Strands tools from the strands_tools library",
+      "examples": [
+        {
+          "id": 11,
+          "prediction": "The weather in New York is currently sunny",
+          "verification_approach": "Use weather tool to check current conditions",
+          "required_tool": "weather_checker"
+        },
+        {
+          "id": 12,
+          "prediction": "Bitcoin is currently trading above $50,000",
+          "verification_approach": "Use cryptocurrency price tool",
+          "required_tool": "crypto_price_checker"
+        },
+        {
+          "id": 13,
+          "prediction": "The S&P 500 closed above 5000 yesterday",
+          "verification_approach": "Use stock market data tool",
+          "required_tool": "stock_market_data"
+        },
+        {
+          "id": 14,
+          "prediction": "There are currently no major earthquakes reported today",
+          "verification_approach": "Use earthquake monitoring tool",
+          "required_tool": "earthquake_monitor"
+        },
+        {
+          "id": 15,
+          "prediction": "The USD to EUR exchange rate is below 0.95",
+          "verification_approach": "Use currency exchange rate tool",
+          "required_tool": "currency_rate_checker"
+        }
+      ]
+    },
+    "api_tool_verifiable": {
+      "description": "Predictions that could be verified through MCP servers, APIs, or custom tools that could be written",
+      "examples": [
+        {
+          "id": 16,
+          "prediction": "Flight AA1234 is currently delayed",
+          "verification_approach": "Query flight tracking API",
+          "required_integration": "FlightAware API or airline API"
+        },
+        {
+          "id": 17,
+          "prediction": "GitHub is currently experiencing service issues",
+          "verification_approach": "Check GitHub status API",
+          "required_integration": "GitHub Status API"
+        },
+        {
+          "id": 18,
+          "prediction": "There are more than 100 new posts on Reddit's r/technology today",
+          "verification_approach": "Query Reddit API for post count",
+          "required_integration": "Reddit API"
+        },
+        {
+          "id": 19,
+          "prediction": "The latest iPhone model is currently in stock at the Apple Store",
+          "verification_approach": "Check Apple Store inventory API",
+          "required_integration": "Apple Store API or web scraping"
+        },
+        {
+          "id": 20,
+          "prediction": "There have been more than 1000 commits to the React repository this month",
+          "verification_approach": "Query GitHub API for commit history",
+          "required_integration": "GitHub API"
+        }
+      ]
+    },
+    "human_verifiable_only": {
+      "description": "Predictions that can only be verified through human observation, personal experience, or manual confirmation",
+      "examples": [
+        {
+          "id": 21,
+          "prediction": "Miriam will be home by 3:00 PM",
+          "verification_approach": "Direct observation or communication with Miriam"
+        },
+        {
+          "id": 22,
+          "prediction": "The meeting will be productive",
+          "verification_approach": "Subjective assessment by meeting participants"
+        },
+        {
+          "id": 23,
+          "prediction": "I will enjoy the movie tonight",
+          "verification_approach": "Personal subjective experience"
+        },
+        {
+          "id": 24,
+          "prediction": "The restaurant will have good service",
+          "verification_approach": "Customer experience and subjective judgment"
+        },
+        {
+          "id": 25,
+          "prediction": "My friend will call me back today",
+          "verification_approach": "Personal phone records and confirmation"
+        }
+      ]
+    }
+  },
+  "category_definitions": {
+    "agent_verifiable": "No tools required - pure reasoning/knowledge",
+    "current_tool_verifiable": "Verifiable with existing tools (current_time)",
+    "strands_tool_verifiable": "Requires existing Strands tools from library",
+    "api_tool_verifiable": "Requires custom API integration or MCP server",
+    "human_verifiable_only": "Requires human observation or subjective assessment"
+  },
+  "test_metadata": {
+    "created_date": "2025-06-27",
+    "purpose": "Refined verifiability categorization based on agent capabilities and tool availability",
+    "total_examples": 25,
+    "examples_per_category": 5
+  }
+}
