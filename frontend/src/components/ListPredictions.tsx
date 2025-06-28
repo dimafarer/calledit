@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { NovaResponse, APIResponse } from '../types';
+import { CallResponse, APIResponse } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 
@@ -71,7 +71,7 @@ const getVerifiabilityDisplay = (category: string) => {
 };
 
 const ListPredictions: React.FC<ListPredictionsProps> = () => {
-  const [predictions, setPredictions] = useState<NovaResponse[]>([]);
+  const [predictions, setPredictions] = useState<CallResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { isAuthenticated, getToken } = useAuth();
@@ -140,40 +140,40 @@ const ListPredictions: React.FC<ListPredictionsProps> = () => {
     }
   };
 
-  // Function to render a single prediction card
-  const renderPredictionCard = (prediction: NovaResponse, index: number) => {
-    const predictionDate = prediction.prediction_date || prediction.creation_date;
+  // Function to render a single call card
+  const renderCallCard = (call: CallResponse, index: number) => {
+    const callDate = call.prediction_date || call.creation_date;
     
     return (
-      <div key={index} className="prediction-card">
-        <h3>{prediction.prediction_statement}</h3>
-        <div className="prediction-details">
-          {predictionDate && (
-            <p><strong>Call Date:</strong> {formatToLocalTime(predictionDate)}</p>
+      <div key={index} className="call-card">
+        <h3>{call.prediction_statement}</h3>
+        <div className="call-details">
+          {callDate && (
+            <p><strong>Call Date:</strong> {formatToLocalTime(callDate)}</p>
           )}
-          <p><strong>Verification Date:</strong> {formatToLocalTime(prediction.verification_date)}</p>
-          {prediction.verifiable_category && (
-            <p><strong>Verifiability:</strong> {getVerifiabilityDisplay(prediction.verifiable_category)}</p>
+          <p><strong>Verification Date:</strong> {formatToLocalTime(call.verification_date)}</p>
+          {call.verifiable_category && (
+            <p><strong>Verifiability:</strong> {getVerifiabilityDisplay(call.verifiable_category)}</p>
           )}
-          <p><strong>Status:</strong> {prediction.initial_status}</p>
+          <p><strong>Status:</strong> {call.initial_status}</p>
           <details>
             <summary>Verification Method</summary>
             <div className="verification-details">
               <h4>Sources:</h4>
               <ul>
-                {prediction.verification_method.source.map((source, idx) => (
+                {call.verification_method.source.map((source, idx) => (
                   <li key={`source-${idx}`}>{source}</li>
                 ))}
               </ul>
               <h4>Criteria:</h4>
               <ul>
-                {prediction.verification_method.criteria.map((criterion, idx) => (
+                {call.verification_method.criteria.map((criterion, idx) => (
                   <li key={`criteria-${idx}`}>{criterion}</li>
                 ))}
               </ul>
               <h4>Steps:</h4>
               <ul>
-                {prediction.verification_method.steps.map((step, idx) => (
+                {call.verification_method.steps.map((step, idx) => (
                   <li key={`step-${idx}`}>{step}</li>
                 ))}
               </ul>
@@ -204,11 +204,11 @@ const ListPredictions: React.FC<ListPredictionsProps> = () => {
       
       {/* Display predictions */}
       {!isLoading && !error && (
-        <div className="predictions-list">
+        <div className="calls-list">
           {predictions.length > 0 ? (
-            predictions.map((prediction, index) => renderPredictionCard(prediction, index))
+            predictions.map((call, index) => renderCallCard(call, index))
           ) : (
-            <div className="no-predictions">
+            <div className="no-calls">
               <p>You haven't made any calls yet.</p>
             </div>
           )}

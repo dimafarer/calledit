@@ -8,46 +8,52 @@
 /**
  * VerificationMethod Interface
  * 
- * Defines the structure for verification methods associated with predictions.
+ * Defines the structure for verification methods associated with calls.
  * Each method includes sources to check, criteria for verification, and steps to follow.
  */
 export interface VerificationMethod {
-  /** Array of sources that can be used to verify the prediction */
+  /** Array of sources that can be used to verify the call */
   source: string[];
   
-  /** Array of criteria that determine if the prediction is verified */
+  /** Array of criteria that determine if the call is verified */
   criteria: string[];
   
-  /** Array of steps to follow when verifying the prediction */
+  /** Array of steps to follow when verifying the call */
   steps: string[];
 }
 
 /**
- * NovaResponse Interface
+ * CallResponse Interface
  * 
- * Represents a single prediction with its associated verification details.
- * This is the core data structure for individual predictions in the application.
+ * Represents a single call with its associated verification details.
+ * This is the core data structure for individual calls in the application.
  */
-export interface NovaResponse {
-  /** The main prediction statement text */
+export interface CallResponse {
+  /** The main call statement text */
   prediction_statement: string;
   
-  /** The date when the prediction was made (in UTC) */
+  /** The date when the call was made (in UTC) */
   prediction_date?: string;
   
   /** Legacy field for backward compatibility */
   creation_date?: string;
   
-  /** The date when the prediction should be verified (in UTC) */
+  /** The date when the call should be verified (in UTC) */
   verification_date: string;
   
   /** The timezone of the dates (default: UTC) */
   timezone?: string;
   
-  /** Detailed method for verifying the prediction */
+  /** The verifiability category of the call */
+  verifiable_category?: string;
+  
+  /** Reasoning for the verifiability category selection */
+  category_reasoning?: string;
+  
+  /** Detailed method for verifying the call */
   verification_method: VerificationMethod;
   
-  /** The initial status of the prediction (e.g., "Pending", "Verified") */
+  /** The initial status of the call (e.g., "Pending", "Verified") */
   initial_status: string;
 }
 
@@ -55,9 +61,12 @@ export interface NovaResponse {
  * APIResponse Interface
  * 
  * The top-level response structure returned by the API endpoints.
- * Contains an array of prediction responses.
+ * Contains an array of call responses.
  */
 export interface APIResponse {
-  /** Array of prediction responses */
-  results: NovaResponse[];
+  /** Array of call responses */
+  results: CallResponse[];
 }
+
+// Legacy alias for backward compatibility
+export type NovaResponse = CallResponse;
