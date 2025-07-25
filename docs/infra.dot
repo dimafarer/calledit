@@ -1,42 +1,76 @@
 digraph INFRA {
-  node [ color = "black", fillcolor = "#E6E6E6", height =1, style = "filled,bold,rounded", fontname = "Arial" ];
-  "CallitAPI" [ label = "CallitAPI
-(AWS::Serverless::Api)", shape =rectangle, fillcolor = "#E78F81" ];
-  "HelloWorldFunction" [ label = "HelloWorldFunction
-(AWS::Serverless::Function)", shape =rectangle, fillcolor = "#B7E0FF" ];
-  "PromptBedrockFunction" [ label = "PromptBedrockFunction
-(AWS::Serverless::Function)", shape =rectangle, fillcolor = "#B7E0FF" ];
-  "PromptAgent" [ label = "PromptAgent
-(AWS::Serverless::Function)", shape =rectangle, fillcolor = "#B7E0FF" ];
-  "StrandsMakeCall" [ label = "StrandsMakeCall
-(AWS::Serverless::Function)", shape =rectangle, fillcolor = "#B7E0FF" ];
-  "MakeCall" [ label = "MakeCall
-(AWS::Serverless::Function)", shape =rectangle, fillcolor = "#B7E0FF" ];
-  "LogCall" [ label = "LogCall
-(AWS::Serverless::Function)", shape =rectangle, fillcolor = "#B7E0FF" ];
-  "ListPredictions" [ label = "ListPredictions
-(AWS::Serverless::Function)", shape =rectangle, fillcolor = "#B7E0FF" ];
-  "AuthTokenFunction" [ label = "AuthTokenFunction
-(AWS::Serverless::Function)", shape =rectangle, fillcolor = "#B7E0FF" ];
-  "CognitoUserPool" [ label = "CognitoUserPool
-(AWS::Cognito::UserPool)", shape =rectangle ];
-  "UserPoolClient" [ label = "UserPoolClient
-(AWS::Cognito::UserPoolClient)", shape =rectangle ];
-  "UserPoolDomain" [ label = "UserPoolDomain
-(AWS::Cognito::UserPoolDomain)", shape =rectangle ];
-  "CallitAPI" -> "CognitoUserPool";
-  "HelloWorldFunction" -> "CallitAPI";
-  "PromptBedrockFunction" -> "CallitAPI";
-  "PromptAgent" -> "CallitAPI";
-  "StrandsMakeCall" -> "CallitAPI";
-  "MakeCall" -> "CallitAPI";
+  node [ color = "black", fillcolor = "#E6E6E6", height = 1, style = "filled,bold,rounded", fontname = "Arial" ];
+  
+  // Legend
+  subgraph cluster_legend {
+    label = "Component Types";
+    style = "filled,rounded";
+    fillcolor = "#F5F5F5";
+    fontname = "Arial";
+    fontsize = 12;
+    
+    "Legend_Streaming" [ label = "Streaming APIs", shape = rectangle, fillcolor = "#FF9999", width = 1.5 ];
+    "Legend_REST" [ label = "REST APIs", shape = rectangle, fillcolor = "#E78F81", width = 1.5 ];
+    "Legend_Core" [ label = "Core Processing", shape = rectangle, fillcolor = "#99CCFF", width = 1.5 ];
+    "Legend_Functions" [ label = "Lambda Functions", shape = rectangle, fillcolor = "#B7E0FF", width = 1.5 ];
+    "Legend_Database" [ label = "Data Storage", shape = rectangle, fillcolor = "#FFE6CC", width = 1.5 ];
+    "Legend_AI" [ label = "AI Services", shape = rectangle, fillcolor = "#E6FFE6", width = 1.5 ];
+    "Legend_Auth" [ label = "Authentication", shape = rectangle, fillcolor = "#E6E6E6", width = 1.5 ];
+    
+    // Arrange legend items vertically
+    "Legend_Streaming" -> "Legend_REST" -> "Legend_Core" -> "Legend_Functions" -> "Legend_Database" -> "Legend_AI" -> "Legend_Auth" [ style = "invis" ];
+  }
+  
+  // API Gateways
+  "WebSocketApi" [ label = "WebSocketApi\n(AWS::ApiGatewayV2::Api)\nReal-time Streaming", shape = rectangle, fillcolor = "#FF9999" ];
+  "CallitAPI" [ label = "CallitAPI\n(AWS::Serverless::Api)\nREST Operations", shape = rectangle, fillcolor = "#E78F81" ];
+  
+  // Production Lambda Functions
+  "MakeCallStreamFunction" [ label = "MakeCallStreamFunction\n(Strands Agent + Streaming)\nCore AI Processing", shape = rectangle, fillcolor = "#99CCFF" ];
+  "ConnectFunction" [ label = "ConnectFunction\n(WebSocket Handler)", shape = rectangle, fillcolor = "#B7E0FF" ];
+  "DisconnectFunction" [ label = "DisconnectFunction\n(WebSocket Handler)", shape = rectangle, fillcolor = "#B7E0FF" ];
+  "LogCall" [ label = "LogCall\n(Data Persistence)", shape = rectangle, fillcolor = "#B7E0FF" ];
+  "ListPredictions" [ label = "ListPredictions\n(Data Retrieval)", shape = rectangle, fillcolor = "#B7E0FF" ];
+  "AuthTokenFunction" [ label = "AuthTokenFunction\n(Token Exchange)", shape = rectangle, fillcolor = "#B7E0FF" ];
+  
+  // Authentication
+  "CognitoUserPool" [ label = "CognitoUserPool\n(AWS::Cognito::UserPool)", shape = rectangle, fillcolor = "#E6E6E6" ];
+  "UserPoolClient" [ label = "UserPoolClient\n(AWS::Cognito::UserPoolClient)", shape = rectangle, fillcolor = "#E6E6E6" ];
+  "UserPoolDomain" [ label = "UserPoolDomain\n(AWS::Cognito::UserPoolDomain)", shape = rectangle, fillcolor = "#E6E6E6" ];
+  
+  // Database
+  "DynamoDBTable" [ label = "DynamoDB Table\n(calledit-db)\nPrediction Storage", shape = rectangle, fillcolor = "#FFE6CC" ];
+  
+  // AI Services
+  "BedrockService" [ label = "Amazon Bedrock\n(AI Reasoning)\nStreaming Support", shape = rectangle, fillcolor = "#E6FFE6" ];
+  "StrandsTools" [ label = "Strands Tools\n(current_time, etc.)", shape = rectangle, fillcolor = "#E6FFE6" ];
+  
+  // WebSocket Flow (Primary)
+  "WebSocketApi" -> "ConnectFunction";
+  "WebSocketApi" -> "DisconnectFunction";
+  "WebSocketApi" -> "MakeCallStreamFunction";
+  "MakeCallStreamFunction" -> "BedrockService";
+  "MakeCallStreamFunction" -> "StrandsTools";
+  "MakeCallStreamFunction" -> "WebSocketApi" [ label = "streaming", style = "dashed" ];
+  
+  // REST API Flow
+  "CallitAPI" -> "CognitoUserPool" [ label = "auth" ];
   "LogCall" -> "CallitAPI";
-  "LogCall" -> "CognitoUserPool";
   "ListPredictions" -> "CallitAPI";
-  "ListPredictions" -> "CognitoUserPool";
   "AuthTokenFunction" -> "CallitAPI";
+  
+  // Data Persistence
+  "LogCall" -> "DynamoDBTable";
+  "ListPredictions" -> "DynamoDBTable";
+  "LogCall" -> "CognitoUserPool" [ label = "user context" ];
+  "ListPredictions" -> "CognitoUserPool" [ label = "user context" ];
+  
+  // Authentication Flow
   "AuthTokenFunction" -> "CognitoUserPool";
   "AuthTokenFunction" -> "UserPoolClient";
   "UserPoolClient" -> "CognitoUserPool";
   "UserPoolDomain" -> "CognitoUserPool";
+  
+  // Keep legend separate from main graph
+  { rank = same; "Legend_Streaming"; "WebSocketApi"; }
 }
