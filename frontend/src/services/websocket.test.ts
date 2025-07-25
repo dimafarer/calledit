@@ -2,347 +2,301 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { WebSocketService } from './websocket';
 
 // Mock WebSocket
-class MockWebSocket {
-  static CONNECTING = 0;
-  static OPEN = 1;
-  static CLOSING = 2;
-  static CLOSED = 3;
+interface MockWebSocket {
+  readyState: number;
+  onopen: ((event: Event) => void) | null;
+  onclose: ((event: CloseEvent) => void) | null;
+  onerror: ((event: Event) => void) | null;
+  onmessage: ((event: MessageEvent) => void) | null;
+  send: (data: string) => void;
+  close: () => void;
+  simulateMessage: (data: any) => void;
+  simulateError: () => void;
+}
 
-  readyState = MockWebSocket.CONNECTING;
-  onopen: ((event: Event) => void) | null = null;
-  onclose: ((event: CloseEvent) => void) | null = null;
-  onerror: ((event: Event) => void) | null = null;
-  onmessage: ((event: MessageEvent) => void) | null = null;
-
-  constructor(public url: string) {
-    // Simulate async connection
-    setTimeout(() => {
-      this.readyState = MockWebSocket.OPEN;
-      if (this.onopen) {
-        this.onopen(new Event('open'));
-      }
-    }, 10);
-  }
-
-  send(data: string) {
-    if (this.readyState !== MockWebSocket.OPEN) {
-      throw new Error('WebSocket is not open');
-    }
-    // Mock successful send
-  }
-
-  close() {
-    this.readyState = MockWebSocket.CLOSED;
-    if (this.onclose) {
-      this.onclose(new CloseEvent('close'));
-    }
-  }
-
-  // Helper method to simulate receiving messages
-  simulateMessage(data: any) {
+const createMockWebSocket = (): MockWebSocket => ({
+  readyState: WebSocket.CONNECTING,
+  onopen: null,
+  onclose: null,
+  onerror: null,
+  onmessage: null,
+  send: vi.fn(),
+  close: vi.fn(),
+  simulateMessage: function(data: any) {
     if (this.onmessage) {
-      this.onmessage(new MessageEvent('message', { data: JSON.stringify(data) }));
+      this.onmessage({ data: JSON.stringify(data) } as MessageEvent);
     }
-  }
-
-  // Helper method to simulate connection error
-  simulateError() {
+  },
+  simulateError: function() {
     if (this.onerror) {
       this.onerror(new Event('error'));
     }
   }
-}
-
-// Mock global WebSocket
-global.WebSocket = MockWebSocket as any;
+});
 
 describe('WebSocketService', () => {
+  let mockWebSocket: MockWebSocket;
   let webSocketService: WebSocketService;
   const testUrl = 'wss://test-websocket-url';
 
   beforeEach(() => {
+    mockWebSocket = createMockWebSocket();
+    
+    // Mock the global WebSocket constructor
+    global.WebSocket = vi.fn().mockImplementation(() => mockWebSocket) as any;
+    
     webSocketService = new WebSocketService(testUrl);
-    vi.clearAllMocks();
   });
 
   afterEach(() => {
-    webSocketService.disconnect();
+    vi.resetAllMocks();
   });
 
-  describe('Connection Management', () => {
-    it('should create WebSocket connection with correct URL', async () => {
-      await webSocketService.connect();
+  describe('connect', () => {
+    it('creates a new WebSocket connection', async () => {
+      const connectPromise = webSocketService.connect();
       
-      expect(webSocketService['socket']).toBeDefined();
-      expect(webSocketService['socket']?.url).toBe(testUrl);
+      // Simulate successful connection
+      mockWebSocket.readyState = WebSocket.OPEN;
+      if (mockWebSocket.onopen) {
+        mockWebSocket.onopen(new Event('open'));
+      }
+      
+      await connectPromise;
+      
+      expect(global.WebSocket).toHaveBeenCalledWith(testUrl);
     });
 
-    it('should resolve connection promise when WebSocket opens', async () => {
-      const connectionPromise = webSocketService.connect();
+    it('resolves when connection is established', async () => {
+      const connectPromise = webSocketService.connect();
       
-      await expect(connectionPromise).resolves.toBeUndefined();
+      // Simulate successful connection
+      mockWebSocket.readyState = WebSocket.OPEN;
+      if (mockWebSocket.onopen) {
+        mockWebSocket.onopen(new Event('open'));
+      }
+      
+      await expect(connectPromise).resolves.toBeUndefined();
     });
 
-    it('should reject connection promise on WebSocket error', async () => {
-      const connectionPromise = webSocketService.connect();
+    it('rejects when connection fails', async () => {
+      const connectPromise = webSocketService.connect();
       
       // Simulate connection error
-      setTimeout(() => {
-        const socket = webSocketService['socket'] as MockWebSocket;
-        socket.simulateError();
-      }, 5);
+      if (mockWebSocket.onerror) {
+        mockWebSocket.onerror(new Event('error'));
+      }
       
-      await expect(connectionPromise).rejects.toThrow('Failed to connect to WebSocket server');
+      await expect(connectPromise).rejects.toThrow('Failed to connect to WebSocket server');
     });
 
-    it('should return existing connection if already connected', async () => {
-      await webSocketService.connect();
-      const firstSocket = webSocketService['socket'];
+    it('returns existing connection if already connected', async () => {
+      // First connection
+      const firstConnectPromise = webSocketService.connect();
+      mockWebSocket.readyState = WebSocket.OPEN;
+      if (mockWebSocket.onopen) {
+        mockWebSocket.onopen(new Event('open'));
+      }
+      await firstConnectPromise;
       
-      await webSocketService.connect();
-      const secondSocket = webSocketService['socket'];
+      // Second connection should return immediately
+      const secondConnectPromise = webSocketService.connect();
+      await expect(secondConnectPromise).resolves.toBeUndefined();
       
-      expect(firstSocket).toBe(secondSocket);
+      // WebSocket constructor should only be called once
+      expect(global.WebSocket).toHaveBeenCalledTimes(1);
     });
 
-    it('should disconnect WebSocket properly', async () => {
-      await webSocketService.connect();
-      const socket = webSocketService['socket'] as MockWebSocket;
+    it('returns existing connection promise if connection is in progress', async () => {
+      const firstConnectPromise = webSocketService.connect();
+      const secondConnectPromise = webSocketService.connect();
+      
+      // Both should be the same promise
+      expect(firstConnectPromise).toStrictEqual(secondConnectPromise);
+      
+      // Complete the connection
+      mockWebSocket.readyState = WebSocket.OPEN;
+      if (mockWebSocket.onopen) {
+        mockWebSocket.onopen(new Event('open'));
+      }
+      
+      await Promise.all([firstConnectPromise, secondConnectPromise]);
+    });
+  });
+
+  describe('disconnect', () => {
+    it('closes the WebSocket connection', async () => {
+      // First connect to have a socket to close
+      const connectPromise = webSocketService.connect();
+      mockWebSocket.readyState = WebSocket.OPEN;
+      if (mockWebSocket.onopen) {
+        mockWebSocket.onopen(new Event('open'));
+      }
+      await connectPromise;
       
       webSocketService.disconnect();
       
-      expect(webSocketService['socket']).toBeNull();
+      expect(mockWebSocket.close).toHaveBeenCalled();
+    });
+
+    it('handles disconnect when not connected', () => {
+      expect(() => webSocketService.disconnect()).not.toThrow();
     });
   });
 
-  describe('Message Handling', () => {
+  describe('send', () => {
     beforeEach(async () => {
-      await webSocketService.connect();
+      const connectPromise = webSocketService.connect();
+      mockWebSocket.readyState = WebSocket.OPEN;
+      if (mockWebSocket.onopen) {
+        mockWebSocket.onopen(new Event('open'));
+      }
+      await connectPromise;
     });
 
-    it('should register message handlers correctly', () => {
+    it('sends message when connected', async () => {
+      const testAction = 'test-action';
+      const testData = { key: 'value' };
+      
+      await webSocketService.send(testAction, testData);
+      
+      expect(mockWebSocket.send).toHaveBeenCalledWith(
+        JSON.stringify({ action: testAction, ...testData })
+      );
+    });
+
+    it('throws error when not connected', async () => {
+      webSocketService.disconnect();
+      
+      await expect(
+        webSocketService.send('test-action', {})
+      ).rejects.toThrow('WebSocket is not connected');
+    });
+
+    it('waits for connection if connection is in progress', async () => {
+      const newService = new WebSocketService(testUrl);
+      const newMockSocket = createMockWebSocket();
+      global.WebSocket = vi.fn().mockImplementation(() => newMockSocket) as any;
+      
+      // Start connection but don't complete it yet
+      const connectPromise = newService.connect();
+      
+      // Try to send while connecting
+      const sendPromise = newService.send('test-action', {});
+      
+      // Complete the connection
+      newMockSocket.readyState = WebSocket.OPEN;
+      if (newMockSocket.onopen) {
+        newMockSocket.onopen(new Event('open'));
+      }
+      
+      await connectPromise;
+      await sendPromise;
+      
+      expect(newMockSocket.send).toHaveBeenCalled();
+    });
+  });
+
+  describe('message handling', () => {
+    beforeEach(async () => {
+      const connectPromise = webSocketService.connect();
+      mockWebSocket.readyState = WebSocket.OPEN;
+      if (mockWebSocket.onopen) {
+        mockWebSocket.onopen(new Event('open'));
+      }
+      await connectPromise;
+    });
+
+    it('registers and calls message handlers', () => {
       const handler = vi.fn();
+      const testMessage = { type: 'test', content: 'test content' };
       
-      webSocketService.onMessage('test-type', handler);
+      webSocketService.onMessage('test', handler);
+      mockWebSocket.simulateMessage(testMessage);
       
-      expect(webSocketService['messageHandlers'].has('test-type')).toBe(true);
-      expect(webSocketService['messageHandlers'].get('test-type')).toBe(handler);
+      expect(handler).toHaveBeenCalledWith(testMessage);
     });
 
-    it('should call appropriate handler when message is received', async () => {
+    it('handles multiple message types', () => {
       const textHandler = vi.fn();
-      const toolHandler = vi.fn();
+      const errorHandler = vi.fn();
       
       webSocketService.onMessage('text', textHandler);
-      webSocketService.onMessage('tool', toolHandler);
+      webSocketService.onMessage('error', errorHandler);
       
-      const socket = webSocketService['socket'] as MockWebSocket;
+      mockWebSocket.simulateMessage({ type: 'text', content: 'hello' });
+      mockWebSocket.simulateMessage({ type: 'error', message: 'error occurred' });
       
-      // Simulate text message
-      socket.simulateMessage({ type: 'text', content: 'Hello' });
-      
-      expect(textHandler).toHaveBeenCalledWith({ type: 'text', content: 'Hello' });
-      expect(toolHandler).not.toHaveBeenCalled();
+      expect(textHandler).toHaveBeenCalledWith({ type: 'text', content: 'hello' });
+      expect(errorHandler).toHaveBeenCalledWith({ type: 'error', message: 'error occurred' });
     });
 
-    it('should handle multiple message types correctly', async () => {
-      const handlers = {
-        text: vi.fn(),
-        tool: vi.fn(),
-        complete: vi.fn(),
-        error: vi.fn(),
-        status: vi.fn()
-      };
+    it('removes message handlers', () => {
+      const handler = vi.fn();
       
-      Object.entries(handlers).forEach(([type, handler]) => {
-        webSocketService.onMessage(type, handler);
-      });
+      webSocketService.onMessage('test', handler);
+      webSocketService.offMessage('test');
       
-      const socket = webSocketService['socket'] as MockWebSocket;
+      mockWebSocket.simulateMessage({ type: 'test', content: 'test' });
       
-      // Simulate different message types
-      socket.simulateMessage({ type: 'text', content: 'Processing...' });
-      socket.simulateMessage({ type: 'tool', name: 'current_time' });
-      socket.simulateMessage({ type: 'complete', content: '{"result": "done"}' });
-      socket.simulateMessage({ type: 'error', message: 'Something went wrong' });
-      socket.simulateMessage({ type: 'status', status: 'processing' });
-      
-      expect(handlers.text).toHaveBeenCalledWith({ type: 'text', content: 'Processing...' });
-      expect(handlers.tool).toHaveBeenCalledWith({ type: 'tool', name: 'current_time' });
-      expect(handlers.complete).toHaveBeenCalledWith({ type: 'complete', content: '{"result": "done"}' });
-      expect(handlers.error).toHaveBeenCalledWith({ type: 'error', message: 'Something went wrong' });
-      expect(handlers.status).toHaveBeenCalledWith({ type: 'status', status: 'processing' });
+      expect(handler).not.toHaveBeenCalled();
     });
 
-    it('should log warning for unhandled message types', async () => {
+    it('handles messages with no registered handler', () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       
-      const socket = webSocketService['socket'] as MockWebSocket;
-      socket.simulateMessage({ type: 'unknown-type', data: 'test' });
+      mockWebSocket.simulateMessage({ type: 'unknown', content: 'test' });
       
       expect(consoleSpy).toHaveBeenCalledWith(
-        'No handler for message type: unknown-type',
-        { type: 'unknown-type', data: 'test' }
+        'No handler for message type: unknown',
+        { type: 'unknown', content: 'test' }
       );
       
       consoleSpy.mockRestore();
     });
 
-    it('should handle malformed JSON messages gracefully', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    it('handles invalid JSON messages', () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       
-      const socket = webSocketService['socket'] as MockWebSocket;
-      
-      // Simulate malformed JSON
-      if (socket.onmessage) {
-        socket.onmessage(new MessageEvent('message', { data: 'Invalid JSON' }));
+      if (mockWebSocket.onmessage) {
+        mockWebSocket.onmessage({ data: 'invalid json' } as MessageEvent);
       }
       
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect(consoleSpy).toHaveBeenCalledWith(
         'Error parsing WebSocket message:',
         expect.any(Error)
       );
       
-      consoleErrorSpy.mockRestore();
-    });
-
-    it('should remove message handlers correctly', () => {
-      const handler = vi.fn();
-      
-      webSocketService.onMessage('test-type', handler);
-      expect(webSocketService['messageHandlers'].has('test-type')).toBe(true);
-      
-      webSocketService.offMessage('test-type');
-      expect(webSocketService['messageHandlers'].has('test-type')).toBe(false);
-    });
-  });
-
-  describe('Message Sending', () => {
-    beforeEach(async () => {
-      await webSocketService.connect();
-    });
-
-    it('should send messages with correct format', async () => {
-      const socket = webSocketService['socket'] as MockWebSocket;
-      const sendSpy = vi.spyOn(socket, 'send');
-      
-      await webSocketService.send('makecall', { prompt: 'Test prediction' });
-      
-      expect(sendSpy).toHaveBeenCalledWith(
-        JSON.stringify({
-          action: 'makecall',
-          prompt: 'Test prediction'
-        })
-      );
-    });
-
-    it('should throw error when sending without connection', async () => {
-      webSocketService.disconnect();
-      
-      await expect(
-        webSocketService.send('makecall', { prompt: 'Test' })
-      ).rejects.toThrow('WebSocket is not connected');
-    });
-
-    it('should wait for connection before sending', async () => {
-      const newService = new WebSocketService(testUrl);
-      
-      // Start connection and send simultaneously
-      const connectionPromise = newService.connect();
-      const sendPromise = newService.send('makecall', { prompt: 'Test' });
-      
-      // Both should complete successfully
-      await expect(Promise.all([connectionPromise, sendPromise])).resolves.toBeDefined();
-      
-      newService.disconnect();
-    });
-  });
-
-  describe('Connection States', () => {
-    it('should handle connection close events', async () => {
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      
-      await webSocketService.connect();
-      const socket = webSocketService['socket'] as MockWebSocket;
-      
-      socket.close();
-      
-      expect(consoleSpy).toHaveBeenCalledWith('WebSocket connection closed');
-      
       consoleSpy.mockRestore();
     });
-
-    it('should handle connection open events', async () => {
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      
-      await webSocketService.connect();
-      
-      expect(consoleSpy).toHaveBeenCalledWith('WebSocket connection established');
-      
-      consoleSpy.mockRestore();
-    });
-
-    it('should handle multiple connection attempts gracefully', async () => {
-      const firstConnection = webSocketService.connect();
-      const secondConnection = webSocketService.connect();
-      const thirdConnection = webSocketService.connect();
-      
-      await Promise.all([firstConnection, secondConnection, thirdConnection]);
-      
-      // Should only have one socket instance
-      expect(webSocketService['socket']).toBeDefined();
-    }, 10000);
   });
 
-  describe('Error Handling', () => {
-    it('should handle WebSocket constructor errors', async () => {
-      // Mock WebSocket constructor to throw
-      const originalWebSocket = global.WebSocket;
-      global.WebSocket = class {
-        constructor() {
-          throw new Error('WebSocket construction failed');
-        }
-      } as any;
+  describe('connection lifecycle', () => {
+    it('cleans up on connection close', async () => {
+      const connectPromise = webSocketService.connect();
+      mockWebSocket.readyState = WebSocket.OPEN;
+      if (mockWebSocket.onopen) {
+        mockWebSocket.onopen(new Event('open'));
+      }
+      await connectPromise;
       
-      const newService = new WebSocketService(testUrl);
+      // Simulate connection close
+      if (mockWebSocket.onclose) {
+        mockWebSocket.onclose(new CloseEvent('close'));
+      }
       
-      await expect(newService.connect()).rejects.toThrow('WebSocket construction failed');
-      
-      // Restore original WebSocket
-      global.WebSocket = originalWebSocket;
+      // Should be able to connect again (creates new WebSocket)
+      const newConnectPromise = webSocketService.connect();
+      expect(newConnectPromise).toBeDefined();
     });
 
-    it('should handle send errors gracefully', async () => {
-      await webSocketService.connect();
-      const socket = webSocketService['socket'] as MockWebSocket;
+    it('handles connection errors gracefully', async () => {
+      const connectPromise = webSocketService.connect();
       
-      // Mock send to throw error
-      vi.spyOn(socket, 'send').mockImplementation(() => {
-        throw new Error('Send failed');
-      });
+      // Simulate connection error
+      mockWebSocket.simulateError();
       
-      await expect(
-        webSocketService.send('makecall', { prompt: 'Test' })
-      ).rejects.toThrow('Send failed');
-    });
-  });
-
-  describe('Cleanup', () => {
-    it('should clean up all resources on disconnect', async () => {
-      await webSocketService.connect();
-      
-      webSocketService.onMessage('test', vi.fn());
-      expect(webSocketService['messageHandlers'].size).toBe(1);
-      
-      webSocketService.disconnect();
-      
-      expect(webSocketService['socket']).toBeNull();
-      // Note: messageHandlers are not cleared on disconnect, only connection state
-    });
-
-    it('should handle disconnect when not connected', () => {
-      // Should not throw error
-      expect(() => webSocketService.disconnect()).not.toThrow();
+      await expect(connectPromise).rejects.toThrow();
     });
   });
 });

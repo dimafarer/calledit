@@ -81,8 +81,12 @@ describe('AuthContext', () => {
   });
   
   it('provides authentication status correctly when authenticated', () => {
-    // Setup: Add token to localStorage
-    localStorageMock.getItem.mockReturnValue('mock-token');
+    // Setup: Add token to localStorage store directly
+    localStorageMock.setItem('idToken', 'mock-token');
+    localStorageMock.getItem.mockImplementation((key: string) => {
+      if (key === 'idToken') return 'mock-token';
+      return null;
+    });
     
     render(
       <AuthProvider>

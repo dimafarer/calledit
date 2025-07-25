@@ -67,14 +67,16 @@ const MakePredictions: React.FC<MakePredictionsProps> = ({ onNavigateToList }) =
       />
       
       <div className="response-container">
-        <PredictionDisplay
-          response={response}
-          error={error}
-          isLoading={isLoading}
-        />
+        <div data-testid="prediction-display">
+          <PredictionDisplay
+            response={response}
+            error={error}
+            isLoading={isLoading}
+          />
+        </div>
         
         {/* Keep the original button for desktop */}
-        <div className="desktop-buttons-container">
+        <div className="desktop-buttons-container" data-testid="log-call-button">
           <LogCallButton
             {...commonProps}
             response={response}

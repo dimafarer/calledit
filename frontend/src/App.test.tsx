@@ -62,7 +62,7 @@ describe('App Component', () => {
     expect(screen.getByTestId('make-predictions')).toBeInTheDocument();
     
     // Click the navigation button in the header
-    fireEvent.click(screen.getByText('View My Predictions'));
+    fireEvent.click(screen.getByText('View Calls'));
     
     // Now should show ListPredictions
     expect(screen.getByTestId('list-predictions')).toBeInTheDocument();
@@ -77,7 +77,7 @@ describe('App Component', () => {
     expect(screen.getByTestId('list-predictions')).toBeInTheDocument();
     
     // Click the navigation button in the header to go back
-    fireEvent.click(screen.getByText('Make New Prediction'));
+    fireEvent.click(screen.getByText('Make Call'));
     
     // Now should show MakePredictions again
     expect(screen.getByTestId('make-predictions')).toBeInTheDocument();

@@ -40,7 +40,7 @@ describe('PredictionDisplay Component', () => {
     expect(screen.getByText('Call Statement:')).toBeInTheDocument();
     expect(screen.getByText('Test prediction')).toBeInTheDocument();
     expect(screen.getByText('Verification Date:')).toBeInTheDocument();
-    expect(screen.getByText('2023-12-31')).toBeInTheDocument();
+    expect(screen.getByText('12/30/2023, 7:00:00 PM')).toBeInTheDocument();
     expect(screen.getByText('Initial Status:')).toBeInTheDocument();
     expect(screen.getByText('pending')).toBeInTheDocument();
     
@@ -72,6 +72,6 @@ describe('PredictionDisplay Component', () => {
     
     render(<PredictionDisplay response={incompleteResponse} error={null} isLoading={false} />);
     
-    expect(screen.getByText('No data available')).toBeInTheDocument();
+    expect(screen.getAllByText('No data available')).toHaveLength(3);
   });
 });

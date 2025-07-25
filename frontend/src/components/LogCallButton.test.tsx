@@ -169,12 +169,9 @@ describe('LogCallButton Component', () => {
       />
     );
     
-    // Try to click the button (even though it's disabled)
     const logButton = screen.getByText('Log Call');
-    fireEvent.click(logButton);
-    
-    // Verify error message is set
-    expect(mockSetError).toHaveBeenCalledWith('No call data available to log. Please make a call first.');
+    expect(logButton).toBeDisabled();
+    expect(logButton).toHaveAttribute('title', 'Make a call first');
   });
 
   it('shows error message when clicked with valid response but not authenticated', () => {
@@ -198,12 +195,9 @@ describe('LogCallButton Component', () => {
       />
     );
     
-    // Try to click the button (even though it's disabled)
     const logButton = screen.getByText('Log Call');
-    fireEvent.click(logButton);
-    
-    // Verify error message is set
-    expect(mockSetError).toHaveBeenCalledWith('You must be logged in to log a call.');
+    expect(logButton).toBeDisabled();
+    expect(logButton).toHaveAttribute('title', 'Log in first');
   });
 
   it('makes API call with auth token when button is clicked', async () => {

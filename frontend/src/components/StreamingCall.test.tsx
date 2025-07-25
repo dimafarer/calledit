@@ -92,7 +92,7 @@ describe('StreamingCall', () => {
     
     // Mock streaming with text chunks
     mockCallService.makeCallWithStreaming.mockImplementation(
-      (prompt, onText, onTool, onComplete, onError) => {
+      (_prompt: string, onText: (text: string) => void, _onTool: (tool: string) => void, _onComplete: (response: any) => void, _onError: (error: string) => void) => {
         onText('Processing your prediction...');
         onText(' with AI agent');
         return Promise.resolve();
@@ -116,7 +116,7 @@ describe('StreamingCall', () => {
     
     // Mock streaming with tool usage
     mockCallService.makeCallWithStreaming.mockImplementation(
-      (prompt, onText, onTool, onComplete, onError) => {
+      (_prompt: string, _onText: (text: string) => void, onTool: (tool: string) => void, _onComplete: (response: any) => void, _onError: (error: string) => void) => {
         onTool('current_time');
         return Promise.resolve();
       }
@@ -151,7 +151,7 @@ describe('StreamingCall', () => {
     
     // Mock successful completion
     mockCallService.makeCallWithStreaming.mockImplementation(
-      (prompt, onText, onTool, onComplete, onError) => {
+      (_prompt: string, _onText: (text: string) => void, _onTool: (tool: string) => void, onComplete: (response: any) => void, _onError: (error: string) => void) => {
         onComplete(JSON.stringify(mockResponse));
         return Promise.resolve();
       }
@@ -181,7 +181,7 @@ describe('StreamingCall', () => {
     const submitButton = screen.getByRole('button', { name: 'Make Call' });
     
     mockCallService.makeCallWithStreaming.mockImplementation(
-      (prompt, onText, onTool, onComplete, onError) => {
+      (_prompt: string, _onText: (text: string) => void, _onTool: (tool: string) => void, onComplete: (response: any) => void, _onError: (error: string) => void) => {
         onComplete(JSON.stringify(mockResponse));
         return Promise.resolve();
       }
@@ -219,7 +219,7 @@ describe('StreamingCall', () => {
       const submitButton = screen.getByRole('button', { name: 'Make Call' });
       
       mockCallService.makeCallWithStreaming.mockImplementation(
-        (prompt, onText, onTool, onComplete, onError) => {
+        (_prompt: string, _onText: (text: string) => void, _onTool: (tool: string) => void, onComplete: (response: any) => void, _onError: (error: string) => void) => {
           onComplete(JSON.stringify(mockResponse));
           return Promise.resolve();
         }
@@ -245,7 +245,7 @@ describe('StreamingCall', () => {
     
     // Mock error during streaming
     mockCallService.makeCallWithStreaming.mockImplementation(
-      (prompt, onText, onTool, onComplete, onError) => {
+      (_prompt: string, _onText: (text: string) => void, _onTool: (tool: string) => void, _onComplete: (response: any) => void, onError: (error: string) => void) => {
         onError('WebSocket connection failed');
         return Promise.resolve();
       }
@@ -267,7 +267,7 @@ describe('StreamingCall', () => {
     
     // First call with success
     mockCallService.makeCallWithStreaming.mockImplementationOnce(
-      (prompt, onText, onTool, onComplete, onError) => {
+      (_prompt: string, _onText: (text: string) => void, _onTool: (tool: string) => void, onComplete: (response: any) => void, _onError: (error: string) => void) => {
         onComplete(JSON.stringify({ prediction_statement: 'First call' }));
         return Promise.resolve();
       }
@@ -282,7 +282,7 @@ describe('StreamingCall', () => {
     
     // Second call should clear previous data
     mockCallService.makeCallWithStreaming.mockImplementationOnce(
-      (prompt, onText, onTool, onComplete, onError) => {
+      (_prompt: string, _onText: (text: string) => void, _onTool: (tool: string) => void, _onComplete: (response: any) => void, _onError: (error: string) => void) => {
         // Don't complete immediately to test clearing
         return new Promise(() => {});
       }
@@ -302,13 +302,13 @@ describe('StreamingCall', () => {
       verifiable_category: 'agent_verifiable'
     };
 
-    render(<StreamingCall webSocketUrl={mockWebSocketUrl} />);
+    render(<StreamingCall webSocketUrl={mockWebSocketUrl} onNavigateToList={mockOnNavigateToList} />);
     
     const textarea = screen.getByLabelText('Your Call:');
     const submitButton = screen.getByRole('button', { name: 'Make Call' });
     
     mockCallService.makeCallWithStreaming.mockImplementation(
-      (prompt, onText, onTool, onComplete, onError) => {
+      (_prompt: string, _onText: (text: string) => void, _onTool: (tool: string) => void, onComplete: (response: any) => void, _onError: (error: string) => void) => {
         onComplete(JSON.stringify(mockResponse));
         return Promise.resolve();
       }
@@ -339,7 +339,7 @@ describe('StreamingCall', () => {
     
     // Mock completion with invalid JSON
     mockCallService.makeCallWithStreaming.mockImplementation(
-      (prompt, onText, onTool, onComplete, onError) => {
+      (_prompt: string, _onText: (text: string) => void, _onTool: (tool: string) => void, onComplete: (response: any) => void, _onError: (error: string) => void) => {
         onComplete('Invalid JSON response');
         return Promise.resolve();
       }

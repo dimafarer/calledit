@@ -89,6 +89,7 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
           rows={4}
           className="text-box"
           aria-label="Prediction input"
+          data-testid="prediction-input"
           disabled={isLoading}
         />
       </div>
