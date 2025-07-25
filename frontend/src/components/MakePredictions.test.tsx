@@ -34,7 +34,7 @@ describe('MakePredictions Component', () => {
     render(<MakePredictions onNavigateToList={mockNavigateToList} />);
     
     // Check if the component renders with the correct title
-    expect(screen.getByText('Make a Prediction')).toBeInTheDocument();
+    expect(screen.getByText('Make a Call')).toBeInTheDocument();
     
     // Check if child components are rendered
     expect(screen.getByTestId('prediction-input')).toBeInTheDocument();
@@ -49,7 +49,7 @@ describe('MakePredictions Component', () => {
     render(<MakePredictions onNavigateToList={mockNavigateToList} />);
     
     // Find and click the navigation button
-    const navigationButton = screen.getByText('View My Predictions');
+    const navigationButton = screen.getByText('View My Calls');
     fireEvent.click(navigationButton);
     
     // Check if the navigation function was called

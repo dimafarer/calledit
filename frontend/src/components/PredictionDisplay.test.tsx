@@ -37,7 +37,7 @@ describe('PredictionDisplay Component', () => {
   it('renders prediction data correctly', () => {
     render(<PredictionDisplay response={mockResponse} error={null} isLoading={false} />);
     
-    expect(screen.getByText('Prediction Statement:')).toBeInTheDocument();
+    expect(screen.getByText('Call Statement:')).toBeInTheDocument();
     expect(screen.getByText('Test prediction')).toBeInTheDocument();
     expect(screen.getByText('Verification Date:')).toBeInTheDocument();
     expect(screen.getByText('2023-12-31')).toBeInTheDocument();
@@ -72,8 +72,6 @@ describe('PredictionDisplay Component', () => {
     
     render(<PredictionDisplay response={incompleteResponse} error={null} isLoading={false} />);
     
-    expect(screen.getByText('No sources available')).toBeInTheDocument();
-    expect(screen.getByText('No criteria available')).toBeInTheDocument();
-    expect(screen.getByText('No steps available')).toBeInTheDocument();
+    expect(screen.getByText('No data available')).toBeInTheDocument();
   });
 });

@@ -33,7 +33,7 @@ describe('PredictionInput Component', () => {
       />
     );
     
-    expect(screen.getByPlaceholderText('Enter your prediction here...')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Enter your call here...')).toBeInTheDocument();
     expect(screen.getByText('Make Call')).toBeInTheDocument();
   });
 
@@ -111,9 +111,12 @@ describe('PredictionInput Component', () => {
     // Wait for the API call to complete
     await waitFor(() => {
       expect(mockedAxios.get).toHaveBeenCalledWith(
-        'https://test-api.example.com/make-call',
+        'https://test-api.example.com/strands-make-call',
         expect.objectContaining({
-          params: { prompt: 'Test input' }
+          params: { 
+            prompt: 'Test input',
+            timezone: 'America/New_York'
+          }
         })
       );
     });
@@ -207,7 +210,7 @@ describe('PredictionInput Component', () => {
       />
     );
     
-    const input = screen.getByPlaceholderText('Enter your prediction here...');
+    const input = screen.getByPlaceholderText('Enter your call here...');
     fireEvent.change(input, { target: { value: 'New prediction text' } });
     
     expect(mockSetPrompt).toHaveBeenCalledWith('New prediction text');

@@ -72,13 +72,13 @@ describe('ListPredictions Component', () => {
     );
     
     // Check if the component renders with the correct title
-    expect(screen.getByText('My Predictions')).toBeInTheDocument();
+    expect(screen.getByText('My Calls')).toBeInTheDocument();
     
     // Check if the navigation button is rendered
     expect(screen.getByText('Make New Prediction')).toBeInTheDocument();
     
     // Check if loading state is displayed
-    expect(screen.getByText('Loading your predictions...')).toBeInTheDocument();
+    expect(screen.getByText('Loading your calls...')).toBeInTheDocument();
   });
 
   it('calls onNavigateToMake when the navigation button is clicked', () => {
@@ -92,7 +92,7 @@ describe('ListPredictions Component', () => {
     );
     
     // Find and click the navigation button
-    const navigationButton = screen.getByText('Make New Prediction');
+    const navigationButton = screen.getByText('Make New Call');
     fireEvent.click(navigationButton);
     
     // Check if the navigation function was called
@@ -149,7 +149,7 @@ describe('ListPredictions Component', () => {
     );
     
     await waitFor(() => {
-      expect(screen.getByText('You must be logged in to view predictions')).toBeInTheDocument();
+      expect(screen.getByText('You must be logged in to view calls')).toBeInTheDocument();
     });
     
     // API should not be called when not authenticated
@@ -167,7 +167,7 @@ describe('ListPredictions Component', () => {
     );
     
     await waitFor(() => {
-      expect(screen.getByText('Failed to load predictions. Please try again later.')).toBeInTheDocument();
+      expect(screen.getByText('Failed to load calls. Please try again later.')).toBeInTheDocument();
     });
   });
   
@@ -182,7 +182,7 @@ describe('ListPredictions Component', () => {
     );
     
     await waitFor(() => {
-      expect(screen.getByText('You haven\'t made any predictions yet.')).toBeInTheDocument();
+      expect(screen.getByText('You haven\'t made any calls yet.')).toBeInTheDocument();
     });
   });
 });

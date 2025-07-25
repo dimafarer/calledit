@@ -5,10 +5,13 @@ import { AuthProvider } from '../contexts/AuthContext';
 import * as authContext from '../contexts/AuthContext';
 
 // Mock the useAuth hook
-vi.mock('../contexts/AuthContext', () => ({
-  ...vi.importActual('../contexts/AuthContext'),
-  useAuth: vi.fn(),
-}));
+vi.mock('../contexts/AuthContext', async () => {
+  const actual = await vi.importActual('../contexts/AuthContext');
+  return {
+    ...actual,
+    useAuth: vi.fn(),
+  };
+});
 
 describe('LoginButton', () => {
   const mockLogin = vi.fn();

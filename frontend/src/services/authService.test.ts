@@ -32,10 +32,12 @@ Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
 });
 
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
 describe('authService', () => {
   beforeEach(() => {
     localStorageMock.clear();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('storeTokens', () => {
@@ -144,7 +146,7 @@ describe('authService', () => {
       localStorage.setItem('cognito_id_token', sampleToken);
 
       // Mock the atob function
-      global.atob = jest.fn().mockImplementation((str) => {
+      global.atob = vi.fn().mockImplementation((str) => {
         return Buffer.from(str, 'base64').toString('binary');
       });
 

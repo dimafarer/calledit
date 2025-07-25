@@ -101,7 +101,7 @@ describe('LogCallButton Component', () => {
     
     const button = screen.getByText('Log Call');
     expect(button).toBeDisabled();
-    expect(button).toHaveAttribute('title', 'Make a prediction first');
+    expect(button).toHaveAttribute('title', 'Make a call first');
   });
 
   it('renders the button as disabled when user is not authenticated', () => {
@@ -153,7 +153,7 @@ describe('LogCallButton Component', () => {
     
     const button = screen.getByText('Log Call');
     expect(button).toBeDisabled();
-    expect(button).toHaveAttribute('title', 'Make a prediction and log in first');
+    expect(button).toHaveAttribute('title', 'Make a call and log in first');
   });
 
   it('shows error message when clicked with no valid response data', () => {
@@ -174,7 +174,7 @@ describe('LogCallButton Component', () => {
     fireEvent.click(logButton);
     
     // Verify error message is set
-    expect(mockSetError).toHaveBeenCalledWith('No prediction data available to log. Please make a prediction first.');
+    expect(mockSetError).toHaveBeenCalledWith('No call data available to log. Please make a call first.');
   });
 
   it('shows error message when clicked with valid response but not authenticated', () => {
@@ -203,7 +203,7 @@ describe('LogCallButton Component', () => {
     fireEvent.click(logButton);
     
     // Verify error message is set
-    expect(mockSetError).toHaveBeenCalledWith('You must be logged in to log a prediction.');
+    expect(mockSetError).toHaveBeenCalledWith('You must be logged in to log a call.');
   });
 
   it('makes API call with auth token when button is clicked', async () => {
@@ -259,7 +259,7 @@ describe('LogCallButton Component', () => {
     expect(mockSetPrompt).toHaveBeenCalledWith('');
     
     // Verify alert was shown and loading state was updated
-    expect(mockAlert).toHaveBeenCalledWith('Prediction logged successfully!');
+    expect(mockAlert).toHaveBeenCalledWith('Call logged successfully!');
     expect(mockSetIsLoading).toHaveBeenCalledWith(false);
   });
 
@@ -285,7 +285,7 @@ describe('LogCallButton Component', () => {
     
     // Wait for the API call to complete
     await waitFor(() => {
-      expect(mockSetError).toHaveBeenCalledWith('Error occurred while logging your prediction');
+      expect(mockSetError).toHaveBeenCalledWith('Error occurred while logging your call');
       expect(mockSetIsLoading).toHaveBeenCalledWith(false);
     });
     
