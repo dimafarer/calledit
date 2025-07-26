@@ -213,7 +213,7 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({ onClose }) 
         )}
       </div>
 
-      <style jsx>{`
+      <style>{`
         .notification-settings {
           max-width: 600px;
           margin: 0 auto;
@@ -222,23 +222,19 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({ onClose }) 
           border-radius: 8px;
           box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-
         .settings-header {
           position: relative;
           margin-bottom: 30px;
           text-align: center;
         }
-
         .settings-header h2 {
           margin: 0 0 10px 0;
           color: #333;
         }
-
         .settings-header p {
           color: #666;
           margin: 0;
         }
-
         .close-button {
           position: absolute;
           top: 0;
@@ -249,48 +245,40 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({ onClose }) 
           cursor: pointer;
           color: #999;
         }
-
         .close-button:hover {
           color: #333;
         }
-
         .notification-section, .social-section {
           margin-bottom: 30px;
           padding: 20px;
           border: 1px solid #e0e0e0;
           border-radius: 6px;
         }
-
         .notification-section h3, .social-section h3 {
           margin: 0 0 10px 0;
           color: #333;
         }
-
         .status-indicator {
           padding: 10px;
           border-radius: 4px;
           margin: 15px 0;
           font-weight: 500;
         }
-
         .status-indicator.success {
           background: #d4edda;
           color: #155724;
           border: 1px solid #c3e6cb;
         }
-
         .status-indicator:not(.success) {
           background: #f8f9fa;
           color: #6c757d;
           border: 1px solid #dee2e6;
         }
-
         .email-input-group {
           display: flex;
           gap: 10px;
           margin-top: 15px;
         }
-
         .email-input {
           flex: 1;
           padding: 10px;
@@ -298,7 +286,6 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({ onClose }) 
           border-radius: 4px;
           font-size: 14px;
         }
-
         .subscribe-button, .unsubscribe-button {
           padding: 10px 20px;
           border: none;
@@ -307,38 +294,31 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({ onClose }) 
           font-size: 14px;
           font-weight: 500;
         }
-
         .subscribe-button {
           background: #007bff;
           color: white;
         }
-
         .subscribe-button:hover:not(:disabled) {
           background: #0056b3;
         }
-
         .unsubscribe-button {
           background: #dc3545;
           color: white;
           margin-top: 10px;
         }
-
         .unsubscribe-button:hover:not(:disabled) {
           background: #c82333;
         }
-
         .subscribe-button:disabled, .unsubscribe-button:disabled {
           opacity: 0.6;
           cursor: not-allowed;
         }
-
         .social-platforms {
           display: flex;
           flex-direction: column;
           gap: 10px;
           margin-top: 15px;
         }
-
         .platform-item {
           display: flex;
           align-items: center;
@@ -348,20 +328,16 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({ onClose }) 
           border-radius: 4px;
           opacity: 0.6;
         }
-
         .platform-item.disabled {
           cursor: not-allowed;
         }
-
         .platform-icon {
           font-size: 18px;
         }
-
         .platform-name {
           flex: 1;
           font-weight: 500;
         }
-
         .coming-soon {
           font-size: 12px;
           color: #6c757d;
@@ -369,25 +345,21 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({ onClose }) 
           padding: 2px 8px;
           border-radius: 12px;
         }
-
         .message {
           padding: 12px;
           border-radius: 4px;
           margin-top: 20px;
         }
-
         .message.success {
           background: #d4edda;
           color: #155724;
           border: 1px solid #c3e6cb;
         }
-
         .message.error {
           background: #f8d7da;
           color: #721c24;
           border: 1px solid #f5c6cb;
         }
-
         .message.info {
           background: #cce7ff;
           color: #004085;
