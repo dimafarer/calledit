@@ -572,6 +572,11 @@ h2 {
   font-size: 1rem;
   font-family: 'Comic Sans MS', 'Marker Felt', 'Trebuchet MS', cursive, sans-serif;
   font-weight: 500;
+  text-shadow: 
+    0 0 10px rgba(102, 126, 234, 0.3),
+    0 0 20px rgba(102, 126, 234, 0.2),
+    0 1px 3px rgba(0, 0, 0, 0.1);
+  color: #2d3748;
 }
 
 .animated-word {
