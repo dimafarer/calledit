@@ -442,6 +442,76 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*/makecall'
 
+  # Verification System Resources
+  VerificationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-verification"
+      CodeUri: handlers/verification/
+      Handler: app.lambda_handler
+      Runtime: python3.12
+      Timeout: 300
+      MemorySize: 512
+      Environment:
+        Variables:
+          DYNAMODB_TABLE: calledit-db
+          S3_BUCKET: !Ref VerificationLogsBucket
+          SNS_TOPIC_ARN: !Ref VerificationNotificationTopic
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: calledit-db
+        - S3CrudPolicy:
+            BucketName: !Ref VerificationLogsBucket
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt VerificationNotificationTopic.TopicName
+        - Statement:
+            - Effect: Allow
+              Action:
+                - 'bedrock:InvokeModel'
+                - 'bedrock:InvokeModelWithResponseStream'
+              Resource: '*'
+      Events:
+        ScheduledVerification:
+          Type: Schedule
+          Properties:
+            Schedule: 'cron(0 12 * * ? *)'  # Daily at 12 PM UTC
+            Description: Daily prediction verification
+            Input: |
+              {
+                "source": "eventbridge",
+                "action": "verify_predictions",
+                "limit": null
+              }
+
+  # S3 Bucket for Verification Logs
+  VerificationLogsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-verification-logs-${AWS::AccountId}"
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldLogs
+            Status: Enabled
+            ExpirationInDays: 90
+          - Id: TransitionToIA
+            Status: Enabled
+            TransitionInDays: 30
+            StorageClass: STANDARD_IA
+
+  # SNS Topic for Verification Notifications
+  VerificationNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-verification-notifications"
+      DisplayName: CalledIt Verification Notifications
+
 Outputs:
   HelloWorldApi:
     Description: API Gateway endpoint URL for Prod stage for Hello World function
@@ -469,5 +539,18 @@ Outputs:
     Value: !Sub https://${AWS::StackName}-${AWS::AccountId}-domain.auth.${AWS::Region}.amazoncognito.com/login?client_id=${UserPoolClient}&response_type=code&scope=email+openid+profile&redirect_uri=localhost:5173
   WebSocketApiEndpoint:
     Description: "WebSocket API endpoint URL"
-    Value: !Sub "wss://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/${WebSocketStage}"    
+    Value: !Sub "wss://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/${WebSocketStage}"
+  
+  # Verification System Outputs
+  VerificationFunctionArn:
+    Description: ARN of the verification Lambda function
+    Value: !GetAtt VerificationFunction.Arn
+  
+  VerificationLogsBucket:
+    Description: Name of the S3 verification logs bucket
+    Value: !Ref VerificationLogsBucket
+  
+  VerificationNotificationTopic:
+    Description: ARN of the SNS notification topic
+    Value: !Ref VerificationNotificationTopic
 

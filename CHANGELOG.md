@@ -64,19 +64,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Authentication**: Cognito User Pool with hosted UI
 - **Database**: DynamoDB with user-based data partitioning
 
+## [1.1.0] - 2025-01-27
+
+### Added
+- **🤖 Strands Verification Agent**: Complete AI-powered prediction verification system
+  - Intelligent routing based on verifiability categories
+  - Agent verifiable: Pure reasoning and established knowledge
+  - Current tool verifiable: Time-based verification with `current_time` tool
+  - Strands tool verifiable: Mathematical calculations and computations
+  - API tool verifiable: Tool gap detection with MCP suggestions
+  - Human verifiable only: Appropriate inconclusive marking
+- **🔧 Tool Gap Detection System**: Automatic identification of missing verification capabilities
+  - MCP tool suggestions (mcp-weather, mcp-espn, mcp-yahoo-finance)
+  - Priority-based tool development roadmap (HIGH/MEDIUM/LOW)
+  - Detailed specifications for custom tool development
+  - Intelligent categorization of prediction requirements
+- **📊 Complete Verification Pipeline**: End-to-end automated verification workflow
+  - DynamoDB scanner for pending predictions
+  - S3 logging for audit trails and tool gap analysis
+  - Email notifications for verified TRUE predictions with HTML formatting
+  - Status updates in DynamoDB with confidence scores and processing metrics
+  - Batch processing with comprehensive statistics and error handling
+- **🧪 Comprehensive Testing Framework**: Mock Strands agents for development
+  - Complete integration tests for all verification categories
+  - Tool gap detection validation
+  - Email notification testing with HTML templates
+  - S3 logging verification with structured JSON format
+
+### Changed
+- **Data Modernization**: Updated 41 legacy predictions to current data structure
+  - Added `verifiable_category` field with intelligent categorization
+  - Added `category_reasoning` with AI explanations
+  - Fixed verification date formats and added proper ISO timestamps
+  - Added `prediction_date` and `date_reasoning` fields
+- **Database Schema**: Enhanced DynamoDB structure for verification tracking
+  - Added verification status fields (`verification_status`, `verification_confidence`)
+  - Added tool gap information storage
+  - Added processing metrics and agent reasoning storage
+  - Fixed Decimal type support for confidence scores
+
+### Technical Details
+- **Phase 1 Implementation**: Manual verification script with complete pipeline
+- **Verification Categories**: 5-category system with intelligent routing
+- **Tool Gap Analysis**: Automatic MCP tool suggestion system
+- **S3 Logging**: Structured audit trails with tool gap summaries
+- **Email System**: HTML notifications with agent reasoning details
+- **Mock Framework**: Testing support without full Strands installation
+
 ## [Unreleased]
 
-### Planned
-- **Verification Automation**: Automated verification of predictions using external APIs
-- **Prediction Analytics**: User statistics and accuracy tracking
-- **Social Features**: Prediction sharing and leaderboards
-- **Mobile App**: React Native mobile application
-- **Advanced AI**: Enhanced prediction analysis and suggestions
+### Planned (Phase 2)
+- **🚀 Lambda Deployment**: Serverless verification execution
+- **⏰ EventBridge Scheduling**: Automated cron-based verification runs
+- **📧 SNS Integration**: Reliable notification delivery system
+- **🌐 Enhanced MCP Tools**: Weather, sports, and financial API integrations
+- **📊 Verification Analytics**: Tool gap analysis and success rate tracking
 
 ---
 
 ## Version History Summary
 
+- **v1.1.0**: Complete Strands verification system with tool gap detection (Phase 1)
 - **v1.0.0**: Verifiability categorization system with automated testing
 - **v0.9.0**: Real-time streaming and Strands agent integration  
 - **v0.8.0**: Core serverless prediction platform
