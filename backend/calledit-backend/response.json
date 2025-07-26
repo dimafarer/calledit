@@ -1,0 +1,1 @@
+{"statusCode": 200, "body": "{\"message\": \"Batch verification completed\", \"statistics\": {\"total_processed\": 5, \"verified_true\": 0, \"verified_false\": 0, \"inconclusive\": 4, \"tool_gaps\": 1, \"errors\": 0, \"notifications_sent\": 0}}"}

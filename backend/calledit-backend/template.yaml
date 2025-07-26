@@ -474,8 +474,8 @@ Resources:
         ScheduledVerification:
           Type: Schedule
           Properties:
-            Schedule: 'cron(0 12 * * ? *)'  # Daily at 12 PM UTC
-            Description: Daily prediction verification
+            Schedule: 'rate(15 minutes)'  # Every 15 minutes
+            Description: Automated prediction verification every 15 minutes
             Input: |
               {
                 "source": "eventbridge",
@@ -502,8 +502,9 @@ Resources:
             ExpirationInDays: 90
           - Id: TransitionToIA
             Status: Enabled
-            TransitionInDays: 30
-            StorageClass: STANDARD_IA
+            Transitions:
+              - TransitionInDays: 30
+                StorageClass: STANDARD_IA
 
   # SNS Topic for Verification Notifications
   VerificationNotificationTopic:

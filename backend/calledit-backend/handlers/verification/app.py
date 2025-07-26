@@ -63,18 +63,30 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:
         }
 
 def handle_batch_verification(limit: int = None) -> Dict[str, Any]:
-    """Handle batch verification of pending predictions"""
+    """Handle batch verification of ALL predictions in database"""
     
-    # Get pending predictions
+    # Get ALL predictions from database
     table = dynamodb.Table(TABLE_NAME)
     
-    # Scan for pending predictions
-    response = table.scan(
-        FilterExpression="initial_status = :status",
-        ExpressionAttributeValues={":status": "pending"}
-    )
+    # Scan for ALL predictions (not just pending)
+    response = table.scan()
     
-    predictions = response.get('Items', [])
+    all_predictions = response.get('Items', [])
+    
+    # Filter for predictions that need verification
+    predictions = []
+    for prediction in all_predictions:
+        # Include if:
+        # 1. Status is pending, OR
+        # 2. No verification status exists, OR  
+        # 3. Previous verification failed/errored
+        status = prediction.get('initial_status', '').lower()
+        verification_status = prediction.get('verification_status', '').lower()
+        
+        if (status == 'pending' or 
+            not verification_status or 
+            verification_status in ['error', 'failed']):
+            predictions.append(prediction)
     
     if limit:
         predictions = predictions[:limit]
