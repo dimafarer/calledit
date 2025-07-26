@@ -5,9 +5,10 @@ Queries pending predictions from CalledIt database
 """
 
 import boto3
-from typing import List, Dict, Any
-from datetime import datetime
+from typing import List, Dict, Any, Optional
+from datetime import datetime, timezone
 import logging
+import re
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -40,7 +41,7 @@ class DynamoDBScanner:
             predictions = response.get('Items', [])
             
             # Filter for predictions past their verification date
-            current_time = datetime.utcnow()
+            current_time = datetime.now(timezone.utc)
             ready_predictions = []
             
             for prediction in predictions:
@@ -50,6 +51,14 @@ class DynamoDBScanner:
                     # Add metadata for verification
                     prediction['ready_for_verification'] = True
                     prediction['current_time'] = current_time.isoformat()
+                elif not verification_date:
+                    # Include predictions with unparseable dates for manual review
+                    prediction['ready_for_verification'] = True
+                    prediction['current_time'] = current_time.isoformat()
+                    prediction['date_parse_error'] = True
+                    ready_predictions.append(prediction)
+                    
+                    logger.info(f"Found prediction with unparseable date: {prediction.get('prediction_statement', 'Unknown')[:50]}...")
                     ready_predictions.append(prediction)
                     
                     logger.info(f"Found ready prediction: {prediction.get('prediction_statement', 'Unknown')[:50]}...")
@@ -82,7 +91,7 @@ class DynamoDBScanner:
             logger.error(f"Error getting prediction {prediction_id}: {str(e)}")
             raise
     
-    def _parse_verification_date(self, date_str: str) -> datetime:
+    def _parse_verification_date(self, date_str: str) -> Optional[datetime]:
         """
         Parse verification date string to datetime object
         
@@ -90,18 +99,34 @@ class DynamoDBScanner:
             date_str: Date string in various formats
             
         Returns:
-            datetime object or None if parsing fails
+            timezone-aware datetime object or None if parsing fails
         """
-        if not date_str:
+        if not date_str or date_str in ['YYYY-MM-DD', 'To be determined after the NBA season concludes', 'The upcoming Saturday after the prediction was made']:
             return None
             
         try:
             # Try ISO format first
             if 'T' in date_str:
-                return datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+            
+            # Handle EDT/EST timezone formats
+            if 'EDT' in date_str or 'EST' in date_str:
+                try:
+                    # Remove timezone suffix and parse
+                    clean_date = re.sub(r'\s+(EDT|EST)$', '', date_str)
+                    dt = datetime.strptime(clean_date, '%Y-%m-%d %H:%M:%S')
+                    return dt.replace(tzinfo=timezone.utc)  # Treat as UTC for simplicity
+                except ValueError:
+                    logger.warning(f"Failed to parse EDT/EST date: {date_str}")
+                    return None
             
             # Try date-only format
-            return datetime.strptime(date_str, '%Y-%m-%d')
+            if re.match(r'^\d{4}-\d{2}-\d{2}$', date_str):
+                dt = datetime.strptime(date_str, '%Y-%m-%d')
+                return dt.replace(tzinfo=timezone.utc)
+            
+            return None
             
         except (ValueError, TypeError) as e:
             logger.warning(f"Could not parse verification date '{date_str}': {str(e)}")
