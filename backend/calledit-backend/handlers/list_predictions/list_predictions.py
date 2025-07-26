@@ -1,7 +1,15 @@
 import boto3
 import json
+from decimal import Decimal
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key
+
+# Custom JSON encoder to handle Decimal types
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        return super(DecimalEncoder, self).default(obj)
 
 print("Starting lambda function execution")
 
@@ -142,7 +150,7 @@ def lambda_handler(event, context):
             ScanIndexForward=False  # This will sort by SK in descending order (newest first)
         )
 
-        print(f"DynamoDB query response: {json.dumps(response)}")
+        print(f"DynamoDB query response: {json.dumps(response, cls=DecimalEncoder)}")
         
         # Extract items from response
         items = response.get('Items', [])
@@ -152,7 +160,7 @@ def lambda_handler(event, context):
         predictions = []
         print("Beginning to format predictions")
         for item in items:
-            print(f"Processing item: {json.dumps(item)}")
+            # Process item (skip logging raw item to avoid Decimal issues)
             # Extract the prediction data from the DynamoDB item
             prediction = {
                 'prediction_statement': item.get('prediction_statement', ''),
@@ -165,9 +173,13 @@ def lambda_handler(event, context):
                     'criteria': item.get('verification_method', {}).get('criteria', []),
                     'steps': item.get('verification_method', {}).get('steps', [])
                 },
-                'initial_status': item.get('initial_status', 'Pending')
+                'initial_status': item.get('initial_status', 'Pending'),
+                # Add verification status fields if they exist
+                'verification_status': item.get('verification_status', ''),
+                'verification_confidence': float(item.get('verification_confidence', 0)) if item.get('verification_confidence') else None,
+                'verification_reasoning': item.get('verification_reasoning', '')
             }
-            print(f"Formatted prediction: {json.dumps(prediction)}")
+            print(f"Formatted prediction: {json.dumps(prediction, cls=DecimalEncoder)}")
             predictions.append(prediction)
         
         print(f"Returning successful response with {len(predictions)} predictions")
@@ -175,7 +187,7 @@ def lambda_handler(event, context):
         return {
             'statusCode': 200,
             'headers': cors_headers,
-            'body': json.dumps({'results': predictions})
+            'body': json.dumps({'results': predictions}, cls=DecimalEncoder)
         }
         
     except ClientError as e:
@@ -184,7 +196,7 @@ def lambda_handler(event, context):
         return {
             'statusCode': 500,
             'headers': cors_headers,
-            'body': json.dumps({'error': f'Database error: {str(e)}'})
+            'body': json.dumps({'error': f'Database error: {str(e)}'}, cls=DecimalEncoder)
         }
     except Exception as e:
         print(f"Unexpected error: {str(e)}")
@@ -193,5 +205,5 @@ def lambda_handler(event, context):
         return {
             'statusCode': 500,
             'headers': cors_headers,
-            'body': json.dumps({'error': f'Unexpected error: {str(e)}'})
+            'body': json.dumps({'error': f'Unexpected error: {str(e)}'}, cls=DecimalEncoder)
         }
