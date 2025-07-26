@@ -62,32 +62,100 @@
   gap: 10px; /* Add spacing between buttons */
 }
 
+/* Modern Button System */
 .send-button, .navigation-button {
   padding: 0.8rem 2rem;
   font-size: 1rem;
-  background-color: #646cff;
-  color: white;
+  font-weight: 600;
   border: none;
-  border-radius: 4px;
+  border-radius: 12px;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  position: relative;
+  overflow: hidden;
+  text-transform: none;
+  letter-spacing: 0.025em;
 }
 
+/* Primary Button - Streaming Call */
 .navigation-button {
-  background-color: #28a745;
-}
-
-.send-button:hover:not(:disabled), .navigation-button:hover:not(:disabled) {
-  background-color: #535bf2;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
 }
 
 .navigation-button:hover:not(:disabled) {
-  background-color: #218838;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+}
+
+.navigation-button:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* Secondary Buttons - View Calls, Crying */
+.navigation-button.secondary {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  box-shadow: 0 4px 15px rgba(240, 147, 251, 0.3);
+}
+
+.navigation-button.secondary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #ee82f0 0%, #f04658 100%);
+  box-shadow: 0 6px 20px rgba(240, 147, 251, 0.4);
+}
+
+/* Tertiary Button - Legacy Make Call */
+.navigation-button.legacy {
+  background: linear-gradient(135deg, #a8a8a8 0%, #8c8c8c 100%);
+  box-shadow: 0 2px 8px rgba(168, 168, 168, 0.3);
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.navigation-button.legacy:hover:not(:disabled) {
+  background: linear-gradient(135deg, #9a9a9a 0%, #7e7e7e 100%);
+  box-shadow: 0 3px 10px rgba(168, 168, 168, 0.4);
+  opacity: 0.9;
+}
+
+/* Send Button */
+.send-button {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+}
+
+.send-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, #3d8bfe 0%, #00d4fe 100%);
+  box-shadow: 0 6px 20px rgba(79, 172, 254, 0.5);
 }
 
 .send-button:disabled {
-  background-color: #cccccc;
+  background: linear-gradient(135deg, #e0e0e0 0%, #cccccc 100%);
+  color: #999;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Button Glow Effect */
+.navigation-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.navigation-button:hover::before {
+  left: 100%;
 }
 
 h1 {
@@ -101,10 +169,26 @@ h2 {
   text-align: center;
 }
 
-/* Improved contrast for dark mode */
+/* Dark mode button adjustments */
 @media (prefers-color-scheme: dark) {
   h1, h2 {
     color: #e6e6e6;
+  }
+  
+  .navigation-button {
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+  }
+  
+  .navigation-button.secondary {
+    box-shadow: 0 4px 15px rgba(240, 147, 251, 0.2);
+  }
+  
+  .navigation-button.legacy {
+    box-shadow: 0 2px 8px rgba(168, 168, 168, 0.2);
+  }
+  
+  .send-button {
+    box-shadow: 0 4px 15px rgba(79, 172, 254, 0.3);
   }
 }
 
@@ -373,6 +457,13 @@ h2 {
     font-size: 0.9rem;
     min-width: auto;
     white-space: nowrap;
+    border-radius: 10px;
+  }
+  
+  .send-button {
+    padding: 0.6rem 1.5rem;
+    font-size: 0.9rem;
+    border-radius: 10px;
   }
 }
 
@@ -388,6 +479,13 @@ h2 {
     font-size: 0.9rem;
     width: 100%;
     text-align: center;
+    border-radius: 10px;
+  }
+  
+  .send-button {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    border-radius: 10px;
   }
 }
 
@@ -399,6 +497,13 @@ h2 {
   .navigation-button {
     padding: 0.7rem 0.8rem;
     font-size: 0.85rem;
+    border-radius: 8px;
+  }
+  
+  .send-button {
+    padding: 0.7rem 1rem;
+    font-size: 0.85rem;
+    border-radius: 8px;
   }
 }
 

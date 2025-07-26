@@ -29,32 +29,33 @@ const NavigationControls = ({
       {isAuthenticated && (
         <>
           <button 
-            onClick={() => navigateTo('make')}
-            className={`navigation-button ${currentView === 'make' ? 'active' : ''}`}
-            aria-label="Make new call"
-          >
-            Make Call
-          </button>
-          <button 
             onClick={() => navigateTo('streaming')}
             className={`navigation-button ${currentView === 'streaming' ? 'active' : ''}`}
             aria-label="Make streaming call"
           >
-            Streaming Call
+            ⚡ Streaming Mode
           </button>
           <button 
             onClick={() => navigateTo('list')}
-            className={`navigation-button ${currentView === 'list' ? 'active' : ''}`}
+            className={`navigation-button secondary ${currentView === 'list' ? 'active' : ''}`}
             aria-label="View my calls"
           >
-            View Calls
+            📋 View Calls
           </button>
           <button 
             onClick={() => navigateTo('notifications')}
-            className={`navigation-button ${currentView === 'notifications' ? 'active' : ''}`}
+            className={`navigation-button secondary ${currentView === 'notifications' ? 'active' : ''}`}
             aria-label="Notification settings"
           >
             🎉 Crying
+          </button>
+          <button 
+            onClick={() => navigateTo('make')}
+            className={`navigation-button legacy ${currentView === 'make' ? 'active' : ''}`}
+            aria-label="Legacy non-streaming mode"
+            title="Non-streaming mode (for educational comparison)"
+          >
+            📜 Legacy Mode
           </button>
         </>
       )}
