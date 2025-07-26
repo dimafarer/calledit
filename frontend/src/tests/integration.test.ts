@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-const API_BASE = import.meta.env.VITE_APIGATEWAY || 'https://zvdf8sswt3.execute-api.us-west-2.amazonaws.com/Prod';
+// const API_BASE = import.meta.env.VITE_APIGATEWAY || 'https://zvdf8sswt3.execute-api.us-west-2.amazonaws.com/Prod';
 const WS_URL = import.meta.env.VITE_WEBSOCKET_URL || 'wss://0yv5r2auh5.execute-api.us-west-2.amazonaws.com/prod';
 
 describe('CalledIt Integration Tests', () => {
@@ -14,7 +14,7 @@ describe('CalledIt Integration Tests', () => {
         }, 10000);
 
         let ws: WebSocket;
-        let messageReceived = false;
+        // let messageReceived = false;
 
         try {
           ws = new WebSocket(WS_URL);
@@ -32,7 +32,7 @@ describe('CalledIt Integration Tests', () => {
             try {
               const message = JSON.parse(event.data);
               console.log('📨 Message type:', message.type);
-              messageReceived = true;
+              // messageReceived = true;
               
               if (message.type === 'complete') {
                 clearTimeout(timeout);

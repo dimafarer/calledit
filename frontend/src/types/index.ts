@@ -55,6 +55,15 @@ export interface CallResponse {
   
   /** The initial status of the call (e.g., "Pending", "Verified") */
   initial_status: string;
+  
+  /** The actual verification status from the verification system */
+  verification_status?: string;
+  
+  /** Confidence score of the verification (0.0 to 1.0) */
+  verification_confidence?: number;
+  
+  /** AI reasoning for the verification result */
+  verification_reasoning?: string;
 }
 
 /**
