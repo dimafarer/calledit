@@ -76,13 +76,13 @@ const NavigationControls = ({
  * and conditionally renders different views based on authentication status.
  */
 function AppContent() {
-  const [currentView, setCurrentView] = useState<'make' | 'list' | 'streaming' | 'notifications'>('make');
+  const [currentView, setCurrentView] = useState<'make' | 'list' | 'streaming' | 'notifications'>('streaming');
   const { isAuthenticated } = useAuth();
   
   // Effect to redirect to make predictions view when user logs out while on list view
   useEffect(() => {
-    if (!isAuthenticated && (currentView === 'list' || currentView === 'streaming' || currentView === 'notifications')) {
-      setCurrentView('make');
+    if (!isAuthenticated && (currentView === 'list' || currentView === 'notifications')) {
+      setCurrentView('streaming');
     }
   }, [isAuthenticated, currentView]);
 
@@ -145,7 +145,7 @@ function AppContent() {
         <ListPredictions onNavigateToMake={() => navigateTo('make')} />
       }
       {currentView === 'notifications' && 
-        <NotificationSettings onClose={() => navigateTo('make')} />
+        <NotificationSettings onClose={() => navigateTo('streaming')} />
       }
     </div>
   );
