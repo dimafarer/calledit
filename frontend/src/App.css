@@ -169,6 +169,89 @@ h2 {
   text-align: center;
 }
 
+/* Educational UX Elements */
+.educational-banner {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto 1rem auto;
+  padding: 0 1rem;
+}
+
+.mode-explanation {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+  border-left: 4px solid;
+}
+
+.mode-explanation.streaming {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  border-left-color: #667eea;
+  color: #4a5568;
+}
+
+.mode-explanation.legacy {
+  background: linear-gradient(135deg, rgba(168, 168, 168, 0.1) 0%, rgba(140, 140, 140, 0.1) 100%);
+  border-left-color: #a8a8a8;
+  color: #6a6a6a;
+}
+
+.mode-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.mode-text {
+  line-height: 1.4;
+}
+
+.component-wrapper {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.comparison-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.streaming-wrapper .comparison-note {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+  border: 2px solid rgba(102, 126, 234, 0.2);
+  color: #4a5568;
+}
+
+.legacy-wrapper .comparison-note {
+  background: linear-gradient(135deg, rgba(168, 168, 168, 0.08) 0%, rgba(140, 140, 140, 0.08) 100%);
+  border: 2px solid rgba(168, 168, 168, 0.2);
+  color: #6a6a6a;
+}
+
+.comparison-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.comparison-note p {
+  margin: 0;
+}
+
+.comparison-note strong {
+  color: #2d3748;
+}
+
 /* Dark mode button adjustments */
 @media (prefers-color-scheme: dark) {
   h1, h2 {
@@ -189,6 +272,33 @@ h2 {
   
   .send-button {
     box-shadow: 0 4px 15px rgba(79, 172, 254, 0.3);
+  }
+  
+  /* Dark mode educational elements */
+  .mode-explanation.streaming {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+    color: #e2e8f0;
+  }
+  
+  .mode-explanation.legacy {
+    background: linear-gradient(135deg, rgba(168, 168, 168, 0.15) 0%, rgba(140, 140, 140, 0.15) 100%);
+    color: #cbd5e0;
+  }
+  
+  .streaming-wrapper .comparison-note {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.12) 0%, rgba(118, 75, 162, 0.12) 100%);
+    border-color: rgba(102, 126, 234, 0.3);
+    color: #e2e8f0;
+  }
+  
+  .legacy-wrapper .comparison-note {
+    background: linear-gradient(135deg, rgba(168, 168, 168, 0.12) 0%, rgba(140, 140, 140, 0.12) 100%);
+    border-color: rgba(168, 168, 168, 0.3);
+    color: #cbd5e0;
+  }
+  
+  .comparison-note strong {
+    color: #f7fafc;
   }
 }
 
@@ -434,6 +544,25 @@ h2 {
 @media screen and (max-width: 480px) {
   .login-container {
     padding: 0 0.5rem;
+  }
+  
+  .educational-banner {
+    padding: 0 0.5rem;
+  }
+  
+  .mode-explanation {
+    padding: 10px 12px;
+    font-size: 0.85rem;
+  }
+  
+  .comparison-note {
+    padding: 12px;
+    font-size: 0.9rem;
+    margin-bottom: 16px;
+  }
+  
+  .comparison-icon {
+    font-size: 1.3rem;
   }
 }
 

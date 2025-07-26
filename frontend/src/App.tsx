@@ -97,15 +97,49 @@ function AppContent() {
         <NavigationControls currentView={currentView} navigateTo={navigateTo} />
       </div>
       
+      {/* Educational messaging */}
+      {isAuthenticated && (
+        <div className="educational-banner">
+          {currentView === 'streaming' && (
+            <div className="mode-explanation streaming">
+              <span className="mode-icon">⚡</span>
+              <div className="mode-text">
+                <strong>Streaming Mode:</strong> Watch AI reasoning in real-time as responses stream live
+              </div>
+            </div>
+          )}
+          {currentView === 'make' && (
+            <div className="mode-explanation legacy">
+              <span className="mode-icon">📜</span>
+              <div className="mode-text">
+                <strong>Legacy Mode:</strong> Traditional non-streaming response (for comparison)
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      
       {/* Use component mapping for cleaner conditional rendering */}
       {currentView === 'make' && 
-        <MakePredictions onNavigateToList={() => navigateTo('list')} />
+        <div className="component-wrapper legacy-wrapper">
+          <div className="comparison-note">
+            <span className="comparison-icon">🐌</span>
+            <p>This is the <strong>non-streaming version</strong> - notice how the response appears all at once without showing the AI's reasoning process.</p>
+          </div>
+          <MakePredictions onNavigateToList={() => navigateTo('list')} />
+        </div>
       }
       {currentView === 'streaming' && 
-        <StreamingCall 
-          webSocketUrl={import.meta.env.VITE_WEBSOCKET_URL || ''} 
-          onNavigateToList={() => navigateTo('list')}
-        />
+        <div className="component-wrapper streaming-wrapper">
+          <div className="comparison-note">
+            <span className="comparison-icon">🧠</span>
+            <p>Watch the <strong>AI reasoning process</strong> unfold in real-time as the model thinks through your prediction step by step.</p>
+          </div>
+          <StreamingCall 
+            webSocketUrl={import.meta.env.VITE_WEBSOCKET_URL || ''} 
+            onNavigateToList={() => navigateTo('list')}
+          />
+        </div>
       }
       {currentView === 'list' && 
         <ListPredictions onNavigateToMake={() => navigateTo('make')} />
