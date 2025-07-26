@@ -3,6 +3,7 @@ import './App.css'
 import { MakePredictions, ListPredictions, LoginButton } from './components'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import StreamingCall from './components/StreamingCall'
+import NotificationSettings from './components/NotificationSettings'
 
 /**
  * NavigationControls Component
@@ -18,8 +19,8 @@ const NavigationControls = ({
   currentView, 
   navigateTo 
 }: { 
-  currentView: 'make' | 'list' | 'streaming', 
-  navigateTo: (view: 'make' | 'list' | 'streaming') => void 
+  currentView: 'make' | 'list' | 'streaming' | 'notifications', 
+  navigateTo: (view: 'make' | 'list' | 'streaming' | 'notifications') => void 
 }) => {
   const { isAuthenticated } = useAuth();
   
@@ -48,6 +49,13 @@ const NavigationControls = ({
           >
             View Calls
           </button>
+          <button 
+            onClick={() => navigateTo('notifications')}
+            className={`navigation-button ${currentView === 'notifications' ? 'active' : ''}`}
+            aria-label="Notification settings"
+          >
+            🎉 Crying
+          </button>
         </>
       )}
       <LoginButton />
@@ -67,18 +75,18 @@ const NavigationControls = ({
  * and conditionally renders different views based on authentication status.
  */
 function AppContent() {
-  const [currentView, setCurrentView] = useState<'make' | 'list' | 'streaming'>('make');
+  const [currentView, setCurrentView] = useState<'make' | 'list' | 'streaming' | 'notifications'>('make');
   const { isAuthenticated } = useAuth();
   
   // Effect to redirect to make predictions view when user logs out while on list view
   useEffect(() => {
-    if (!isAuthenticated && (currentView === 'list' || currentView === 'streaming')) {
+    if (!isAuthenticated && (currentView === 'list' || currentView === 'streaming' || currentView === 'notifications')) {
       setCurrentView('make');
     }
   }, [isAuthenticated, currentView]);
 
   // Single navigation handler that accepts the view as parameter
-  const navigateTo = (view: 'make' | 'list' | 'streaming') => setCurrentView(view);
+  const navigateTo = (view: 'make' | 'list' | 'streaming' | 'notifications') => setCurrentView(view);
 
   return (
     <div className="app-container">
@@ -100,6 +108,9 @@ function AppContent() {
       }
       {currentView === 'list' && 
         <ListPredictions onNavigateToMake={() => navigateTo('make')} />
+      }
+      {currentView === 'notifications' && 
+        <NotificationSettings onClose={() => navigateTo('make')} />
       }
     </div>
   );

@@ -513,6 +513,54 @@ Resources:
       TopicName: !Sub "${AWS::StackName}-verification-notifications"
       DisplayName: CalledIt Verification Notifications
 
+  # Notification Management Function
+  NotificationManagementFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-notification-management"
+      CodeUri: handlers/notification_management/
+      Handler: app.lambda_handler
+      Runtime: python3.12
+      Timeout: 30
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref VerificationNotificationTopic
+      Policies:
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt VerificationNotificationTopic.TopicName
+        - Statement:
+            - Effect: Allow
+              Action:
+                - 'sns:Subscribe'
+                - 'sns:Unsubscribe'
+                - 'sns:ListSubscriptionsByTopic'
+              Resource: !Ref VerificationNotificationTopic
+      Events:
+        SubscribeNotifications:
+          Type: Api
+          Properties:
+            Path: /subscribe-notifications
+            Method: post
+            RestApiId: !Ref CallitAPI
+            Auth:
+              Authorizer: CognitoAuthorizer
+        UnsubscribeNotifications:
+          Type: Api
+          Properties:
+            Path: /unsubscribe-notifications
+            Method: post
+            RestApiId: !Ref CallitAPI
+            Auth:
+              Authorizer: CognitoAuthorizer
+        NotificationStatus:
+          Type: Api
+          Properties:
+            Path: /notification-status
+            Method: get
+            RestApiId: !Ref CallitAPI
+            Auth:
+              Authorizer: CognitoAuthorizer
+
 Outputs:
   HelloWorldApi:
     Description: API Gateway endpoint URL for Prod stage for Hello World function
