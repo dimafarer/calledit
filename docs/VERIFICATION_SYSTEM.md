@@ -112,13 +112,17 @@ for prediction in predictions:
 @dataclass
 class VerificationResult:
     prediction_id: str
-    status: str  # "TRUE", "FALSE", "INCONCLUSIVE", "ERROR"
+    status: str  # "TRUE", "FALSE", "INCONCLUSIVE", "ERROR", "TOOL_GAP"
     confidence: float  # 0.0 to 1.0
     reasoning: str
     verification_date: datetime
     tools_used: List[str]
     agent_thoughts: str
     error_message: Optional[str] = None
+    # Tool gap analysis
+    missing_tool: Optional[str] = None
+    suggested_mcp_tool: Optional[str] = None
+    tool_specification: Optional[str] = None
 ```
 
 #### S3 Log Structure
@@ -134,7 +138,31 @@ class VerificationResult:
   "confidence": 0.95,
   "verification_date": "2025-01-28T00:00:00Z",
   "actual_outcome": "Bitcoin price: $97,500",
-  "processing_time_ms": 3500
+  "processing_time_ms": 3500,
+  "tool_gaps": {
+    "missing_tool": null,
+    "suggested_mcp_tool": null,
+    "tool_specification": null
+  }
+}
+```
+
+#### Tool Gap Log Example
+```json
+{
+  "timestamp": "2025-01-27T15:30:00Z",
+  "prediction_id": "pred_456",
+  "original_statement": "It will be sunny in Tokyo tomorrow",
+  "verification_category": "api_tool_verifiable",
+  "agent_reasoning": "Need weather data for Tokyo, but no weather API available",
+  "tools_used": [],
+  "verification_result": "TOOL_GAP",
+  "confidence": 0.0,
+  "tool_gaps": {
+    "missing_tool": "weather_api",
+    "suggested_mcp_tool": "mcp-weather",
+    "tool_specification": "Need MCP tool for weather data: get_weather(location, date) -> {temperature, conditions, precipitation}"
+  }
 }
 ```
 
@@ -294,7 +322,91 @@ test_human_verifiable_only()    # Subjective
 
 ---
 
-## 8. Monitoring & Observability
+## 8. Tool Gap Analysis & MCP Integration
+
+### 8.1 Tool Gap Detection
+When Strands encounters a prediction it cannot verify with current tools, it will:
+
+1. **Identify the missing capability**
+2. **Suggest known MCP tools** that could provide the functionality
+3. **Specify requirements** for building custom tools if none exist
+4. **Log detailed analysis** for future tool development
+
+### 8.2 Common Tool Gaps & MCP Solutions
+
+#### Weather Data
+- **Gap**: Weather predictions ("It will rain tomorrow")
+- **MCP Tool**: `mcp-weather` or `mcp-openweathermap`
+- **Specification**: `get_weather(location, date) -> {temperature, conditions, precipitation}`
+
+#### Financial Data
+- **Gap**: Stock prices, crypto beyond Bitcoin
+- **MCP Tool**: `mcp-finance` or `mcp-yahoo-finance`
+- **Specification**: `get_stock_price(symbol, date) -> {price, volume, change}`
+
+#### Sports Data
+- **Gap**: Game results, team statistics
+- **MCP Tool**: `mcp-sports` or `mcp-espn`
+- **Specification**: `get_game_result(team1, team2, date) -> {winner, score, status}`
+
+#### News & Events
+- **Gap**: Real-world event verification
+- **MCP Tool**: `mcp-news` or `mcp-wikipedia`
+- **Specification**: `search_events(query, date_range) -> {events, sources, relevance}`
+
+#### Social Media
+- **Gap**: Public sentiment, viral content
+- **MCP Tool**: `mcp-twitter` or `mcp-social`
+- **Specification**: `get_sentiment(topic, date) -> {sentiment, mentions, engagement}`
+
+### 8.3 Tool Development Roadmap
+
+#### Phase 2 Priority Tools
+1. **Weather API Integration** - High impact for weather predictions
+2. **Sports Data API** - Many sports-related predictions
+3. **Enhanced Financial APIs** - Beyond Bitcoin price checking
+4. **News Event Verification** - Real-world event validation
+
+#### Phase 3 Advanced Tools
+1. **Social Media Monitoring** - Sentiment and viral content
+2. **Government Data APIs** - Policy and regulatory predictions
+3. **Scientific Data APIs** - Research and discovery predictions
+4. **Custom Domain APIs** - Industry-specific verification
+
+### 8.4 Tool Gap Logging
+
+#### S3 Tool Gap Reports
+- **Location**: `s3://calledit-verification-logs/tool-gaps/`
+- **Format**: JSON with detailed specifications
+- **Aggregation**: Daily reports on most needed tools
+- **Priority Scoring**: Based on prediction frequency and user impact
+
+#### Tool Gap Analytics
+```python
+# Example tool gap analysis
+{
+  "date": "2025-01-27",
+  "total_predictions": 50,
+  "tool_gaps": {
+    "weather_api": {
+      "count": 12,
+      "examples": ["It will rain tomorrow", "Sunny weekend ahead"],
+      "priority": "HIGH",
+      "suggested_mcp": "mcp-weather"
+    },
+    "sports_api": {
+      "count": 8,
+      "examples": ["Lakers will win tonight", "Super Bowl prediction"],
+      "priority": "MEDIUM",
+      "suggested_mcp": "mcp-espn"
+    }
+  }
+}
+```
+
+---
+
+## 9. Monitoring & Observability
 
 ### 8.1 Metrics
 - Verification success rate by category
