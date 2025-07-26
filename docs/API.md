@@ -97,9 +97,62 @@ Retrieve user's predictions/calls.
         "criteria": ["string"],
         "steps": ["string"]
       },
-      "initial_status": "pending"
+      "initial_status": "pending",
+      "verification_status": "inconclusive",
+      "verification_confidence": 0.8,
+      "verification_reasoning": "string"
     }
   ]
+}
+```
+
+### Notification Management ("Crying" System)
+
+#### POST /subscribe-notifications
+Subscribe user's email to receive notifications for successful predictions.
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Subscription request sent. Please check your email for confirmation.",
+  "subscription_arn": "pending confirmation"
+}
+```
+
+#### POST /unsubscribe-notifications
+Unsubscribe from email notifications.
+
+**Authentication:** Required
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Unsubscribed from 1 email notifications"
+}
+```
+
+#### GET /notification-status
+Check current notification subscription status.
+
+**Authentication:** Required
+
+**Response:**
+```json
+{
+  "isSubscribed": true,
+  "email": "user@example.com",
+  "subscriptionArn": "arn:aws:sns:..."
 }
 ```
 
@@ -307,6 +360,8 @@ const response = await fetch('/log-call', {
 
 ## Changelog
 
+- **v1.3.0**: Added "Crying" notification system with email subscription management
+- **v1.2.0**: Added automated verification system with status updates
 - **v1.0.0**: Added verifiability categorization to all endpoints
 - **v0.9.0**: Added WebSocket streaming API
 - **v0.8.0**: Initial REST API with basic prediction CRUD operations
