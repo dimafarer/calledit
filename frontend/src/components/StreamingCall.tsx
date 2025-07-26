@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CallService } from '../services/callService';
 import LogCallButton from './LogCallButton';
+import AnimatedText from './AnimatedText';
 import { APIResponse } from '../types';
 
 interface StreamingCallProps {
@@ -71,6 +72,8 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
   const [call, setCall] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [response, setResponse] = useState<APIResponse | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [currentTool, setCurrentTool] = useState<string | null>(null);
   const callServiceRef = useRef<CallService | null>(null);
 
   useEffect(() => {
@@ -93,6 +96,7 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
     }
 
     setIsLoading(true);
+    setIsProcessing(true);
     handleNewCall();
 
     try {
@@ -104,6 +108,7 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
         },
         // Tool use handler
         (toolName) => {
+          setCurrentTool(toolName);
           setStreamingText((prev) => 
             prev + `\n[Using tool: ${toolName}]\n`
           );
@@ -122,21 +127,29 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
             };
             setResponse(apiResponse);
             setIsLoading(false);
+            setIsProcessing(false);
+            setCurrentTool(null);
           } catch (parseError) {
             console.error('Error parsing final response:', parseError);
             setCall({ raw: finalResponse });
             setIsLoading(false);
+            setIsProcessing(false);
+            setCurrentTool(null);
           }
         },
         // Error handler
         (errorMessage) => {
           setError(errorMessage);
           setIsLoading(false);
+          setIsProcessing(false);
+          setCurrentTool(null);
         }
       );
     } catch (err) {
       setError((err as Error).message);
       setIsLoading(false);
+      setIsProcessing(false);
+      setCurrentTool(null);
     }
   };
 
@@ -146,6 +159,8 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
     setResponse(null);
     setStreamingText('');
     setError(null);
+    setIsProcessing(false);
+    setCurrentTool(null);
   };
 
   return (
@@ -202,23 +217,52 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
         </div>
       )}
       
-      {streamingText && (
-        <div style={{ marginBottom: '20px' }}>
-          <h3>Processing your call...</h3>
-          <div style={{ 
-            backgroundColor: '#f8f9fa', 
-            color: '#212529',
-            padding: '15px', 
-            borderRadius: '4px',
-            border: '1px solid #dee2e6',
-            whiteSpace: 'pre-wrap',
-            fontFamily: 'monospace',
-            fontSize: '14px',
-            maxHeight: '300px',
-            overflowY: 'auto'
-          }}>
-            {streamingText}
+      {(streamingText || isProcessing) && (
+        <div className="streaming-response">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+            <h3 style={{ margin: 0, color: '#667eea' }}>🧠 AI Reasoning Process</h3>
+            {isProcessing && (
+              <div className="processing-indicator">
+                <span>Processing</span>
+                <div className="processing-dots">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              </div>
+            )}
           </div>
+          
+          {currentTool && (
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
+              border: '1px solid rgba(102, 126, 234, 0.2)',
+              borderRadius: '8px',
+              padding: '12px',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span style={{ fontSize: '1.2rem' }}>🔧</span>
+              <span style={{ color: '#667eea', fontWeight: '500' }}>Using tool: {currentTool}</span>
+            </div>
+          )}
+          
+          {streamingText && (
+            <div style={{ 
+              padding: '16px',
+              borderRadius: '8px',
+              backgroundColor: 'rgba(255, 255, 255, 0.8)',
+              border: '1px solid rgba(102, 126, 234, 0.1)',
+              minHeight: '100px'
+            }}>
+              <AnimatedText 
+                text={streamingText}
+                className="streaming-text"
+              />
+            </div>
+          )}
         </div>
       )}
       

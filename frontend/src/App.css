@@ -566,6 +566,114 @@ h2 {
   }
 }
 
+/* Animated Text Styles */
+.animated-text {
+  line-height: 1.6;
+  font-size: 1rem;
+  font-family: 'Comic Sans MS', 'Marker Felt', 'Trebuchet MS', cursive, sans-serif;
+  font-weight: 500;
+}
+
+.animated-word {
+  transition: all 0.3s ease;
+  font-family: inherit;
+}
+
+.animated-word:hover {
+  color: #667eea;
+  transform: scale(1.05);
+}
+
+.typing-cursor {
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* Streaming response container enhancements */
+.streaming-response {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  border: 1px solid rgba(102, 126, 234, 0.1);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 16px 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.streaming-response::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #667eea, transparent);
+  animation: streamingProgress 2s infinite;
+}
+
+@keyframes streamingProgress {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+.processing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #667eea;
+  font-style: italic;
+  margin: 8px 0;
+}
+
+.processing-dots {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.processing-dots span {
+  width: 4px;
+  height: 4px;
+  background: #667eea;
+  border-radius: 50%;
+  animation: processingPulse 1.4s infinite ease-in-out;
+}
+
+.processing-dots span:nth-child(1) { animation-delay: -0.32s; }
+.processing-dots span:nth-child(2) { animation-delay: -0.16s; }
+.processing-dots span:nth-child(3) { animation-delay: 0s; }
+
+@keyframes processingPulse {
+  0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+@media (prefers-color-scheme: dark) {
+  .streaming-response {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+    border-color: rgba(102, 126, 234, 0.2);
+  }
+  
+  .animated-word:hover {
+    color: #8fa4f3;
+  }
+  
+  .typing-cursor {
+    color: #8fa4f3;
+  }
+  
+  .processing-indicator {
+    color: #8fa4f3;
+  }
+  
+  .processing-dots span {
+    background: #8fa4f3;
+  }
+}
+
 .header-controls {
   display: flex;
   gap: 8px;
