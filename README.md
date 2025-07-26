@@ -390,6 +390,7 @@ See [docs/TESTING.md](docs/TESTING.md) for comprehensive testing documentation.
 
 ### Additional Resources
 - **[docs/infra.svg](docs/infra.svg)** - Infrastructure architecture diagram
+- **[docs/UI_IMPROVEMENTS.md](docs/UI_IMPROVEMENTS.md)** - UI/UX improvement plan and timeline
 - **[testing/README.md](testing/README.md)** - Testing framework overview
 - **[strands/demos/](strands/demos/)** - Strands agent development examples
 
