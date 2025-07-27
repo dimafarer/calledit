@@ -301,6 +301,7 @@ The application uses the following AWS resources:
 - **💾 Complete Data Persistence**: Categories and reasoning stored in DynamoDB
 - **📢 "Crying" System**: Celebrate successful predictions with notifications and social sharing
 - **📧 Email Notifications**: Get notified when your predictions are verified as TRUE
+- **⚡ Zero Cold Starts**: Provisioned concurrency on critical functions eliminates delays
 
 ## Deployment
 
@@ -377,6 +378,17 @@ python testing/verifiability_category_tests.py
 - **Integration Tests**: API endpoints and WebSocket flows
 - **End-to-End Tests**: Complete verifiability categorization validation
 - **Performance Tests**: Real-time streaming and response times
+- **Provisioned Concurrency Tests**: Verify zero cold starts on critical functions
+
+#### Provisioned Concurrency Monitoring
+```bash
+# Test all functions have proper alias + provisioned concurrency setup
+python backend/calledit-backend/tests/test_provisioned_concurrency.py
+
+# Expected output:
+# 🎯 Overall: 3/3 tests passed
+# 🎉 All provisioned concurrency tests PASSED!
+```
 
 See [docs/TESTING.md](docs/TESTING.md) for comprehensive testing documentation.
 
@@ -469,6 +481,7 @@ npm run build
 - 🆕 **Tool Gap Analysis**: MCP tool suggestions for missing verification capabilities
 - 🆕 **"Crying" Notifications**: Email alerts for successful predictions with social sharing setup
 - 🆕 **Modern UI Design**: Complete responsive redesign with educational UX and streaming text effects
+- 🆕 **Lambda Provisioned Concurrency**: Eliminated cold starts on 3 key functions with alias-based architecture
 
 ### ✅ **PHASE 2 COMPLETE: Automated Verification System**
 - 🤖 **Strands Verification Agent**: AI-powered prediction verification with 5-category routing

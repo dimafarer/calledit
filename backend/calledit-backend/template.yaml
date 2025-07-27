@@ -162,6 +162,9 @@ Resources:
       Runtime: python3.12
       Architectures:
       - x86_64
+      AutoPublishAlias: live
+      ProvisionedConcurrencyConfig:
+        ProvisionedConcurrentExecutions: 1
       Policies:
         - DynamoDBCrudPolicy:
             TableName: calledit-db
@@ -183,6 +186,9 @@ Resources:
       Runtime: python3.12
       Architectures:
       - x86_64
+      AutoPublishAlias: live
+      ProvisionedConcurrencyConfig:
+        ProvisionedConcurrentExecutions: 1
       Policies:
         - DynamoDBCrudPolicy:
             TableName: calledit-db
@@ -401,6 +407,9 @@ Resources:
       Runtime: python3.12
       Timeout: 300  # 5 minutes
       MemorySize: 512
+      AutoPublishAlias: live
+      ProvisionedConcurrencyConfig:
+        ProvisionedConcurrentExecutions: 1
       Policies:
         - DynamoDBCrudPolicy:
             TableName: calledit-db
