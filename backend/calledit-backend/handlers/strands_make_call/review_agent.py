@@ -50,14 +50,39 @@ class ReviewAgent:
         1. Make verification more precise
         2. Change verifiability category (e.g., human → tool verifiable)
         3. Improve verification method accuracy
+        
+        RETURN ONLY VALID JSON - NO OTHER TEXT:
         """
         
         # This is the MCP Sampling request - asking client to perform LLM interaction
         response = self.agent(review_prompt)
+        response_str = str(response)
         
         try:
-            return json.loads(str(response))
+            # First try direct JSON parsing
+            return json.loads(response_str)
         except json.JSONDecodeError:
+            # Try to extract JSON from markdown code blocks or mixed content
+            import re
+            
+            # Look for JSON in code blocks
+            json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', response_str)
+            if json_match:
+                try:
+                    return json.loads(json_match.group(1))
+                except json.JSONDecodeError:
+                    pass
+            
+            # Look for JSON object anywhere in the response
+            json_pattern = r'\{[\s\S]*"reviewable_sections"[\s\S]*\}'
+            json_match = re.search(json_pattern, response_str)
+            if json_match:
+                try:
+                    return json.loads(json_match.group(0))
+                except json.JSONDecodeError:
+                    pass
+            
+            print(f"Failed to parse review response: {response_str[:500]}...")
             # Fallback if JSON parsing fails
             return {"reviewable_sections": []}
     
