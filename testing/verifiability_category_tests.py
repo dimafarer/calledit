@@ -49,7 +49,7 @@ class VerifiabilityCategoryTester:
                     result = ws.recv()
                     data = json.loads(result)
                     
-                    if data.get("type") == "complete":
+                    if data.get("type") == "call_response":
                         response_data = json.loads(data.get("content", "{}"))
                         break
                         

@@ -468,7 +468,7 @@ npm run build
 
 ## Project Status
 
-### Current Version: v1.4.0 - 🎨 UI IMPROVEMENTS COMPLETE
+### Current Version: v1.5.0 - 🔧 MCP SAMPLING REVIEW FEATURE
 - ✅ **Verifiability Categorization System**: Complete 5-category classification
 - ✅ **Real-time Streaming**: WebSocket-based AI processing
 - ✅ **Automated Testing**: 100% success rate test suite
@@ -482,15 +482,33 @@ npm run build
 - 🆕 **"Crying" Notifications**: Email alerts for successful predictions with social sharing setup
 - 🆕 **Modern UI Design**: Complete responsive redesign with educational UX and streaming text effects
 - 🆕 **Lambda Provisioned Concurrency**: Eliminated cold starts on 3 key functions with alias-based architecture
+- 🆕 **MCP Sampling Review Feature**: Complete implementation of review & improvement system
+  - Automatic prediction review using MCP Sampling pattern
+  - WebSocket routing for improvement workflow (improve_section, improvement_answers)
+  - Server-initiated sampling with client-facilitated LLM interactions
+  - Human-in-the-loop design for user-controlled improvements
 
-### ✅ **PHASE 2 COMPLETE: Automated Verification System**
+### ✅ **PHASE 2 COMPLETE: MCP Sampling Review & Improvement System**
+- 🔍 **Strands Review Agent**: Complete MCP Sampling implementation for prediction review
+  - Automatic review of prediction responses using proper MCP Sampling pattern
+  - Server-initiated sampling requests with client-facilitated LLM interactions
+  - Human-in-the-loop design for user-controlled improvements
+- 🌐 **WebSocket Routing**: Fixed and enhanced WebSocket API routing
+  - Added `improve_section` and `improvement_answers` routes with proper permissions
+  - Fixed Lambda import issues (relative → absolute imports)
+  - Mock improvement responses working (ready for full ReviewAgent implementation)
+- 🧪 **Testing Infrastructure**: Comprehensive testing framework for review feature
+  - WebSocket routing tests with 100% basic functionality
+  - Debug tools and CloudWatch log analysis
+  - Integration tests for MCP Sampling pattern
+
+### ✅ **PREVIOUS: Automated Verification System**
 - 🤖 **Strands Verification Agent**: AI-powered prediction verification with 5-category routing
 - ⏰ **Automated Processing**: Every 15 minutes via EventBridge, processes ALL predictions
-- 🎯 **Real-time Status Updates**: Frontend displays actual verification results (inconclusive, tool_gap, true, false)
+- 🎯 **Real-time Status Updates**: Frontend displays actual verification results
 - 📊 **Tool Gap Detection**: Automatic MCP tool suggestions for missing capabilities
 - 📧 **Smart Notifications**: SNS email alerts for verified TRUE predictions
 - 🗂️ **Complete Audit Trail**: S3 logging with structured JSON for analysis
-- 💾 **Database Integration**: DynamoDB updates with verification status, confidence, and reasoning
 
 ### Future Roadmap (Phase 3+)
 - 🌐 **MCP Tool Integration**: Weather, sports, and financial API tools

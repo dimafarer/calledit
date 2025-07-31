@@ -35,9 +35,76 @@ def parse_relative_date(date_string: str, timezone: str = "UTC") -> str:
         default_date = datetime.now(tz) + timedelta(days=30)
         return default_date.astimezone(pytz.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
+def handle_improvement_request(event, context, api_gateway_management_api, connection_id):
+    """
+    Handle user requests for section improvements using MCP Sampling.
+    """
+    try:
+        from review_agent import ReviewAgent
+        
+        body = json.loads(event.get('body', '{}'))
+        action_type = body.get('action')
+        
+        if action_type == 'improve_section':
+            section = body.get('section')
+            
+            # Send mock questions immediately to test routing
+            api_gateway_management_api.post_to_connection(
+                ConnectionId=connection_id,
+                Data=json.dumps({
+                    "type": "improvement_questions",
+                    "data": {
+                        "section": section,
+                        "questions": ["What specific time?", "Any location details?"]
+                    }
+                })
+            )
+            
+        elif action_type == 'improvement_answers':
+            section = body.get('section')
+            answers = body.get('answers', [])
+            original_value = body.get('original_value', '')
+            full_context = body.get('full_context', {})
+            
+            # Create review agent
+            review_agent = ReviewAgent()
+            
+            # Use MCP Sampling to regenerate section
+            improved_value = review_agent.regenerate_section(
+                section, 
+                original_value, 
+                ' '.join(answers), 
+                full_context
+            )
+            
+            # Send improved response
+            api_gateway_management_api.post_to_connection(
+                ConnectionId=connection_id,
+                Data=json.dumps({
+                    "type": "improved_response",
+                    "data": {
+                        "section": section,
+                        "improved_value": improved_value
+                    }
+                })
+            )
+            
+        return {
+            'statusCode': 200,
+            'body': json.dumps({'status': 'Improvement processed'})
+        }
+        
+    except Exception as e:
+        print(f"Error in improvement request: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)})
+        }
+
 def lambda_handler(event, context):
     """
     Handle prediction requests and stream responses back to the client using Strands.
+    Also handles improvement requests using MCP Sampling pattern.
     """
     print("WebSocket message event:", event)
     
@@ -67,9 +134,16 @@ def lambda_handler(event, context):
         endpoint_url=f"https://{domain_name}/{stage}"
     )
     
-    # Get the prompt from the event body
+    # Check if this is an improvement request
     try:
         body = json.loads(event.get('body', '{}'))
+        action = body.get('action', 'makecall')
+        
+        # Handle improvement requests using MCP Sampling
+        if action in ['improve_section', 'improvement_answers']:
+            return handle_improvement_request(event, context, api_gateway_management_api, connection_id)
+        
+        # Handle normal prediction requests
         prompt = body.get('prompt', '')
         user_timezone = body.get('timezone', '')
         
@@ -323,12 +397,60 @@ def lambda_handler(event, context):
             "date_reasoning": str(prediction_json.get("date_reasoning", "No reasoning provided"))
         }
         
-        # Send the complete response
+        # Send the initial complete response
+        api_gateway_management_api.post_to_connection(
+            ConnectionId=connection_id,
+            Data=json.dumps({
+                "type": "call_response",
+                "content": json.dumps(sanitized_response)
+            })
+        )
+        
+        # Phase 2: Real Strands review using MCP Sampling
+        try:
+            from review_agent import ReviewAgent
+            
+            api_gateway_management_api.post_to_connection(
+                ConnectionId=connection_id,
+                Data=json.dumps({
+                    "type": "status",
+                    "status": "reviewing",
+                    "message": "Reviewing response for potential improvements..."
+                })
+            )
+            
+            # Create review agent with same callback handler
+            review_agent = ReviewAgent(callback_handler=stream_callback_handler)
+            
+            # Use MCP Sampling to review the prediction
+            review_result = review_agent.review_prediction(sanitized_response)
+            
+            # Send review results
+            api_gateway_management_api.post_to_connection(
+                ConnectionId=connection_id,
+                Data=json.dumps({
+                    "type": "review_complete",
+                    "data": review_result
+                })
+            )
+            
+        except Exception as review_error:
+            print(f"Review process failed: {review_error}")
+            # Fallback to no review if it fails
+            api_gateway_management_api.post_to_connection(
+                ConnectionId=connection_id,
+                Data=json.dumps({
+                    "type": "review_complete",
+                    "data": {"reviewable_sections": []}
+                })
+            )
+        
+        # Send final completion status
         api_gateway_management_api.post_to_connection(
             ConnectionId=connection_id,
             Data=json.dumps({
                 "type": "complete",
-                "content": json.dumps(sanitized_response)
+                "status": "ready_for_improvements"
             })
         )
         

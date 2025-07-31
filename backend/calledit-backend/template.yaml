@@ -163,8 +163,6 @@ Resources:
       Architectures:
       - x86_64
       AutoPublishAlias: live
-      ProvisionedConcurrencyConfig:
-        ProvisionedConcurrentExecutions: 1
       Policies:
         - DynamoDBCrudPolicy:
             TableName: calledit-db
@@ -187,8 +185,6 @@ Resources:
       Architectures:
       - x86_64
       AutoPublishAlias: live
-      ProvisionedConcurrencyConfig:
-        ProvisionedConcurrentExecutions: 1
       Policies:
         - DynamoDBCrudPolicy:
             TableName: calledit-db
@@ -334,6 +330,30 @@ Resources:
         - - 'integrations'
           - !Ref MakeCallStreamIntegration
 
+  ImproveSectionRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketApi
+      RouteKey: improve_section
+      AuthorizationType: NONE
+      OperationName: ImproveSectionRoute
+      Target: !Join
+        - '/'
+        - - 'integrations'
+          - !Ref MakeCallStreamIntegration
+
+  ImprovementAnswersRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketApi
+      RouteKey: improvement_answers
+      AuthorizationType: NONE
+      OperationName: ImprovementAnswersRoute
+      Target: !Join
+        - '/'
+        - - 'integrations'
+          - !Ref MakeCallStreamIntegration
+
   ConnectIntegration:
     Type: AWS::ApiGatewayV2::Integration
     Properties:
@@ -355,12 +375,16 @@ Resources:
       IntegrationType: AWS_PROXY
       IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MakeCallStreamFunction.Arn}/invocations
 
+
+
   WebSocketDeployment:
     Type: AWS::ApiGatewayV2::Deployment
     DependsOn:
       - ConnectRoute
       - DisconnectRoute
       - MakeCallStreamRoute
+      - ImproveSectionRoute
+      - ImprovementAnswersRoute
     Properties:
       ApiId: !Ref WebSocketApi
 
@@ -408,8 +432,6 @@ Resources:
       Timeout: 300  # 5 minutes
       MemorySize: 512
       AutoPublishAlias: live
-      ProvisionedConcurrencyConfig:
-        ProvisionedConcurrentExecutions: 1
       Policies:
         - DynamoDBCrudPolicy:
             TableName: calledit-db
@@ -449,7 +471,25 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !Ref MakeCallStreamFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*/makecall'
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*/*'
+
+  ImproveSectionFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref MakeCallStreamFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*/improve_section'
+
+  ImprovementAnswersFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref MakeCallStreamFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*/improvement_answers'
+
+
 
   # Verification System Resources
   VerificationFunction:

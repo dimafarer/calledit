@@ -74,6 +74,8 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
   const [response, setResponse] = useState<APIResponse | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentTool, setCurrentTool] = useState<string | null>(null);
+  const [reviewStatus, setReviewStatus] = useState<string>('');
+  const [reviewSections, setReviewSections] = useState<any[]>([]);
   const callServiceRef = useRef<CallService | null>(null);
 
   useEffect(() => {
@@ -115,10 +117,12 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
         },
         // Complete handler
         (finalResponse) => {
+          console.log('Complete handler called with:', finalResponse);
           try {
             const parsedResponse = typeof finalResponse === 'string' 
               ? JSON.parse(finalResponse) 
               : finalResponse;
+            console.log('Parsed response:', parsedResponse);
             setCall(parsedResponse);
             
             // Format response for LogCallButton compatibility
@@ -143,6 +147,24 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
           setIsLoading(false);
           setIsProcessing(false);
           setCurrentTool(null);
+        },
+        // Review status handler
+        (status) => {
+          setReviewStatus(status);
+        },
+        // Review complete handler
+        (reviewData) => {
+          console.log('Raw review data:', reviewData);
+          const sections = reviewData.reviewable_sections || [];
+          setReviewSections(sections);
+          if (sections.length > 0) {
+            setReviewStatus(`✨ Found ${sections.length} sections that could be improved`);
+          } else {
+            setReviewStatus('✅ Response looks good - no improvements suggested');
+          }
+          
+          // Add debug display
+          setReviewStatus(prev => prev + `\n\nDEBUG - Raw review data: ${JSON.stringify(reviewData, null, 2)}`);
         }
       );
     } catch (err) {
@@ -161,6 +183,8 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
     setError(null);
     setIsProcessing(false);
     setCurrentTool(null);
+    setReviewStatus('');
+    setReviewSections([]);
   };
 
   return (
@@ -336,6 +360,22 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
               <p>{call.initial_status}</p>
             </div>
           </div>
+          
+          {reviewStatus && (
+            <div style={{
+              marginTop: '20px',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              backgroundColor: reviewSections.length > 0 ? '#fff3cd' : '#d4edda',
+              border: `1px solid ${reviewSections.length > 0 ? '#ffeaa7' : '#c3e6cb'}`,
+              color: reviewSections.length > 0 ? '#856404' : '#155724',
+              whiteSpace: 'pre-wrap',
+              fontFamily: 'monospace',
+              fontSize: '12px'
+            }}>
+              <strong>Review Status:</strong> {reviewStatus}
+            </div>
+          )}
           <div style={{ marginTop: '10px' }}>
             <LogCallButton
               response={response}

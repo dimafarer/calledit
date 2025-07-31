@@ -2,6 +2,8 @@ import { WebSocketService } from './websocket';
 
 export class CallService {
   private webSocketService: WebSocketService;
+  private onReviewStatus?: (status: string) => void;
+  private onReviewComplete?: (data: any) => void;
 
   constructor(webSocketUrl: string) {
     this.webSocketService = new WebSocketService(webSocketUrl);
@@ -13,8 +15,12 @@ export class CallService {
     onTextChunk: (text: string) => void,
     onToolUse: (toolName: string) => void,
     onComplete: (finalResponse: any) => void,
-    onError: (error: string) => void
+    onError: (error: string) => void,
+    onReviewStatus?: (status: string) => void,
+    onReviewComplete?: (data: any) => void
   ): Promise<void> {
+    this.onReviewStatus = onReviewStatus;
+    this.onReviewComplete = onReviewComplete;
     try {
       // Register handlers for different message types
       this.webSocketService.onMessage('text', (data) => {
@@ -25,8 +31,25 @@ export class CallService {
         onToolUse(data.name);
       });
 
-      this.webSocketService.onMessage('complete', (data) => {
+      this.webSocketService.onMessage('call_response', (data) => {
+        console.log('Received call_response:', data);
         onComplete(data.content);
+      });
+
+      this.webSocketService.onMessage('review_complete', (data) => {
+        console.log('Review completed:', data.data);
+        // Pass review data to a callback if provided
+        if (this.onReviewComplete) {
+          this.onReviewComplete(data.data);
+        }
+      });
+
+      this.webSocketService.onMessage('status', (data) => {
+        if (data.status === 'reviewing') {
+          if (this.onReviewStatus) {
+            this.onReviewStatus('🔍 Reviewing response for improvements...');
+          }
+        }
       });
 
       this.webSocketService.onMessage('error', (data) => {
