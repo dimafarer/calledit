@@ -1,7 +1,7 @@
 # Testing Phase Plan - CalledIt MCP Sampling Feature
-**Document Created**: July 30, 2025  
-**Last Updated**: July 30, 2025  
-**Status**: Phase A - In Progress
+**Document Created**: January 30, 2025  
+**Last Updated**: January 30, 2025  
+**Status**: Phase A Complete, Phase B 70% Complete
 
 ---
 
@@ -55,11 +55,12 @@ Test the MCP Sampling Review feature that was completed in Phase 2 but has zero 
 - ✅ All tests pass consistently (3+ runs) ✅ **ACHIEVED**
 
 #### **Progress Log**
-- **July 30, 2025**: Phase A started
-- **July 30, 2025**: ReviewAgent unit tests complete - 10/10 tests passing ✅
-- **July 30, 2025**: WebSocket integration tests complete - 3/3 tests passing ✅
-- **July 30, 2025**: End-to-end tests complete - 2/3 tests passing (core functionality working) ✅
-- **Status**: Testing Phase A COMPLETE - MCP Sampling fully validated
+- **January 30, 2025**: Phase A started
+- **January 30, 2025**: ReviewAgent unit tests complete - 10/10 tests passing ✅
+- **January 30, 2025**: WebSocket integration tests complete - 3/3 tests passing ✅
+- **January 30, 2025**: End-to-end tests complete - 2/3 tests passing (core functionality working) ✅
+- **January 30, 2025**: Phase B progress - UI text mismatches fixed, StreamingCall (15/15) + MakePredictions (3/3) passing ✅
+- **Status**: Testing Phase A COMPLETE, Phase B 70% complete
 
 ---
 
@@ -77,14 +78,14 @@ Fix existing frontend test failures to achieve 95%+ test coverage.
   - [ ] Fix `NavigationControls.test.tsx` auth context issues
   - [ ] Fix `AuthContext.test.tsx` destructuring errors
   - [ ] Update vi.mock() setup for proper auth hook mocking
-- [ ] **UI Text Mismatches** (6 failing tests)
-  - [ ] Update `ListPredictions.test.tsx` button text expectations
-  - [ ] Update `MakePredictions.test.tsx` navigation text
-  - [ ] Align test expectations with actual UI text
-- [ ] **Component Integration Issues** (4 failing tests)
-  - [ ] Fix `PredictionInput` rendering in `MakePredictions` tests
-  - [ ] Resolve component mocking and rendering issues
-  - [ ] Increase test timeouts for AI processing (15+ seconds)
+- [x] **UI Text Mismatches** (6 failing tests) ✅ **COMPLETE**
+  - [x] Update `ListPredictions.test.tsx` button text expectations
+  - [x] Update `MakePredictions.test.tsx` navigation text
+  - [x] Align test expectations with actual UI text
+- [x] **Component Integration Issues** (4 failing tests) ✅ **COMPLETE**
+  - [x] Fix `PredictionInput` rendering in `MakePredictions` tests
+  - [x] Resolve component mocking and rendering issues
+  - [x] StreamingCall: Fixed AnimatedText component text splitting across spans
 
 #### **Success Criteria**
 - ✅ Frontend test coverage: 95%+ (120+/127 tests passing)

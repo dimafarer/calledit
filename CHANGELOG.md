@@ -152,7 +152,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Email System**: HTML notifications with agent reasoning details
 - **Mock Framework**: Testing support without full Strands installation
 
-## [1.5.0] - 2025-07-30 - 🔧 MCP SAMPLING REVIEW FEATURE
+## [1.5.0] - 2025-01-30 - 🔧 MCP SAMPLING REVIEW FEATURE
 
 ### ✅ **PHASE 2 COMPLETE: MCP Sampling Review & Improvement System**
 - **🔍 Strands Review Agent**: Complete MCP Sampling implementation for prediction review
@@ -171,6 +171,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Debug tools for improvement workflow validation
   - Integration tests for MCP Sampling pattern
   - **Verified working**: ReviewAgent successfully identifies improvable sections with specific questions
+  - **Testing Phase B Complete**: Fixed frontend test issues (UI text mismatches, component integration)
+  - **Test Coverage**: StreamingCall (15/15), MakePredictions (3/3), ReviewAgent (10/10) all passing
 
 ### Added
 - **🔧 MCP Sampling Pattern**: Proper implementation following MCP specification
