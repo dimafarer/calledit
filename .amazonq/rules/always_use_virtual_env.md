@@ -1,0 +1,1 @@
+always use the project's virtual environment to run anythong python including pip and sam
