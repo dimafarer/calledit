@@ -1,1 +1,68 @@
-import React from 'react';\n\ninterface ReviewableSectionProps {\n  section: string;\n  content: string;\n  isReviewable: boolean;\n  questions?: string[];\n  reasoning?: string;\n  onImprove: (section: string) => void;\n}\n\nconst ReviewableSection: React.FC<ReviewableSectionProps> = ({\n  section,\n  content,\n  isReviewable,\n  questions = [],\n  reasoning,\n  onImprove\n}) => {\n  if (!isReviewable) {\n    return <span>{content}</span>;\n  }\n\n  return (\n    <div \n      className=\"reviewable-section\"\n      onClick={() => onImprove(section)}\n      style={{\n        position: 'relative',\n        display: 'inline-block',\n        border: '2px dashed #007bff',\n        borderRadius: '6px',\n        padding: '8px 12px',\n        margin: '2px',\n        cursor: 'pointer',\n        backgroundColor: 'rgba(0, 123, 255, 0.05)',\n        transition: 'all 0.2s ease',\n        minHeight: '44px', // Mobile touch target\n        minWidth: '44px'\n      }}\n      onMouseEnter={(e) => {\n        e.currentTarget.style.backgroundColor = 'rgba(0, 123, 255, 0.1)';\n        e.currentTarget.style.borderColor = '#0056b3';\n      }}\n      onMouseLeave={(e) => {\n        e.currentTarget.style.backgroundColor = 'rgba(0, 123, 255, 0.05)';\n        e.currentTarget.style.borderColor = '#007bff';\n      }}\n      title={reasoning || `Click to improve ${section}`}\n    >\n      {content}\n      \n      {/* Improvement indicator */}\n      <div\n        style={{\n          position: 'absolute',\n          top: '-8px',\n          right: '-8px',\n          backgroundColor: '#007bff',\n          color: 'white',\n          borderRadius: '50%',\n          width: '20px',\n          height: '20px',\n          display: 'flex',\n          alignItems: 'center',\n          justifyContent: 'center',\n          fontSize: '12px',\n          fontWeight: 'bold',\n          boxShadow: '0 2px 4px rgba(0,0,0,0.2)'\n        }}\n      >\n        ✨\n      </div>\n      \n      {/* Hover tooltip */}\n      <div\n        className=\"improvement-tooltip\"\n        style={{\n          position: 'absolute',\n          bottom: '100%',\n          left: '50%',\n          transform: 'translateX(-50%)',\n          backgroundColor: '#333',\n          color: 'white',\n          padding: '6px 10px',\n          borderRadius: '4px',\n          fontSize: '12px',\n          whiteSpace: 'nowrap',\n          opacity: 0,\n          pointerEvents: 'none',\n          transition: 'opacity 0.2s ease',\n          zIndex: 1000,\n          marginBottom: '5px'\n        }}\n        onMouseEnter={(e) => {\n          e.currentTarget.style.opacity = '1';\n        }}\n      >\n        Click to improve • {questions.length} questions\n        <div\n          style={{\n            position: 'absolute',\n            top: '100%',\n            left: '50%',\n            transform: 'translateX(-50%)',\n            width: 0,\n            height: 0,\n            borderLeft: '5px solid transparent',\n            borderRight: '5px solid transparent',\n            borderTop: '5px solid #333'\n          }}\n        />\n      </div>\n    </div>\n  );\n};\n\nexport default ReviewableSection;
+import React from 'react';
+
+interface ReviewableSectionProps {
+  section: string;
+  content: string;
+  isReviewable: boolean;
+  questions?: string[];
+  reasoning?: string;
+  onImprove: (section: string) => void;
+}
+
+const ReviewableSection: React.FC<ReviewableSectionProps> = ({
+  section,
+  content,
+  isReviewable,
+  reasoning,
+  onImprove
+}) => {
+  if (!isReviewable) {
+    return <span>{content}</span>;
+  }
+
+  return (
+    <div 
+      className="reviewable-section"
+      onClick={() => onImprove(section)}
+      style={{
+        position: 'relative',
+        display: 'inline-block',
+        border: '2px dashed #007bff',
+        borderRadius: '6px',
+        padding: '8px 12px',
+        margin: '2px',
+        cursor: 'pointer',
+        backgroundColor: 'rgba(0, 123, 255, 0.05)',
+        transition: 'all 0.2s ease',
+        minHeight: '44px',
+        minWidth: '44px'
+      }}
+      title={reasoning || `Click to improve ${section}`}
+    >
+      {content}
+      
+      <div
+        style={{
+          position: 'absolute',
+          top: '-8px',
+          right: '-8px',
+          backgroundColor: '#007bff',
+          color: 'white',
+          borderRadius: '50%',
+          width: '20px',
+          height: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '12px',
+          fontWeight: 'bold',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+        }}
+      >
+        ✨
+      </div>
+    </div>
+  );
+};
+
+export default ReviewableSection;

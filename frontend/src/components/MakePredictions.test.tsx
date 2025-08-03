@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import MakePredictions from './MakePredictions';
 import * as storageUtils from '../utils/storageUtils';
 
@@ -11,7 +11,7 @@ vi.mock('../utils/storageUtils', () => ({
 
 // Mock the child components
 vi.mock('./PredictionInput', () => ({
-  default: vi.fn((props) => <div data-testid="prediction-input">Prediction Input Component</div>),
+  default: vi.fn(() => <div data-testid="prediction-input">Prediction Input Component</div>),
 }));
 
 vi.mock('./PredictionDisplay', () => ({

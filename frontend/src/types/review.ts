@@ -1,1 +1,29 @@
-export interface ReviewableSection {\n  section: string;\n  improvable: boolean;\n  questions: string[];\n  reasoning: string;\n}\n\nexport interface ReviewData {\n  review_id: string;\n  reviewable_sections: ReviewableSection[];\n}\n\nexport interface ImprovementRequest {\n  section: string;\n}\n\nexport interface ImprovementAnswers {\n  section: string;\n  answers: string[];\n}\n\nexport interface ReviewState {\n  reviewableSections: ReviewableSection[];\n  currentQuestions: string[];\n  showImprovementModal: boolean;\n  improvingSection: string | null;\n  isImproving: boolean;\n  reviewStatus: string;\n}
+export interface ReviewableSection {
+  section: string;
+  improvable: boolean;
+  questions: string[];
+  reasoning: string;
+}
+
+export interface ReviewData {
+  review_id: string;
+  reviewable_sections: ReviewableSection[];
+}
+
+export interface ImprovementRequest {
+  section: string;
+}
+
+export interface ImprovementAnswers {
+  section: string;
+  answers: string[];
+}
+
+export interface ReviewState {
+  reviewableSections: ReviewableSection[];
+  currentQuestions: string[];
+  showImprovementModal: boolean;
+  improvingSection: string | null;
+  isImproving: boolean;
+  reviewStatus: string;
+}

@@ -4,6 +4,7 @@ export class CallService {
   private webSocketService: WebSocketService;
   private onReviewStatus?: (status: string) => void;
   private onReviewComplete?: (data: any) => void;
+  private isImprovementInProgress: boolean = false;
 
   constructor(webSocketUrl: string) {
     this.webSocketService = new WebSocketService(webSocketUrl);
@@ -17,7 +18,8 @@ export class CallService {
     onComplete: (finalResponse: any) => void,
     onError: (error: string) => void,
     onReviewStatus?: (status: string) => void,
-    onReviewComplete?: (data: any) => void
+    onReviewComplete?: (data: any) => void,
+    onImprovedResponse?: (data: any) => void
   ): Promise<void> {
     this.onReviewStatus = onReviewStatus;
     this.onReviewComplete = onReviewComplete;
@@ -33,7 +35,14 @@ export class CallService {
 
       this.webSocketService.onMessage('call_response', (data) => {
         console.log('Received call_response:', data);
-        onComplete(data.content);
+        // Check if this is an improved response (after improvement workflow)
+        if (data.improved || this.isImprovementInProgress) {
+          if (onImprovedResponse) {
+            onImprovedResponse(data.content);
+          }
+        } else {
+          onComplete(data.content);
+        }
       });
 
       this.webSocketService.onMessage('review_complete', (data) => {
@@ -82,6 +91,16 @@ export class CallService {
     } catch (error) {
       onError((error as Error).message);
     }
+  }
+
+  // Set improvement in progress flag
+  setImprovementInProgress(inProgress: boolean): void {
+    this.isImprovementInProgress = inProgress;
+  }
+
+  // Get WebSocket service for direct access
+  get websocket() {
+    return this.webSocketService;
   }
 
   // Clean up resources

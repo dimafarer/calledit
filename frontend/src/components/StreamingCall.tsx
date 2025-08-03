@@ -2,7 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { CallService } from '../services/callService';
 import LogCallButton from './LogCallButton';
 import AnimatedText from './AnimatedText';
+import ReviewableSection from './ReviewableSection';
+import ImprovementModal from './ImprovementModal';
 import { APIResponse } from '../types';
+import { ReviewableSection as ReviewableSectionType } from '../types/review';
 
 interface StreamingCallProps {
   webSocketUrl: string;
@@ -75,7 +78,11 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentTool, setCurrentTool] = useState<string | null>(null);
   const [reviewStatus, setReviewStatus] = useState<string>('');
-  const [reviewSections, setReviewSections] = useState<any[]>([]);
+  const [reviewSections, setReviewSections] = useState<ReviewableSectionType[]>([]);
+  const [showImprovementModal, setShowImprovementModal] = useState(false);
+  const [currentSection, setCurrentSection] = useState<string>('');
+  const [currentQuestions, setCurrentQuestions] = useState<string[]>([]);
+  const [isImproving, setIsImproving] = useState(false);
   const callServiceRef = useRef<CallService | null>(null);
 
   useEffect(() => {
@@ -157,14 +164,38 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
           console.log('Raw review data:', reviewData);
           const sections = reviewData.reviewable_sections || [];
           setReviewSections(sections);
+          setIsImproving(false);
           if (sections.length > 0) {
             setReviewStatus(`✨ Found ${sections.length} sections that could be improved`);
           } else {
             setReviewStatus('✅ Response looks good - no improvements suggested');
           }
-          
-          // Add debug display
-          setReviewStatus(prev => prev + `\n\nDEBUG - Raw review data: ${JSON.stringify(reviewData, null, 2)}`);
+        },
+        // Improved response handler
+        (improvedData) => {
+          console.log('Received improved response:', improvedData);
+          try {
+            const parsedResponse = typeof improvedData === 'string' 
+              ? JSON.parse(improvedData) 
+              : improvedData;
+            
+            // Update the call with improved data
+            setCall(parsedResponse);
+            
+            // Format response for LogCallButton compatibility
+            const apiResponse: APIResponse = {
+              results: [parsedResponse]
+            };
+            setResponse(apiResponse);
+            setIsImproving(false);
+            
+            // Clear review sections to trigger new review
+            setReviewSections([]);
+            setReviewStatus('✅ Response improved! Analyzing for further improvements...');
+          } catch (parseError) {
+            console.error('Error parsing improved response:', parseError);
+            setIsImproving(false);
+          }
         }
       );
     } catch (err) {
@@ -185,6 +216,56 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
     setCurrentTool(null);
     setReviewStatus('');
     setReviewSections([]);
+    setShowImprovementModal(false);
+    setCurrentSection('');
+    setCurrentQuestions([]);
+    setIsImproving(false);
+  };
+
+  // Handle improvement request
+  const handleImprove = (section: string) => {
+    if (!callServiceRef.current) return;
+    
+    const sectionData = reviewSections.find(s => s.section === section);
+    if (sectionData) {
+      setCurrentSection(section);
+      setCurrentQuestions(sectionData.questions);
+      setShowImprovementModal(true);
+    }
+  };
+
+  // Handle improvement answers submission
+  const handleAnswers = (answers: string[]) => {
+    if (!callServiceRef.current) return;
+    
+    setIsImproving(true);
+    setShowImprovementModal(false);
+    
+    // Set improvement in progress flag
+    if (callServiceRef.current) {
+      (callServiceRef.current as any).setImprovementInProgress(true);
+    }
+    
+    // Send improvement request via WebSocket
+    const websocketService = (callServiceRef.current as any).websocket;
+    if (websocketService) {
+      websocketService.send('improvement_answers', {
+        section: currentSection,
+        answers: answers
+      });
+      
+      console.log('Sent improvement answers:', {
+        section: currentSection,
+        answers: answers
+      });
+    }
+  };
+
+  // Handle modal cancel
+  const handleModalCancel = () => {
+    setShowImprovementModal(false);
+    setCurrentSection('');
+    setCurrentQuestions([]);
   };
 
   return (
@@ -296,7 +377,18 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
           <div className="structured-response">
             <div className="response-field">
               <h3>Call Statement:</h3>
-              <p>{call.prediction_statement}</p>
+              {reviewSections.find(s => s.section === 'prediction_statement') ? (
+                <ReviewableSection
+                  section="prediction_statement"
+                  content={call.prediction_statement}
+                  isReviewable={true}
+                  questions={reviewSections.find(s => s.section === 'prediction_statement')?.questions || []}
+                  reasoning={reviewSections.find(s => s.section === 'prediction_statement')?.reasoning}
+                  onImprove={handleImprove}
+                />
+              ) : (
+                <p>{call.prediction_statement}</p>
+              )}
             </div>
             <div className="response-field">
               <h3>Call Date:</h3>
@@ -309,7 +401,18 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
             {call.verifiable_category && (
               <div className="response-field">
                 <h3>Verifiability:</h3>
-                <p>{getVerifiabilityDisplay(call.verifiable_category)}</p>
+                {reviewSections.find(s => s.section === 'verifiable_category') ? (
+                  <ReviewableSection
+                    section="verifiable_category"
+                    content={call.verifiable_category}
+                    isReviewable={true}
+                    questions={reviewSections.find(s => s.section === 'verifiable_category')?.questions || []}
+                    reasoning={reviewSections.find(s => s.section === 'verifiable_category')?.reasoning}
+                    onImprove={handleImprove}
+                  />
+                ) : (
+                  <p>{getVerifiabilityDisplay(call.verifiable_category)}</p>
+                )}
                 {call.category_reasoning && (
                   <div style={{ 
                     fontStyle: 'italic', 
@@ -328,8 +431,18 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
               <h3>Verification Method:</h3>
               {call.verification_method && (
                 <div className="verification-method">
+                  {reviewSections.find(s => s.section === 'verification_method') && (
+                    <ReviewableSection
+                      section="verification_method"
+                      content="Click to improve verification method"
+                      isReviewable={true}
+                      questions={reviewSections.find(s => s.section === 'verification_method')?.questions || []}
+                      reasoning={reviewSections.find(s => s.section === 'verification_method')?.reasoning}
+                      onImprove={handleImprove}
+                    />
+                  )}
                   <div className="method-section">
-                    <h3>Sources:</h3>
+                    <h4>Sources:</h4>
                     <ul>
                       {call.verification_method.source?.map((item: string, index: number) => (
                         <li key={`source-${index}`}>{item}</li>
@@ -337,7 +450,7 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
                     </ul>
                   </div>
                   <div className="method-section">
-                    <h3>Criteria:</h3>
+                    <h4>Criteria:</h4>
                     <ul>
                       {call.verification_method.criteria?.map((item: string, index: number) => (
                         <li key={`criteria-${index}`}>{item}</li>
@@ -345,7 +458,7 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
                     </ul>
                   </div>
                   <div className="method-section">
-                    <h3>Steps:</h3>
+                    <h4>Steps:</h4>
                     <ul>
                       {call.verification_method.steps?.map((item: string, index: number) => (
                         <li key={`step-${index}`}>{item}</li>
@@ -368,12 +481,26 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
               borderRadius: '8px',
               backgroundColor: reviewSections.length > 0 ? '#fff3cd' : '#d4edda',
               border: `1px solid ${reviewSections.length > 0 ? '#ffeaa7' : '#c3e6cb'}`,
-              color: reviewSections.length > 0 ? '#856404' : '#155724',
-              whiteSpace: 'pre-wrap',
-              fontFamily: 'monospace',
-              fontSize: '12px'
+              color: reviewSections.length > 0 ? '#856404' : '#155724'
             }}>
               <strong>Review Status:</strong> {reviewStatus}
+            </div>
+          )}
+          
+          {isImproving && (
+            <div style={{
+              marginTop: '20px',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              backgroundColor: '#cce7ff',
+              border: '1px solid #007bff',
+              color: '#004085',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span>🔄</span>
+              <span>Improving response with your input...</span>
             </div>
           )}
           <div style={{ marginTop: '10px' }}>
@@ -390,6 +517,15 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
           </div>
         </div>
       )}
+      
+      <ImprovementModal
+        isOpen={showImprovementModal}
+        section={currentSection}
+        questions={currentQuestions}
+        reasoning={reviewSections.find(s => s.section === currentSection)?.reasoning}
+        onSubmit={handleAnswers}
+        onCancel={handleModalCancel}
+      />
     </div>
   );
 };

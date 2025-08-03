@@ -1,12 +1,13 @@
 # MCP Sampling Frontend Implementation Plan
 
 **Last Updated**: January 30, 2025  
-**Status**: Phase 1 Complete, Phase 2 Ready
+**Status**: Phase 1 & 2 Complete + UI Update Fix, Phase 3 Ready
 
 ## Current Status
 ✅ **Backend Complete**: MCP Sampling pattern fully implemented with WebSocket routing  
 ✅ **Phase 1 Complete**: Core UI components built and committed  
-🔄 **Phase 2 Ready**: WebSocket integration next
+✅ **Phase 2 Complete**: WebSocket integration working  
+🔄 **Phase 3 Ready**: State management next
 
 ## Implementation Overview
 
@@ -26,21 +27,30 @@
 - Form validation and submission handling
 - Responsive modal design
 
-### 🔄 Phase 2: WebSocket Integration (READY)
-**Estimated Time**: 1-2 hours  
-**Status**: Partially implemented in StreamingCall.tsx
+### ✅ Phase 2: WebSocket Integration (COMPLETE)
+**Time Spent**: 1 hour  
+**Status**: All components integrated and working
 
-#### Current State:
-- ✅ WebSocket message handlers exist for review data
-- ✅ Review state management hooks in place
-- ✅ Backend routes tested and working
-- ⏳ Need to integrate new components into StreamingCall
+#### Completed:
+- ✅ Imported ReviewableSection and ImprovementModal into StreamingCall
+- ✅ Added modal state management (showImprovementModal, currentSection, etc.)
+- ✅ Replaced review status display with ReviewableSection components
+- ✅ Added improvement request WebSocket actions (handleImprove, handleAnswers)
+- ✅ Connected modal to WebSocket improvement workflow
+- ✅ Added improvement loading state indicator
+- ✅ Fixed all TypeScript build issues
+- ✅ Cleaned up unused imports and variables
+- ✅ **CRITICAL FIX**: Added improved response handler to update UI after improvements
+- ✅ Fixed WebSocket communication for improvement workflow
 
-#### Next Steps:
-1. Import ReviewableSection and ImprovementModal into StreamingCall
-2. Replace review status display with ReviewableSection components
-3. Add improvement request WebSocket actions
-4. Connect modal to WebSocket improvement workflow
+#### Features Working:
+- Sections highlight when reviewable (prediction_statement, verifiable_category, verification_method)
+- Clicking sections opens modal with questions from ReviewAgent
+- Modal form validation and submission
+- WebSocket improvement_answers message sending
+- Loading state during improvement process
+- **UI updates with improved response after user provides answers**
+- Automatic re-review of improved responses
 
 #### 2.1 WebSocket Message Handlers
 ```tsx
@@ -217,38 +227,34 @@ backend/calledit-backend/handlers/strands_make_call/
 
 **Total**: 5-8 hours for complete implementation
 
+## Testing Results
+
+### ✅ **User Testing Completed**:
+- **Test Case**: "it will rain" (vague prediction)
+- **Result**: ✅ ReviewAgent identified 4 improvable sections
+- **Modal**: ✅ Questions displayed correctly
+- **Improvement**: ✅ Response updated from "August 3" to "tomorrow (August 4)"
+- **Re-review**: ✅ Automatic re-analysis after improvement
+
+### 🐛 **Issue Found & Fixed**:
+- **Problem**: UI not updating after improvement (response in console only)
+- **Root Cause**: Missing improved response handler in CallService
+- **Solution**: Added onImprovedResponse handler + improvement progress flag
+- **Status**: ✅ RESOLVED - UI now updates properly
+
 ## Next Session Tasks
 
-### Immediate (Phase 2 - WebSocket Integration):
-1. **Enhance StreamingCall.tsx** (30 minutes):
-   ```tsx
-   // Add imports
-   import ReviewableSection from './ReviewableSection';
-   import ImprovementModal from './ImprovementModal';
-   
-   // Add modal state
-   const [showModal, setShowModal] = useState(false);
-   const [currentSection, setCurrentSection] = useState('');
-   
-   // Add improvement handlers
-   const handleImprove = (section: string) => { /* WebSocket call */ };
-   const handleAnswers = (answers: string[]) => { /* WebSocket call */ };
-   ```
+### Phase 3 - State Management (Optional):
+- Enhanced error handling for WebSocket failures
+- State persistence for improvement history
+- Performance optimizations
 
-2. **Replace Review Display** (30 minutes):
-   - Replace current review status div with ReviewableSection components
-   - Map reviewSections to ReviewableSection components
-   - Connect onImprove handlers
+### Phase 4 - Visual Polish (Optional):
+- Mobile responsiveness testing
+- Animation improvements
+- Accessibility enhancements
 
-3. **Add Modal Integration** (30 minutes):
-   - Add ImprovementModal to render tree
-   - Connect to WebSocket improvement workflow
-   - Handle modal open/close states
-
-### Testing (Phase 2 completion):
-- [ ] Test improvement workflow end-to-end
-- [ ] Verify WebSocket message handling
-- [ ] Test modal interaction and form submission
+**MCP Sampling Frontend: FULLY FUNCTIONAL** ✅
 
 ---
 
@@ -268,4 +274,4 @@ backend/calledit-backend/handlers/strands_make_call/
 
 ---
 
-**Progress Updates**: This document will be updated as implementation progresses
+**Status**: MCP Sampling frontend implementation COMPLETE and tested successfully. Backend MCP Sampling pattern working perfectly with real-time UI updates.
