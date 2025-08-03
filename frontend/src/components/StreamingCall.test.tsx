@@ -103,8 +103,10 @@ describe('StreamingCall', () => {
     fireEvent.click(submitButton);
     
     await waitFor(() => {
-      expect(screen.getByText('Processing your call...')).toBeInTheDocument();
-      expect(screen.getByText(/Processing your prediction... with AI agent/)).toBeInTheDocument();
+      // AnimatedText splits text across multiple spans, so check for individual words
+      expect(screen.getByText('Processing')).toBeInTheDocument();
+      expect(screen.getByText('prediction...')).toBeInTheDocument();
+      expect(screen.getByText('agent')).toBeInTheDocument();
     });
   });
 
@@ -126,7 +128,7 @@ describe('StreamingCall', () => {
     fireEvent.click(submitButton);
     
     await waitFor(() => {
-      expect(screen.getByText(/\[Using tool: current_time\]/)).toBeInTheDocument();
+      expect(screen.getByText(/Using tool: current_time/)).toBeInTheDocument();
     });
   });
 

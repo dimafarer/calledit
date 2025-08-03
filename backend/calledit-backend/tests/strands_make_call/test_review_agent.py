@@ -1,149 +1,269 @@
+import pytest
+import json
+from unittest.mock import Mock, patch
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-import json
-import pytest
-from unittest.mock import patch, MagicMock, Mock
+# Add the handlers directory to the path so we can import the ReviewAgent
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'handlers', 'strands_make_call'))
 
-# Mock strands_agents before importing ReviewAgent
-sys.modules['strands_agents'] = Mock()
-sys.modules['strands_agents.tools'] = Mock()
-sys.modules['strands_tools'] = Mock()
+from review_agent import ReviewAgent
 
-from handlers.strands_make_call.review_agent import ReviewAgent
 
 class TestReviewAgent:
+    """Unit tests for ReviewAgent MCP Sampling functionality."""
     
     @pytest.fixture
-    def review_agent(self):
-        """Fixture providing ReviewAgent instance"""
-        return ReviewAgent()
-    
-    @pytest.fixture
-    def sample_call_response(self):
-        """Fixture providing sample call response for testing"""
+    def sample_prediction_response(self):
+        """Sample prediction response for testing."""
         return {
-            "prediction_statement": "Bitcoin will hit $100k today",
-            "verification_date": "2025-01-27T23:59:59Z",
-            "verifiable_category": "api_tool_verifiable",
-            "category_reasoning": "Requires external API to check Bitcoin price",
+            "prediction_statement": "I'll finish my project soon",
+            "verification_date": "2025-08-13T21:47:00Z",
+            "verifiable_category": "human_verifiable_only",
+            "category_reasoning": "Project completion is subjective",
             "verification_method": {
-                "source": ["CoinGecko API"],
-                "criteria": ["BTC/USD price exceeds $100,000"],
-                "steps": ["Check BTC price at end of day"]
-            }
+                "source": ["User's own assessment"],
+                "criteria": ["User considers project complete"],
+                "steps": ["User must assess completion"]
+            },
+            "initial_status": "pending"
         }
     
-    def test_review_agent_initialization(self, review_agent):
-        """Test that ReviewAgent initializes correctly"""
-        assert isinstance(review_agent, ReviewAgent)
-        assert review_agent.name == "ReviewAgent"
-        assert "reviews prediction calls" in review_agent.description.lower()
+    @pytest.fixture
+    def mock_agent_response_valid_json(self):
+        """Mock agent response with valid JSON."""
+        return {
+            "reviewable_sections": [
+                {
+                    "section": "prediction_statement",
+                    "improvable": True,
+                    "questions": ["What specific project?", "What does 'finished' mean?"],
+                    "reasoning": "Statement is too vague"
+                }
+            ]
+        }
     
-    def test_review_call_response_structure(self):
-        """Test that review_call_response returns proper structure"""
-        result = self.review_agent.review_call_response(self.sample_call_response)
-        
-        # Should return a dictionary with reviewable_sections
-        self.assertIsInstance(result, dict)
-        self.assertIn('reviewable_sections', result)
-        self.assertIsInstance(result['reviewable_sections'], list)
+    @pytest.fixture
+    def mock_agent_response_markdown_json(self):
+        """Mock agent response with JSON in markdown code blocks."""
+        return '''Here's my analysis:
+
+```json
+{
+    "reviewable_sections": [
+        {
+            "section": "verification_method",
+            "improvable": true,
+            "questions": ["How do you track progress?"],
+            "reasoning": "Method is too subjective"
+        }
+    ]
+}
+```
+
+That's my recommendation.'''
     
-    def test_review_identifies_improvable_sections(self):
-        """Test that review can identify sections that could be improved"""
-        result = self.review_agent.review_call_response(self.sample_call_response)
+    @pytest.fixture
+    def mock_agent_response_malformed(self):
+        """Mock agent response with malformed JSON."""
+        return '''The prediction needs improvement in these areas:
         
-        # Should have some reviewable sections for a basic prediction
-        reviewable_sections = result.get('reviewable_sections', [])
+        {
+            "reviewable_sections": [
+                {
+                    "section": "date_reasoning"
+                    "improvable": true,  // missing comma
+                    "questions": ["What timeframe?"]
+                }
+            ]
+        }'''
+
+    def test_review_agent_initialization(self):
+        """Test ReviewAgent initializes correctly."""
+        agent = ReviewAgent()
+        assert agent is not None
+        assert agent.agent is not None
+        assert agent.callback_handler is None
         
-        # Each section should have required fields
-        for section in reviewable_sections:
-            self.assertIn('section', section)
-            self.assertIn('improvable', section)
-            self.assertIn('questions', section)
-            self.assertIn('reasoning', section)
-            
-            # Questions should be a list
-            self.assertIsInstance(section['questions'], list)
-            
-            # If improvable, should have questions
-            if section['improvable']:
-                self.assertGreater(len(section['questions']), 0)
-    
-    def test_ask_improvement_questions(self):
-        """Test that improvement questions are generated properly"""
-        section = "prediction_statement"
-        questions = ["What specific time of day?", "Any location constraints?"]
+        # Test with callback handler
+        mock_callback = Mock()
+        agent_with_callback = ReviewAgent(callback_handler=mock_callback)
+        assert agent_with_callback.callback_handler == mock_callback
+
+    @patch('review_agent.Agent')
+    def test_review_prediction_valid_json(self, mock_agent_class, sample_prediction_response, mock_agent_response_valid_json):
+        """Test review_prediction with valid JSON response."""
+        # Setup mock
+        mock_agent_instance = Mock()
+        mock_agent_instance.return_value = json.dumps(mock_agent_response_valid_json)
+        mock_agent_class.return_value = mock_agent_instance
         
-        result = self.review_agent.ask_improvement_questions(section, questions)
+        # Test
+        review_agent = ReviewAgent()
+        result = review_agent.review_prediction(sample_prediction_response)
         
-        # Should return a string with friendly questions
-        self.assertIsInstance(result, str)
-        self.assertGreater(len(result), 0)
+        # Assertions
+        assert result == mock_agent_response_valid_json
+        assert len(result["reviewable_sections"]) == 1
+        assert result["reviewable_sections"][0]["section"] == "prediction_statement"
+        assert result["reviewable_sections"][0]["improvable"] is True
+        assert len(result["reviewable_sections"][0]["questions"]) == 2
+
+    @patch('review_agent.Agent')
+    def test_review_prediction_markdown_json(self, mock_agent_class, sample_prediction_response, mock_agent_response_markdown_json):
+        """Test review_prediction with JSON in markdown code blocks."""
+        # Setup mock
+        mock_agent_instance = Mock()
+        mock_agent_instance.return_value = mock_agent_response_markdown_json
+        mock_agent_class.return_value = mock_agent_instance
         
-        # Should mention the section being improved
-        self.assertIn(section.replace('_', ' '), result.lower())
-    
-    def test_regenerate_with_improvements(self):
-        """Test that regeneration works with user input"""
-        section = "prediction_statement"
-        user_input = "I meant before 3pm Eastern time"
-        original_prediction = "Bitcoin will hit $100k today"
+        # Test
+        review_agent = ReviewAgent()
+        result = review_agent.review_prediction(sample_prediction_response)
         
-        result = self.review_agent.regenerate_with_improvements(
-            self.sample_call_response, section, user_input, original_prediction
+        # Assertions
+        assert "reviewable_sections" in result
+        assert len(result["reviewable_sections"]) == 1
+        assert result["reviewable_sections"][0]["section"] == "verification_method"
+
+    @patch('review_agent.Agent')
+    def test_review_prediction_malformed_json_fallback(self, mock_agent_class, sample_prediction_response, mock_agent_response_malformed):
+        """Test review_prediction fallback with malformed JSON."""
+        # Setup mock
+        mock_agent_instance = Mock()
+        mock_agent_instance.return_value = mock_agent_response_malformed
+        mock_agent_class.return_value = mock_agent_instance
+        
+        # Test
+        review_agent = ReviewAgent()
+        result = review_agent.review_prediction(sample_prediction_response)
+        
+        # Assertions - should fallback to empty sections
+        assert result == {"reviewable_sections": []}
+
+    @patch('review_agent.Agent')
+    def test_generate_improvement_questions_valid_response(self, mock_agent_class):
+        """Test generate_improvement_questions with valid JSON response."""
+        # Setup mock
+        mock_agent_instance = Mock()
+        mock_agent_instance.return_value = '{"questions": ["Question 1?", "Question 2?", "Question 3?"]}'
+        mock_agent_class.return_value = mock_agent_instance
+        
+        # Test
+        review_agent = ReviewAgent()
+        result = review_agent.generate_improvement_questions("prediction_statement", "I'll finish soon")
+        
+        # Assertions
+        assert len(result) == 3
+        assert result[0] == "Question 1?"
+        assert result[1] == "Question 2?"
+        assert result[2] == "Question 3?"
+
+    @patch('review_agent.Agent')
+    def test_generate_improvement_questions_fallback(self, mock_agent_class):
+        """Test generate_improvement_questions fallback with invalid JSON."""
+        # Setup mock
+        mock_agent_instance = Mock()
+        mock_agent_instance.return_value = 'Invalid JSON response'
+        mock_agent_class.return_value = mock_agent_instance
+        
+        # Test
+        review_agent = ReviewAgent()
+        result = review_agent.generate_improvement_questions("prediction_statement", "I'll finish soon")
+        
+        # Assertions - should fallback to generic question
+        assert len(result) == 1
+        assert "prediction_statement" in result[0]
+        assert "more specific" in result[0]
+
+    @patch('review_agent.Agent')
+    def test_regenerate_section(self, mock_agent_class):
+        """Test regenerate_section method."""
+        # Setup mock
+        mock_agent_instance = Mock()
+        mock_agent_instance.return_value = "I'll finish my web development project by August 15th, 2025"
+        mock_agent_class.return_value = mock_agent_instance
+        
+        # Test
+        review_agent = ReviewAgent()
+        result = review_agent.regenerate_section(
+            "prediction_statement",
+            "I'll finish my project soon",
+            "It's a web development project, deadline is August 15th",
+            {"verifiable_category": "human_verifiable_only"}
         )
         
-        # Should return proper structure
-        self.assertIsInstance(result, dict)
-        self.assertIn('change_type', result)
-        self.assertIn('updated_response', result)
-        self.assertIn('changes_made', result)
-        
-        # Change type should be valid
-        self.assertIn(result['change_type'], ['significant', 'minor'])
-        
-        # Updated response should have same structure as original
-        updated = result['updated_response']
-        self.assertIn('prediction_statement', updated)
-        self.assertIn('verification_date', updated)
-        self.assertIn('verifiable_category', updated)
-        
-        # Changes made should be a list
-        self.assertIsInstance(result['changes_made'], list)
-    
-    def test_handles_invalid_json_gracefully(self):
-        """Test that agent handles invalid JSON responses gracefully"""
-        # This test would require mocking the agent's invoke method
-        # to return invalid JSON, but for now we test the fallback behavior
-        
-        # Test with empty response
-        result = self.review_agent.review_call_response({})
-        self.assertIsInstance(result, dict)
-        self.assertIn('reviewable_sections', result)
-    
-    def test_all_sections_can_be_reviewed(self):
-        """Test that all expected sections can be reviewed"""
-        expected_sections = [
-            'prediction_statement',
-            'verification_date', 
-            'verifiable_category',
-            'category_reasoning',
-            'verification_method'
-        ]
-        
-        result = self.review_agent.review_call_response(self.sample_call_response)
-        reviewable_sections = result.get('reviewable_sections', [])
-        
-        # Get list of sections that were reviewed
-        reviewed_section_names = [s['section'] for s in reviewable_sections]
-        
-        # Should review at least some of the expected sections
-        # (Not all sections may be improvable for every prediction)
-        self.assertGreater(len(reviewed_section_names), 0)
-        
-        # All reviewed sections should be from expected list
-        for section_name in reviewed_section_names:
-            self.assertIn(section_name, expected_sections)
+        # Assertions
+        assert result == "I'll finish my web development project by August 15th, 2025"
+        assert "web development" in result
+        assert "August 15th" in result
 
+    @patch('review_agent.Agent')
+    def test_json_parsing_edge_cases(self, mock_agent_class):
+        """Test various JSON parsing edge cases."""
+        mock_agent_instance = Mock()
+        mock_agent_class.return_value = mock_agent_instance
+        
+        review_agent = ReviewAgent()
+        
+        # Test case 1: JSON with extra whitespace
+        mock_agent_instance.return_value = '''
+        
+        {
+            "reviewable_sections": []
+        }
+        
+        '''
+        result = review_agent.review_prediction({})
+        assert result == {"reviewable_sections": []}
+        
+        # Test case 2: JSON with code block and extra text
+        mock_agent_instance.return_value = '''
+        Based on my analysis:
+        
+        ```json
+        {"reviewable_sections": [{"section": "test", "improvable": false, "questions": [], "reasoning": "test"}]}
+        ```
+        
+        This is my final recommendation.
+        '''
+        result = review_agent.review_prediction({})
+        assert len(result["reviewable_sections"]) == 1
+        assert result["reviewable_sections"][0]["section"] == "test"
+
+    @patch('review_agent.Agent')
+    def test_review_prediction_with_callback_handler(self, mock_agent_class):
+        """Test ReviewAgent with callback handler."""
+        # Setup
+        mock_callback = Mock()
+        mock_agent_instance = Mock()
+        mock_agent_instance.return_value = '{"reviewable_sections": []}'
+        mock_agent_class.return_value = mock_agent_instance
+        
+        # Test
+        review_agent = ReviewAgent(callback_handler=mock_callback)
+        result = review_agent.review_prediction({"test": "data"})
+        
+        # Assertions
+        assert result == {"reviewable_sections": []}
+        # Verify Agent was initialized with callback handler
+        mock_agent_class.assert_called_once()
+        call_args = mock_agent_class.call_args
+        assert call_args[1]['callback_handler'] == mock_callback
+
+    def test_system_prompt_content(self):
+        """Test that ReviewAgent has proper system prompt."""
+        with patch('review_agent.Agent') as mock_agent_class:
+            ReviewAgent()
+            
+            # Verify Agent was called with system prompt
+            mock_agent_class.assert_called_once()
+            call_args = mock_agent_class.call_args
+            system_prompt = call_args[1]['system_prompt']
+            
+            # Check key elements of system prompt
+            assert "prediction review expert" in system_prompt
+            assert "reviewable_sections" in system_prompt
+            assert "improvable" in system_prompt
+            assert "questions" in system_prompt
+            assert "reasoning" in system_prompt
