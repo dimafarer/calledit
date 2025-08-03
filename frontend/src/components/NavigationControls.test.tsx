@@ -44,6 +44,22 @@ vi.mock('./LoginButton', () => ({
   )),
 }));
 
+vi.mock('./StreamingCall', () => ({
+  default: vi.fn(() => (
+    <div data-testid="streaming-call">
+      Streaming Call Component
+    </div>
+  )),
+}));
+
+vi.mock('./NotificationSettings', () => ({
+  default: vi.fn(() => (
+    <div data-testid="notification-settings">
+      Notification Settings Component
+    </div>
+  )),
+}));
+
 describe('Navigation Controls and Logout Redirection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -52,13 +68,13 @@ describe('Navigation Controls and Logout Redirection', () => {
 
   it('shows the View My Predictions button when user is authenticated', () => {
     render(<App />);
-    expect(screen.getByText('View My Predictions')).toBeInTheDocument();
+    expect(screen.getByText('📋 View Calls')).toBeInTheDocument();
   });
 
   it('hides the View My Predictions button when user is not authenticated', () => {
     mockIsAuthenticated = false;
     render(<App />);
-    expect(screen.queryByText('View My Predictions')).not.toBeInTheDocument();
+    expect(screen.queryByText('📋 View Calls')).not.toBeInTheDocument();
   });
 
   it('redirects to make predictions screen when user logs out while on list predictions screen', async () => {
@@ -66,7 +82,7 @@ describe('Navigation Controls and Logout Redirection', () => {
     const { rerender } = render(<App />);
     
     // Navigate to list predictions
-    fireEvent.click(screen.getByText('View My Predictions'));
+    fireEvent.click(screen.getByText('📋 View Calls'));
     expect(screen.getByTestId('list-predictions')).toBeInTheDocument();
     
     // Simulate logout
@@ -78,8 +94,8 @@ describe('Navigation Controls and Logout Redirection', () => {
     // Rerender to trigger the useEffect
     rerender(<App />);
     
-    // Should be redirected to make predictions
-    expect(screen.getByTestId('make-predictions')).toBeInTheDocument();
+    // Should be redirected to streaming call (default view)
+    expect(screen.getByTestId('streaming-call')).toBeInTheDocument();
     expect(screen.queryByTestId('list-predictions')).not.toBeInTheDocument();
   });
 });

@@ -109,7 +109,7 @@ describe('ListPredictions Component', () => {
     
     await waitFor(() => {
       // Check if the loading message is no longer displayed
-      expect(screen.queryByText('Loading your predictions...')).not.toBeInTheDocument();
+      expect(screen.queryByText('Loading your calls...')).not.toBeInTheDocument();
       
       // Check if predictions are displayed
       expect(screen.getByText('The price of Bitcoin will exceed $100,000 by December 2023')).toBeInTheDocument();

@@ -5,12 +5,12 @@ import App from './App';
 // Mock the AuthContext
 vi.mock('./contexts/AuthContext', () => ({
   AuthProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  useAuth: vi.fn(() => ({
+  useAuth: () => ({
     isAuthenticated: true,
     login: vi.fn(),
     logout: vi.fn(),
     getToken: vi.fn()
-  }))
+  })
 }));
 // test
 // Mock the components
@@ -34,6 +34,22 @@ vi.mock('./components/LoginButton', () => ({
   default: vi.fn(() => <div data-testid="login-button">Login Button</div>),
 }));
 
+vi.mock('./components/StreamingCall', () => ({
+  default: vi.fn(() => (
+    <div data-testid="streaming-call">
+      Streaming Call Component
+    </div>
+  )),
+}));
+
+vi.mock('./components/NotificationSettings', () => ({
+  default: vi.fn(() => (
+    <div data-testid="notification-settings">
+      Notification Settings Component
+    </div>
+  )),
+}));
+
 describe('App Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -44,9 +60,9 @@ describe('App Component', () => {
     expect(screen.getByText('Called It!!')).toBeInTheDocument();
   });
 
-  it('renders the MakePredictions component by default', () => {
+  it('renders the StreamingCall component by default', () => {
     render(<App />);
-    expect(screen.getByTestId('make-predictions')).toBeInTheDocument();
+    expect(screen.getByTestId('streaming-call')).toBeInTheDocument();
     expect(screen.queryByTestId('list-predictions')).not.toBeInTheDocument();
   });
 
@@ -55,32 +71,34 @@ describe('App Component', () => {
     expect(screen.getByTestId('login-button')).toBeInTheDocument();
   });
 
-  it('navigates from MakePredictions to ListPredictions when navigation button is clicked', () => {
+  it('navigates from StreamingCall to ListPredictions when navigation button is clicked', () => {
     render(<App />);
     
-    // Initially shows MakePredictions
-    expect(screen.getByTestId('make-predictions')).toBeInTheDocument();
+    // Initially shows StreamingCall (default view)
+    expect(screen.getByTestId('streaming-call')).toBeInTheDocument();
     
     // Click the navigation button in the header
-    fireEvent.click(screen.getByText('View Calls'));
+    fireEvent.click(screen.getByText('📋 View Calls'));
     
     // Now should show ListPredictions
     expect(screen.getByTestId('list-predictions')).toBeInTheDocument();
-    expect(screen.queryByTestId('make-predictions')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('streaming-call')).not.toBeInTheDocument();
   });
 
-  it('navigates from ListPredictions to MakePredictions when navigation button is clicked', () => {
+  it('navigates from ListPredictions to StreamingCall when navigation button is clicked', () => {
     render(<App />);
     
     // Navigate to ListPredictions first
-    fireEvent.click(screen.getByText('View My Predictions'));
+    fireEvent.click(screen.getByText('📋 View Calls'));
     expect(screen.getByTestId('list-predictions')).toBeInTheDocument();
     
     // Click the navigation button in the header to go back
-    fireEvent.click(screen.getByText('Make Call'));
+    fireEvent.click(screen.getByText('⚡ Streaming Mode'));
     
-    // Now should show MakePredictions again
-    expect(screen.getByTestId('make-predictions')).toBeInTheDocument();
+    // Now should show StreamingCall again
+    expect(screen.getByTestId('streaming-call')).toBeInTheDocument();
     expect(screen.queryByTestId('list-predictions')).not.toBeInTheDocument();
   });
+
+
 });
