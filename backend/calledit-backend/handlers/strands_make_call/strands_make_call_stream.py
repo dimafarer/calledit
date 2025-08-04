@@ -223,10 +223,12 @@ def lambda_handler(event, context):
         tools=[current_time],
         callback_handler=stream_callback_handler,
         system_prompt="""You are a prediction verification expert. Your task is to:
-            1. Analyze predictions
+            1. Analyze predictions WITHOUT modifying the original statement
             2. Create structured verification criteria
             3. Specify how to verify the prediction
             4. Categorize the verifiability of each prediction
+            
+            CRITICAL: Never modify or rephrase the user's original prediction statement. Use it exactly as provided.
             
             TOOL USAGE:
             - Use current_time tool once to get the current date and time context
@@ -276,7 +278,7 @@ def lambda_handler(event, context):
             
             OUTPUT FORMAT:
             Always format your response as a valid JSON object with:
-            - prediction_statement: A clear restatement of the prediction (you may add explicit dates for clarity)
+            - prediction_statement: The user's EXACT original prediction statement (do not modify, rephrase, or add details)
             - verification_date: The verification date/time in 24-hour local time format (e.g., "2025-06-27 15:00:00")
             - date_reasoning: Your detailed reasoning including how you converted 12-hour to 24-hour format
             - verifiable_category: One of the 5 categories above (exact string match required)

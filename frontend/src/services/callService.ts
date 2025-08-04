@@ -4,6 +4,7 @@ export class CallService {
   private webSocketService: WebSocketService;
   private onReviewStatus?: (status: string) => void;
   private onReviewComplete?: (data: any) => void;
+  private onImprovedResponse?: (data: any) => void;
   private isImprovementInProgress: boolean = false;
 
   constructor(webSocketUrl: string) {
@@ -23,8 +24,9 @@ export class CallService {
   ): Promise<void> {
     this.onReviewStatus = onReviewStatus;
     this.onReviewComplete = onReviewComplete;
-    try {
-      // Register handlers for different message types
+    this.onImprovedResponse = onImprovedResponse;
+    
+    // Register all handlers BEFORE connecting
       this.webSocketService.onMessage('text', (data) => {
         onTextChunk(data.content);
       });
@@ -34,22 +36,53 @@ export class CallService {
       });
 
       this.webSocketService.onMessage('call_response', (data) => {
-        console.log('Received call_response:', data);
+        console.log('✅ CallService: Received call_response:', data);
         // Check if this is an improved response (after improvement workflow)
         if (data.improved || this.isImprovementInProgress) {
-          if (onImprovedResponse) {
-            onImprovedResponse(data.content);
+          console.log('🔄 CallService: Handling as improved response');
+          if (this.onImprovedResponse) {
+            this.onImprovedResponse(data.content);
+            this.isImprovementInProgress = false; // Reset flag after handling
           }
         } else {
+          console.log('📝 CallService: Handling as initial response');
           onComplete(data.content);
         }
       });
 
       this.webSocketService.onMessage('review_complete', (data) => {
-        console.log('Review completed:', data.data);
+        console.log('✅ CallService: Review completed:', data.data);
         // Pass review data to a callback if provided
         if (this.onReviewComplete) {
+          console.log('📋 CallService: Calling onReviewComplete callback');
           this.onReviewComplete(data.data);
+        } else {
+          console.log('⚠️ CallService: No onReviewComplete callback registered');
+        }
+      });
+
+      this.webSocketService.onMessage('improvement_questions', (data) => {
+        console.log('❓ CallService: Improvement questions received:', data);
+        // Handle improvement questions if needed
+      });
+
+      this.webSocketService.onMessage('improved_response', (data) => {
+        console.log('✨ CallService: Improved response received:', data);
+        if (this.onImprovedResponse) {
+          this.onImprovedResponse(data.data);
+          this.isImprovementInProgress = false;
+        }
+      });
+
+      this.webSocketService.onMessage('complete', (data) => {
+        console.log('🏁 CallService: Process complete:', data);
+        // Handle completion status if needed
+      });
+
+      this.webSocketService.onMessage('status', (data) => {
+        console.log('📊 CallService: Status update:', data);
+        if (data.status === 'reviewing' && this.onReviewStatus) {
+          this.onReviewStatus('🔍 Reviewing response for improvements...');
         }
       });
 
@@ -71,6 +104,7 @@ export class CallService {
         }
       });
 
+    try {
       // Connect and send the call request with timezone
       await this.webSocketService.connect();
       
