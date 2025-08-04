@@ -165,41 +165,56 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
         (improvedData) => {
           console.log('Received improved response:', improvedData);
           console.log('Current call state:', call);
-          console.log('Condition check:', {
-            hasImprovedData: !!improvedData,
-            hasSection: !!improvedData?.section,
-            hasImprovedValue: !!improvedData?.improved_value,
-            hasCall: !!call
-          });
           
-          if (improvedData && improvedData.section && improvedData.improved_value && callRef.current) {
-            // Update specific section in existing call data
+          if (improvedData && improvedData.section && callRef.current) {
             const updatedCall = { ...callRef.current };
-            console.log('Updating call with improved data:', improvedData.section, improvedData.improved_value);
             
-            if (improvedData.section === 'verification_method') {
-              updatedCall.verification_method = {
-                source: [improvedData.improved_value],
-                criteria: callRef.current.verification_method?.criteria || ['Updated verification criteria'],
-                steps: callRef.current.verification_method?.steps || ['Updated verification steps']
-              };
-            } else if (improvedData.section === 'prediction_statement') {
-              updatedCall.prediction_statement = improvedData.improved_value;
-            } else if (improvedData.section === 'verifiable_category') {
-              updatedCall.verifiable_category = improvedData.improved_value;
-            } else {
-              updatedCall[improvedData.section] = improvedData.improved_value;
+            // Handle multiple field updates (for prediction_statement)
+            if (improvedData.multiple_updates) {
+              console.log('Processing multiple field updates:', improvedData.multiple_updates);
+              
+              // Update all fields provided in multiple_updates
+              Object.keys(improvedData.multiple_updates).forEach(field => {
+                if (field === 'verification_method' && typeof improvedData.multiple_updates[field] === 'object') {
+                  updatedCall.verification_method = improvedData.multiple_updates[field];
+                } else {
+                  updatedCall[field] = improvedData.multiple_updates[field];
+                }
+              });
+              
+              // Update improvement history with the main field
+              if (history.length > 0) {
+                const lastEntry = history[history.length - 1];
+                const mainValue = improvedData.multiple_updates.prediction_statement || 
+                                improvedData.multiple_updates[improvedData.section] || 
+                                'Multiple fields updated';
+                updateHistoryEntry(lastEntry.timestamp, mainValue);
+              }
+            } 
+            // Handle single field update
+            else if (improvedData.improved_value) {
+              console.log('Processing single field update:', improvedData.section, improvedData.improved_value);
+              
+              if (improvedData.section === 'verification_method') {
+                updatedCall.verification_method = {
+                  source: [improvedData.improved_value],
+                  criteria: callRef.current.verification_method?.criteria || ['Updated verification criteria'],
+                  steps: callRef.current.verification_method?.steps || ['Updated verification steps']
+                };
+              } else {
+                updatedCall[improvedData.section] = improvedData.improved_value;
+              }
+              
+              // Update improvement history
+              if (history.length > 0) {
+                const lastEntry = history[history.length - 1];
+                updateHistoryEntry(lastEntry.timestamp, improvedData.improved_value);
+              }
             }
             
             console.log('Setting updated call:', updatedCall);
             setCall(updatedCall);
             callRef.current = updatedCall;
-            
-            // Update improvement history
-            if (history.length > 0) {
-              const lastEntry = history[history.length - 1];
-              updateHistoryEntry(lastEntry.timestamp, improvedData.improved_value);
-            }
             
             // Format response for LogCallButton compatibility
             const apiResponse: APIResponse = {

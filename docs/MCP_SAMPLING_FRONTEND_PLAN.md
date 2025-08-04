@@ -278,6 +278,7 @@ backend/calledit-backend/handlers/strands_make_call/
 
 **MCP Sampling Frontend: PRODUCTION READY** ✅
 **State Management: ENTERPRISE GRADE** ✅
+**Backend Multiple Field Updates: WORKING** ✅
 
 ---
 
@@ -298,3 +299,19 @@ backend/calledit-backend/handlers/strands_make_call/
 ---
 
 **Status**: MCP Sampling frontend implementation COMPLETE with enterprise-grade state management. Backend MCP Sampling pattern working perfectly with real-time UI updates, error resilience, and connection management.
+
+## ✅ **CRITICAL FIX COMPLETED**: Multiple Field Updates
+**Issue**: When improving prediction_statement, only that field was updated while related fields (verification_date, verification_method) remained unchanged.
+
+**Root Cause**: Date assumption conflicts - initial agent assumed "today" but user clarifications often specified "tomorrow", causing regeneration failures.
+
+**Solution**: Enhanced ReviewAgent with:
+- Explicit handling of date conflicts ("today" vs "tomorrow")
+- Multiple field updates for prediction_statement improvements
+- Context-aware regeneration that respects user's timeframe over initial assumptions
+- Proper JSON parsing with fallback handling
+
+**Result**: When user improves "it will rain" → "It will rain in New York City tomorrow", all related fields now update correctly:
+- prediction_statement: Updated with location and timeframe
+- verification_date: Changed from today to tomorrow
+- verification_method: Updated with NYC-specific sources and criteria

@@ -115,19 +115,60 @@ class ReviewAgent:
     def regenerate_section(self, section_name, original_value, user_input, full_context):
         """
         Regenerate a specific section with user input.
-        Final MCP Sampling request for improvement generation.
+        For prediction_statement changes, also updates related fields.
         """
-        regeneration_prompt = f"""
-        SECTION TO IMPROVE: {section_name}
-        ORIGINAL VALUE: {original_value}
-        USER INPUT: {user_input}
-        FULL CONTEXT: {json.dumps(full_context, indent=2)}
-        
-        Regenerate the {section_name} incorporating the user's additional information.
-        Maintain consistency with other sections and ensure the improvement is meaningful.
-        
-        Return only the improved value for this section.
-        """
-        
-        response = self.agent(regeneration_prompt)
-        return str(response).strip()
+        if section_name == "prediction_statement":
+            # When prediction statement changes, regenerate related fields too
+            regeneration_prompt = f"""
+            ORIGINAL PREDICTION: {original_value}
+            USER CLARIFICATIONS: {user_input}
+            CONTEXT: {json.dumps(full_context, indent=2)}
+            
+            The user has clarified their prediction. If they specified a different timeframe (like "tomorrow" when original assumed "today"), use their timeframe. Create improved prediction with their exact details.
+            
+            RETURN JSON:
+            {{
+                "prediction_statement": "improved prediction with user's location and timeframe",
+                "verification_date": "2025-08-05T23:59:59Z if user said tomorrow",
+                "verification_method": {{
+                    "source": ["location-specific weather APIs"],
+                    "criteria": ["rain at specified location and time"],
+                    "steps": ["check weather for user's location and timeframe"]
+                }}
+            }}
+            """
+            
+            response = self.agent(regeneration_prompt)
+            response_str = str(response).strip()
+            
+            try:
+                # Try to parse as JSON for multiple field updates
+                import re
+                json_match = re.search(r'\{[\s\S]*\}', response_str)
+                if json_match:
+                    parsed = json.loads(json_match.group(0))
+                    # Filter out reviewable_sections if present - we want actual updates
+                    if 'reviewable_sections' in parsed:
+                        del parsed['reviewable_sections']
+                    return parsed
+            except json.JSONDecodeError:
+                pass
+            
+            # Fallback to single field update
+            return response_str
+        else:
+            # For other sections, use original single-field logic
+            regeneration_prompt = f"""
+            SECTION TO IMPROVE: {section_name}
+            ORIGINAL VALUE: {original_value}
+            USER INPUT: {user_input}
+            FULL CONTEXT: {json.dumps(full_context, indent=2)}
+            
+            Regenerate the {section_name} incorporating the user's additional information.
+            Maintain consistency with other sections and ensure the improvement is meaningful.
+            
+            Return only the improved value for this section.
+            """
+            
+            response = self.agent(regeneration_prompt)
+            return str(response).strip()

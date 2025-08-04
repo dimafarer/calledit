@@ -70,24 +70,38 @@ def handle_improvement_request(event, context, api_gateway_management_api, conne
             review_agent = ReviewAgent()
             
             # Use MCP Sampling to regenerate section
-            improved_value = review_agent.regenerate_section(
+            improved_result = review_agent.regenerate_section(
                 section, 
                 original_value, 
                 ' '.join(answers), 
                 full_context
             )
             
-            # Send improved response
-            api_gateway_management_api.post_to_connection(
-                ConnectionId=connection_id,
-                Data=json.dumps({
-                    "type": "improved_response",
-                    "data": {
-                        "section": section,
-                        "improved_value": improved_value
-                    }
-                })
-            )
+            # Check if we got multiple fields (for prediction_statement) or single field
+            if isinstance(improved_result, dict):
+                # Multiple fields updated (prediction_statement case)
+                api_gateway_management_api.post_to_connection(
+                    ConnectionId=connection_id,
+                    Data=json.dumps({
+                        "type": "improved_response",
+                        "data": {
+                            "section": section,
+                            "multiple_updates": improved_result
+                        }
+                    })
+                )
+            else:
+                # Single field updated
+                api_gateway_management_api.post_to_connection(
+                    ConnectionId=connection_id,
+                    Data=json.dumps({
+                        "type": "improved_response",
+                        "data": {
+                            "section": section,
+                            "improved_value": improved_result
+                        }
+                    })
+                )
             
         return {
             'statusCode': 200,
