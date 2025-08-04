@@ -160,6 +160,8 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
           const sections = reviewData.reviewable_sections || [];
           updateReviewSections(sections);
           setImprovementInProgress(false);
+          // Clear review status when review is complete
+          setReviewStatus('');
         },
         // Improved response handler
         (improvedData) => {
@@ -227,7 +229,7 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
           
           setImprovementInProgress(false);
           updateReviewSections([]);
-          setReviewStatus('✅ Response improved! Analyzing for further improvements...');
+          // Don't set new status - let setImprovementInProgress(false) clear it
         }
       );
     } catch (err) {
@@ -272,6 +274,9 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
       setImprovementError('WebSocket connection or section not available');
       return;
     }
+    
+    // Show indicator immediately when user submits
+    setReviewStatus('🔄 Improving response with your input...');
     
     try {
       // Add to improvement history
@@ -567,16 +572,20 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
             </div>
           </div>
           
-          {reviewState.reviewStatus && (
+          {reviewState.reviewStatus && !reviewState.reviewableSections.length && (
             <div style={{
               marginTop: '20px',
               padding: '12px 16px',
               borderRadius: '8px',
-              backgroundColor: reviewState.reviewableSections.length > 0 ? '#fff3cd' : '#d4edda',
-              border: `1px solid ${reviewState.reviewableSections.length > 0 ? '#ffeaa7' : '#c3e6cb'}`,
-              color: reviewState.reviewableSections.length > 0 ? '#856404' : '#155724'
+              backgroundColor: '#cce7ff',
+              border: '1px solid #007bff',
+              color: '#004085',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
             }}>
-              <strong>Review Status:</strong> {reviewState.reviewStatus}
+              <span>🔍</span>
+              <strong>{reviewState.reviewStatus}</strong>
             </div>
           )}
           
@@ -619,6 +628,43 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
         onSubmit={handleAnswers}
         onCancel={handleModalCancel}
       />
+      
+      {/* Floating review indicator */}
+      {reviewState.reviewStatus && !reviewState.reviewableSections.length && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          backgroundColor: '#007bff',
+          color: 'white',
+          padding: '8px 12px',
+          borderRadius: '20px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px'
+        }}>
+          <span className="spinner" style={{
+            width: '12px',
+            height: '12px',
+            border: '2px solid rgba(255,255,255,0.3)',
+            borderTop: '2px solid white',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite'
+          }}></span>
+          🔍 Reviewing...
+        </div>
+      )}
+      
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 };

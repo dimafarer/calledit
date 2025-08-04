@@ -16,9 +16,7 @@ export const useReviewState = () => {
     setReviewState(prev => ({
       ...prev,
       reviewableSections: sections,
-      reviewStatus: sections.length > 0 
-        ? `✨ Found ${sections.length} sections that could be improved`
-        : '✅ Response looks good - no improvements suggested'
+      reviewStatus: '' // Clear status when review completes
     }));
   }, []);
 
@@ -40,7 +38,7 @@ export const useReviewState = () => {
       showImprovementModal: false,
       reviewStatus: inProgress 
         ? '🔄 Improving response with your input...'
-        : prev.reviewStatus
+        : '' // Clear status when improvement finishes
     }));
   }, []);
 
