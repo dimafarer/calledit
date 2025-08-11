@@ -52,9 +52,19 @@ venv/
 .venv/
 .python-version
 
-# aws sam
-.aws
-.aws-sam
+# AWS credentials and configuration
+.aws/
+.aws-sam/
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Build artifacts that may contain sensitive data
+frontend/dist/
+frontend/build/
+dist/
+build/
 # AWS Amplify
 amplify/\#current-cloud-backend
 amplify/.config/local-*
@@ -82,10 +92,9 @@ amplifytools.xcconfig
 *.sln
 *.sw?
 
-# WSL specific
-*Zone.Identifier
-*.swp
-*.swo
+# Testing configuration
+testing/config.py
+config.py
 
 # OS generated files
 .DS_Store
