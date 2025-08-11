@@ -1,5 +1,8 @@
 # CalledIt: A Serverless Prediction Verification Platform
 
+> **⚠️ DEMONSTRATION PROJECT ONLY**  
+> This is a demo/educational project showcasing serverless AI architecture patterns. **NOT intended for production use.** See [License](#license) and [Disclaimers](#disclaimers) for important usage restrictions.
+
 CalledIt is a serverless web application that converts natural language predictions into structured, verifiable formats using AI agents. Built on AWS serverless architecture, it provides a robust platform for creating, managing, and validating predictions with **intelligent verifiability categorization**.
 
 The application combines AWS Cognito for authentication, AWS Lambda for serverless compute, and DynamoDB for data persistence. The frontend is built with React and TypeScript, providing a responsive and intuitive user interface. The backend leverages **Strands agents** for AI orchestration, Amazon Bedrock for reasoning, and **real-time WebSocket streaming** for immediate user feedback during prediction processing.
@@ -534,6 +537,46 @@ When contributing to CalledIt:
 3. Update documentation for new features
 4. Maintain the 5-category classification system integrity
 
+## Disclaimers
+
+### ⚠️ **DEMONSTRATION PROJECT ONLY**
+
+**This is a demo/educational project showcasing serverless AI architecture patterns. It is NOT intended for production use.**
+
+### 🚫 **Not Production Ready**
+- This software is provided for **demonstration and educational purposes only**
+- **DO NOT deploy in production environments** without significant additional security review, testing, and hardening
+- No warranties or guarantees are provided regarding security, scalability, or reliability
+- Use entirely at your own risk
+
+### 💰 **AWS Costs Warning**
+- This project deploys AWS resources that **WILL incur costs**
+- You are **solely responsible** for any AWS charges
+- Monitor your AWS billing dashboard when running this demo
+- Consider using AWS cost alerts and budgets
+
+### 🔒 **Security Notice**
+- While security best practices are attempted, this is a **demonstration project**
+- May contain security vulnerabilities not suitable for production
+- Conduct your own security assessment before any use
+- See [SECURITY.md](SECURITY.md) for security considerations
+
+### 📋 **Usage Restrictions**
+This software may **NOT** be used for:
+- Any illegal activities under applicable law
+- Harassment, abuse, or harm to individuals or organizations  
+- Fraud, deception, or misrepresentation
+- Violation of privacy or data protection laws
+- Any malicious or unethical purposes
+
+### 🛡️ **Liability Disclaimer**
+- **Use at your own risk** - no liability accepted for any damages or issues
+- Authors disclaim all warranties and liability
+- Users assume full responsibility for any consequences of use
+- This software is provided "AS IS" without any guarantees
+
 ## License
+
+This project is licensed under the MIT License with additional disclaimers - see the [LICENSE](LICENSE) file for details.
 
 This project is part of an educational/research initiative focused on AI-powered prediction verification systems.
