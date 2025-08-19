@@ -29,7 +29,6 @@ def main():
         try:
             response = bedrock.converse(
                 modelId="us.amazon.nova-micro-v1:0",
-                    #   us.amazon.nova-micro-v1:0
                 messages=conversation_history
             )
             # Extract assistant response
