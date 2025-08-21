@@ -51,10 +51,12 @@ htmlcov/
 venv/
 .venv/
 .python-version
+venvci/
 
 # AWS credentials and configuration
 .aws/
 .aws-sam/
+samconfig.toml
 *.pem
 *.key
 *.p12
