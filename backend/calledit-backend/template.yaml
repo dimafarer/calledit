@@ -279,10 +279,10 @@ Resources:
       # Add OAuth configuration
       CallbackURLs: 
         - http://localhost:5173/
-        - https://d2k653cdpjxjdu.cloudfront.net/
+        - https://d2w6gdbi1zx8x5.cloudfront.net/
       LogoutURLs:
         - http://localhost:5173/
-        - https://d2k653cdpjxjdu.cloudfront.net/
+        - https://d2w6gdbi1zx8x5.cloudfront.net/
       AllowedOAuthFlows:
         - code
         - implicit
@@ -585,6 +585,10 @@ Resources:
       TopicName: !Sub "${AWS::StackName}-verification-notifications"
       DisplayName: CalledIt Verification Notifications
 
+
+
+
+
   # Notification Management Function
   NotificationManagementFunction:
     Type: AWS::Serverless::Function
@@ -674,4 +678,5 @@ Outputs:
   VerificationNotificationTopic:
     Description: ARN of the SNS notification topic
     Value: !Ref VerificationNotificationTopic
+
 
