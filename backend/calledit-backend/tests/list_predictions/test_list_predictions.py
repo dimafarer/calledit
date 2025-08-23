@@ -204,7 +204,7 @@ class TestListPredictions:
         assert predictions[0]['verification_date'] == '2023-12-31'
         assert predictions[0]['verification_method']['source'] == ['Source 1']
         assert predictions[0]['initial_status'] == 'Pending'
-        assert predictions[0]['created_at'] == '2023-01-01T12:00:00Z'
+        assert predictions[0]['prediction_date'] == '2023-01-01T12:00:00Z'
 
     def test_lambda_handler_dynamodb_client_error(self, sample_event, mock_dynamodb_resource):
         """Test handling of DynamoDB ClientError"""

@@ -122,10 +122,11 @@ def test_provisioned_concurrency():
     
     if passed == total:
         print("🎉 All provisioned concurrency tests PASSED!")
-        return True
     else:
         print("⚠️  Some tests FAILED - cold starts may occur!")
-        return False
+    
+    # Use assertion instead of return for pytest compatibility
+    assert passed == total, f"Only {passed}/{total} provisioned concurrency tests passed"
 
 if __name__ == "__main__":
     success = test_provisioned_concurrency()

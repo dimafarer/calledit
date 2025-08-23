@@ -4,14 +4,16 @@ import { describe, it, expect } from 'vitest';
 const WS_URL = import.meta.env.VITE_WEBSOCKET_URL || 'wss://0yv5r2auh5.execute-api.us-west-2.amazonaws.com/prod';
 
 describe('CalledIt Integration Tests', () => {
+  // Increase timeout for WebSocket tests
+  const TEST_TIMEOUT = 20000;
   
   describe('WebSocket Streaming', () => {
-    it('should connect and receive streaming response', async () => {
+    it('should connect and receive streaming response', { timeout: TEST_TIMEOUT }, async () => {
       return new Promise<void>((resolve) => {
         const timeout = setTimeout(() => {
           ws?.close();
           resolve();
-        }, 10000);
+        }, 15000);
 
         let ws: WebSocket;
         // let messageReceived = false;
@@ -58,7 +60,7 @@ describe('CalledIt Integration Tests', () => {
   });
 
   describe('Verifiability Categories', () => {
-    it('should categorize predictions correctly', async () => {
+    it('should categorize predictions correctly', { timeout: TEST_TIMEOUT }, async () => {
       const testCases = [
         { prompt: 'The sun will rise tomorrow', expected: 'agent_verifiable' },
         { prompt: 'Bitcoin will hit $100k today', expected: 'api_tool_verifiable' },

@@ -122,8 +122,8 @@ class TestStrandsMakeCallStream:
         
         # Mock datetime for consistent testing
         with patch('handlers.strands_make_call.strands_make_call_stream.datetime') as mock_datetime:
-            mock_now = MagicMock()
-            mock_now.strftime.return_value = "2025-01-27 22:00:00 EST"
+            # Use real datetime object instead of MagicMock to avoid JSON serialization issues
+            mock_now = datetime(2025, 1, 27, 22, 0, 0, tzinfo=pytz.timezone('US/Eastern'))
             mock_datetime.now.return_value = mock_now
             mock_datetime.fromisoformat = datetime.fromisoformat
             mock_datetime.strptime = datetime.strptime
@@ -160,8 +160,7 @@ class TestStrandsMakeCallStream:
             mock_agent.return_value = json.dumps(invalid_response)
             
             with patch('handlers.strands_make_call.strands_make_call_stream.datetime') as mock_datetime:
-                mock_now = MagicMock()
-                mock_now.strftime.return_value = "2025-01-27 22:00:00 EST"
+                mock_now = datetime(2025, 1, 27, 22, 0, 0, tzinfo=pytz.timezone('US/Eastern'))
                 mock_datetime.now.return_value = mock_now
                 mock_datetime.fromisoformat = datetime.fromisoformat
                 mock_datetime.strptime = datetime.strptime
@@ -204,8 +203,7 @@ class TestStrandsMakeCallStream:
                 mock_agent.return_value = json.dumps(response_data)
                 
                 with patch('handlers.strands_make_call.strands_make_call_stream.datetime') as mock_datetime:
-                    mock_now = MagicMock()
-                    mock_now.strftime.return_value = "2025-01-27 22:00:00 EST"
+                    mock_now = datetime(2025, 1, 27, 22, 0, 0, tzinfo=pytz.timezone('US/Eastern'))
                     mock_datetime.now.return_value = mock_now
                     mock_datetime.fromisoformat = datetime.fromisoformat
                     mock_datetime.strptime = datetime.strptime
