@@ -36,6 +36,9 @@ Resources:
         PointInTimeRecoveryEnabled: true
       SSESpecification:
         SSEEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
 
   CallitAPI:
     Type: AWS::Serverless::Api
@@ -567,6 +570,19 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: alias/aws/s3
+            BucketKeyEnabled: true
+      ObjectLockEnabled: true
+      ObjectLockConfiguration:
+        ObjectLockEnabled: Enabled
+        Rule:
+          DefaultRetention:
+            Mode: GOVERNANCE
+            Days: 30
       LifecycleConfiguration:
         Rules:
           - Id: DeleteOldLogs
@@ -584,6 +600,7 @@ Resources:
     Properties:
       TopicName: !Sub "${AWS::StackName}-verification-notifications"
       DisplayName: CalledIt Verification Notifications
+      KmsMasterKeyId: alias/aws/sns
 
 
 

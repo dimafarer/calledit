@@ -65,7 +65,7 @@ def get_user_from_cognito_context(event):
     Returns:
         User ID if found, or None if not found
     """
-    print(f"Attempting to extract user from event: {json.dumps(event)}")
+    print("Attempting to extract user from event: [EVENT_DATA_REDACTED]"
     try:
         # Check if the event contains the requestContext with authorizer information
         print("Checking for requestContext and authorizer information")
@@ -103,7 +103,7 @@ def lambda_handler(event, context):
     Returns:
         API Gateway response with user's predictions or error message
     """
-    print(f"Lambda handler invoked with event: {json.dumps(event)}")
+    print(f"Lambda handler invoked with method: {event.get('httpMethod', 'UNKNOWN')}"
     
     # Get CORS headers for this request
     cors_headers = get_cors_headers(event)

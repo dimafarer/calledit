@@ -47,7 +47,7 @@ api.interceptors.response.use(
     if (error.response) {
       // The request was made and the server responded with a status code
       // that falls out of the range of 2xx
-      console.error(`API Error Response: ${error.response.status}`, error.response.data);
+      console.error(`API Error Response: ${error.response.status}`, '[RESPONSE_DATA_REDACTED]');
       
       // Check for specific error types
       if (error.response.status === 401) {
@@ -58,7 +58,7 @@ api.interceptors.response.use(
     } else if (error.request) {
       // The request was made but no response was received
       // This is likely a CORS error
-      console.error('No response received. This might be a CORS issue:', error.message);
+      console.error('No response received. This might be a CORS issue:', error.message?.replace(/[\r\n]/g, '') || 'Unknown error');
       
       // Create a more informative error object
       const corsError = new Error('CORS Error: Unable to access the API. This might be due to cross-origin restrictions.');
@@ -78,7 +78,7 @@ export const apiRequest = async <T>(
   options?: AxiosRequestConfig
 ): Promise<T> => {
   try {
-    console.log(`Making ${method} request to ${url}`);
+    console.log(`Making ${method} request to ${url.replace(/[\r\n]/g, '')}`);
     const response = await api({
       method,
       url,
@@ -86,7 +86,7 @@ export const apiRequest = async <T>(
       ...options,
     });
     
-    console.log(`Successful ${method} response from ${url}:`, response.status);
+    console.log(`Successful ${method} response from ${url.replace(/[\r\n]/g, '')}:`, response.status);
     return response.data;
   } catch (error: any) {
     console.error(`API ${method} request failed:`, error);
@@ -97,7 +97,7 @@ export const apiRequest = async <T>(
       // that falls out of the range of 2xx
       console.error('Response status:', error.response.status);
       console.error('Response headers:', error.response.headers);
-      console.error('Response data:', error.response.data);
+      console.error('Response data:', '[REDACTED]');
       
       // Check for specific error types
       if (error.response.status === 401) {
