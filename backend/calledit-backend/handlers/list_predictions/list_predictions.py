@@ -1,5 +1,6 @@
 import boto3
 import json
+import os
 from decimal import Decimal
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key
@@ -13,11 +14,11 @@ class DecimalEncoder(json.JSONEncoder):
 
 print("Starting lambda function execution")
 
-# List of allowed origins
-ALLOWED_ORIGINS = [
-    'http://localhost:5173',  # Local development
-    'https://d2k653cdpjxjdu.cloudfront.net',  # Production CloudFront
-]
+# Get allowed origins from environment variable, with fallback defaults
+ALLOWED_ORIGINS = os.environ.get(
+    'ALLOWED_ORIGINS', 
+    'http://localhost:5173,https://d2w6gdbi1zx8x5.cloudfront.net'
+).split(',')
 
 def get_cors_headers(event):
     """
@@ -65,7 +66,7 @@ def get_user_from_cognito_context(event):
     Returns:
         User ID if found, or None if not found
     """
-    print("Attempting to extract user from event: [EVENT_DATA_REDACTED]"
+    print("Attempting to extract user from event: [EVENT_DATA_REDACTED]")
     try:
         # Check if the event contains the requestContext with authorizer information
         print("Checking for requestContext and authorizer information")
@@ -103,7 +104,7 @@ def lambda_handler(event, context):
     Returns:
         API Gateway response with user's predictions or error message
     """
-    print(f"Lambda handler invoked with method: {event.get('httpMethod', 'UNKNOWN')}"
+    print(f"Lambda handler invoked with method: {event.get('httpMethod', 'UNKNOWN')}")
     
     # Get CORS headers for this request
     cors_headers = get_cors_headers(event)

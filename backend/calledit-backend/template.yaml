@@ -189,6 +189,9 @@ Resources:
       Architectures:
       - x86_64
       AutoPublishAlias: live
+      Environment:
+        Variables:
+          ALLOWED_ORIGINS: "http://localhost:5173,https://d2w6gdbi1zx8x5.cloudfront.net"
       Policies:
         - DynamoDBCrudPolicy:
             TableName: calledit-db
@@ -211,6 +214,9 @@ Resources:
       Architectures:
       - x86_64
       AutoPublishAlias: live
+      Environment:
+        Variables:
+          ALLOWED_ORIGINS: "http://localhost:5173,https://d2w6gdbi1zx8x5.cloudfront.net"
       Policies:
         - DynamoDBCrudPolicy:
             TableName: calledit-db

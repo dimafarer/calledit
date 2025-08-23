@@ -1,14 +1,15 @@
 # write a lambda handler to write to a ddb table named calledit-db with a primary key caled PK and a sort key name SK
 import boto3
 import json
+import os
 from botocore.exceptions import ClientError, NoCredentialsError, PartialCredentialsError
 from datetime import datetime
 
-# List of allowed origins
-ALLOWED_ORIGINS = [
-    'http://localhost:5173',  # Local development
-    'https://d2k653cdpjxjdu.cloudfront.net',  # Production CloudFront
-]
+# Get allowed origins from environment variable, with fallback defaults
+ALLOWED_ORIGINS = os.environ.get(
+    'ALLOWED_ORIGINS', 
+    'http://localhost:5173,https://d2w6gdbi1zx8x5.cloudfront.net'
+).split(',')
 
 def get_cors_headers(event):
     """
