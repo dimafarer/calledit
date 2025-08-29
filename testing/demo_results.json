@@ -1,0 +1,222 @@
+[
+  {
+    "prompt": "The sun will rise tomorrow morning",
+    "statement": "Structured version: The sun will rise tomorrow morning",
+    "category": "agent_verifiable",
+    "reasoning": "This prediction is agent verifiable because it requires agent verification methods.",
+    "verification_date": "2025-08-29T19:16:20.854623Z",
+    "verification_method": {
+      "source": [
+        "AI Agent",
+        "Tools"
+      ],
+      "criteria": [
+        "Verify: The sun will rise tomorrow morning"
+      ],
+      "steps": [
+        "Process prediction",
+        "Determine truth value"
+      ]
+    },
+    "date_reasoning": "Set for tomorrow for verification testing",
+    "success": true
+  },
+  {
+    "prompt": "Water boils at 100 degrees Celsius at sea level",
+    "statement": "Structured version: Water boils at 100 degrees Celsius at sea level",
+    "category": "agent_verifiable",
+    "reasoning": "This prediction is agent verifiable because it requires agent verification methods.",
+    "verification_date": "2025-08-29T19:16:20.854644Z",
+    "verification_method": {
+      "source": [
+        "AI Agent",
+        "Tools"
+      ],
+      "criteria": [
+        "Verify: Water boils at 100 degrees Celsius at sea level"
+      ],
+      "steps": [
+        "Process prediction",
+        "Determine truth value"
+      ]
+    },
+    "date_reasoning": "Set for tomorrow for verification testing",
+    "success": true
+  },
+  {
+    "prompt": "It's currently past 2 PM",
+    "statement": "Structured version: It's currently past 2 PM",
+    "category": "current_tool_verifiable",
+    "reasoning": "This prediction is current tool verifiable because it requires current verification methods.",
+    "verification_date": "2025-08-29T19:16:20.854649Z",
+    "verification_method": {
+      "source": [
+        "AI Agent",
+        "Tools"
+      ],
+      "criteria": [
+        "Verify: It's currently past 2 PM"
+      ],
+      "steps": [
+        "Process prediction",
+        "Determine truth value"
+      ]
+    },
+    "date_reasoning": "Set for tomorrow for verification testing",
+    "success": true
+  },
+  {
+    "prompt": "Today is a weekday",
+    "statement": "Structured version: Today is a weekday",
+    "category": "current_tool_verifiable",
+    "reasoning": "This prediction is current tool verifiable because it requires current verification methods.",
+    "verification_date": "2025-08-29T19:16:20.854653Z",
+    "verification_method": {
+      "source": [
+        "AI Agent",
+        "Tools"
+      ],
+      "criteria": [
+        "Verify: Today is a weekday"
+      ],
+      "steps": [
+        "Process prediction",
+        "Determine truth value"
+      ]
+    },
+    "date_reasoning": "Set for tomorrow for verification testing",
+    "success": true
+  },
+  {
+    "prompt": "2 + 2 equals 4",
+    "statement": "Structured version: 2 + 2 equals 4",
+    "category": "strands_tool_verifiable",
+    "reasoning": "This prediction is strands tool verifiable because it requires strands verification methods.",
+    "verification_date": "2025-08-29T19:16:20.854657Z",
+    "verification_method": {
+      "source": [
+        "AI Agent",
+        "Tools"
+      ],
+      "criteria": [
+        "Verify: 2 + 2 equals 4"
+      ],
+      "steps": [
+        "Process prediction",
+        "Determine truth value"
+      ]
+    },
+    "date_reasoning": "Set for tomorrow for verification testing",
+    "success": true
+  },
+  {
+    "prompt": "The square root of 16 is 4",
+    "statement": "Structured version: The square root of 16 is 4",
+    "category": "strands_tool_verifiable",
+    "reasoning": "This prediction is strands tool verifiable because it requires strands verification methods.",
+    "verification_date": "2025-08-29T19:16:20.854660Z",
+    "verification_method": {
+      "source": [
+        "AI Agent",
+        "Tools"
+      ],
+      "criteria": [
+        "Verify: The square root of 16 is 4"
+      ],
+      "steps": [
+        "Process prediction",
+        "Determine truth value"
+      ]
+    },
+    "date_reasoning": "Set for tomorrow for verification testing",
+    "success": true
+  },
+  {
+    "prompt": "Bitcoin is currently trading above $50,000",
+    "statement": "Structured version: Bitcoin is currently trading above $50,000",
+    "category": "api_tool_verifiable",
+    "reasoning": "This prediction is api tool verifiable because it requires api verification methods.",
+    "verification_date": "2025-08-29T19:16:20.854662Z",
+    "verification_method": {
+      "source": [
+        "AI Agent",
+        "Tools"
+      ],
+      "criteria": [
+        "Verify: Bitcoin is currently trading above $50,000"
+      ],
+      "steps": [
+        "Process prediction",
+        "Determine truth value"
+      ]
+    },
+    "date_reasoning": "Set for tomorrow for verification testing",
+    "success": true
+  },
+  {
+    "prompt": "The weather in New York City today will have a high above 60\u00b0F",
+    "statement": "Structured version: The weather in New York City today will have a high above 60\u00b0F",
+    "category": "api_tool_verifiable",
+    "reasoning": "This prediction is api tool verifiable because it requires api verification methods.",
+    "verification_date": "2025-08-29T19:16:20.854665Z",
+    "verification_method": {
+      "source": [
+        "AI Agent",
+        "Tools"
+      ],
+      "criteria": [
+        "Verify: The weather in New York City today will have a high above 60\u00b0F"
+      ],
+      "steps": [
+        "Process prediction",
+        "Determine truth value"
+      ]
+    },
+    "date_reasoning": "Set for tomorrow for verification testing",
+    "success": true
+  },
+  {
+    "prompt": "I will feel happy when I wake up tomorrow",
+    "statement": "Structured version: I will feel happy when I wake up tomorrow",
+    "category": "human_verifiable_only",
+    "reasoning": "This prediction is human verifiable only because it requires human verification methods.",
+    "verification_date": "2025-08-29T19:16:20.854668Z",
+    "verification_method": {
+      "source": [
+        "AI Agent",
+        "Tools"
+      ],
+      "criteria": [
+        "Verify: I will feel happy when I wake up tomorrow"
+      ],
+      "steps": [
+        "Process prediction",
+        "Determine truth value"
+      ]
+    },
+    "date_reasoning": "Set for tomorrow for verification testing",
+    "success": true
+  },
+  {
+    "prompt": "My favorite color will still be blue next week",
+    "statement": "Structured version: My favorite color will still be blue next week",
+    "category": "human_verifiable_only",
+    "reasoning": "This prediction is human verifiable only because it requires human verification methods.",
+    "verification_date": "2025-08-29T19:16:20.854671Z",
+    "verification_method": {
+      "source": [
+        "AI Agent",
+        "Tools"
+      ],
+      "criteria": [
+        "Verify: My favorite color will still be blue next week"
+      ],
+      "steps": [
+        "Process prediction",
+        "Determine truth value"
+      ]
+    },
+    "date_reasoning": "Set for tomorrow for verification testing",
+    "success": true
+  }
+]
