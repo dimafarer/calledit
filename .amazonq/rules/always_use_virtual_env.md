@@ -1,1 +1,1 @@
-always use the project's virtual environment to run anythong python including pip and sam
+always use the project's virtual environment located at /home/daddyfristy/projects/calledit/venvci to run anything python including pip and sam

@@ -1,8 +1,16 @@
-# Verification Lambda Deployment Implementation Plan
+# Verification System Lambda Deployment Implementation Plan
 
 **Date**: August 28, 2025  
-**Status**: 🚧 Ready to Implement  
-**Goal**: Connect existing verification system code to deployed AWS Lambda infrastructure
+**Status**: ✅ Successfully Deployed  
+**Goal**: Deploy the automated verification system (core app functionality #2) to AWS Lambda
+
+## Application Context
+
+CalledIt has **2 core functionalities**:
+1. **Prediction Creation**: Convert natural language → structured verifiable predictions with 5-category classification
+2. **Verification System**: Automated verification of predictions to determine TRUE/FALSE status ← **THIS PLAN**
+
+The verification system is already built in `/verification` folder but needs deployment to AWS Lambda infrastructure.
 
 ## Current State Analysis
 
@@ -13,22 +21,24 @@
 - **SNS Topic** - `VerificationNotificationTopic` for emails
 - **IAM Permissions** - DynamoDB, S3, SNS, Bedrock access
 
-### ❌ Missing Components
-- **Handler Code** - `handlers/verification/app.py` doesn't exist
-- **Code Bridge** - No connection between `/verification` folder and Lambda
-- **Dependencies** - Verification requirements not in Lambda package
+### ✅ Deployed Components
+- **Handler Code** - `handlers/verification/app.py` created and deployed
+- **Code Bridge** - Verification code copied to Lambda handler
+- **Dependencies** - Strands agents and boto3 installed in Lambda package
+- **Function ARN** - `arn:aws:lambda:us-west-2:766410526940:function:called-it-verification`
 
 ## Implementation Steps
 
-### Step 1: Create Lambda Handler
+### Step 1: Copy Verification Code to Handler
+**Action**: Copy `/verification` folder contents to `handlers/verification/`
+```bash
+cp -r verification/* backend/calledit-backend/handlers/verification/
+```
+
+### Step 2: Create Lambda Handler
 **File**: `backend/calledit-backend/handlers/verification/app.py`
 ```python
 #!/usr/bin/env python3
-import sys
-import os
-sys.path.append('/opt/python')  # Lambda layer path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../verification'))
-
 from verify_predictions import PredictionVerificationRunner
 
 def lambda_handler(event, context):
@@ -38,12 +48,6 @@ def lambda_handler(event, context):
         'statusCode': 200,
         'body': stats
     }
-```
-
-### Step 2: Copy Verification Code to Handler
-**Action**: Copy `/verification` folder contents to `handlers/verification/`
-```bash
-cp -r verification/* backend/calledit-backend/handlers/verification/
 ```
 
 ### Step 3: Update Requirements
@@ -63,6 +67,7 @@ boto3>=1.34.0
 ### Step 5: Deploy
 ```bash
 cd backend/calledit-backend
+source ../../venv/bin/activate  # Use project virtual environment
 sam build
 sam deploy --no-confirm-changeset
 ```
@@ -70,10 +75,12 @@ sam deploy --no-confirm-changeset
 ## Expected Results
 
 ### After Deployment
-- **Automated Verification**: Every 15 minutes
-- **S3 Audit Logs**: Verification results logged
-- **Email Notifications**: TRUE predictions trigger emails
-- **CloudWatch Logs**: Verification processing logs
+- **Automated Verification**: Every 15 minutes processes ALL pending predictions
+- **5-Category Routing**: Handles agent_verifiable, current_tool_verifiable, strands_tool_verifiable, api_tool_verifiable, human_verifiable_only
+- **S3 Audit Logs**: Verification results logged with structured JSON
+- **Email Notifications**: TRUE predictions trigger SNS emails
+- **Frontend Integration**: Real-time verification status updates with confidence scores
+- **Tool Gap Detection**: Automatic MCP tool suggestions for missing capabilities
 
 ### Validation Commands
 ```bash
@@ -105,9 +112,10 @@ backend/calledit-backend/handlers/verification/
 ## Success Criteria
 - ✅ Lambda function deploys successfully
 - ✅ EventBridge triggers every 15 minutes
-- ✅ Verification processes pending predictions
-- ✅ S3 logs contain verification results
-- ✅ Email notifications sent for TRUE predictions
+- ✅ Verification processes pending predictions across all 5 categories
+- ✅ S3 logs contain verification results with tool gap analysis
+- ✅ Email notifications sent for TRUE predictions ("crying" system)
+- ✅ Frontend displays real-time verification status updates
 - ✅ CloudWatch shows successful executions
 
 ## Rollback Plan
@@ -121,4 +129,4 @@ If deployment fails:
 
 **Implementation Time**: ~30 minutes  
 **Risk Level**: Low (infrastructure already deployed)  
-**Dependencies**: Strands agents library, AWS credentials
+**Dependencies**: Strands agents library, AWS credentials, project virtual environment
