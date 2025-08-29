@@ -231,20 +231,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Frontend handles both single and multiple field update scenarios
   - Date assumption conflicts resolved with explicit user clarification priority
 
+## [1.5.1] - 2025-08-23
+
+### Fixed
+- **🔧 CORS Error Resolution**: Fixed CloudFront origin mismatch in Lambda ALLOWED_ORIGINS
+- **🐛 Syntax Error Fixes**: Resolved missing parentheses in list_predictions.py causing 502 errors
+- **🔒 Security Hardening**: Comprehensive security improvements
+  - Fixed CWE-117 log injection vulnerabilities in API service and Lambda functions
+  - Added KMS encryption to S3 and SNS resources
+  - Enabled S3 Object Lock and DynamoDB TTL for data protection
+  - Updated security documentation with current posture (0 critical vulnerabilities)
+- **📱 Mobile UI Fix**: Improved reviewable section contrast for mobile readability
+  - Increased background opacity from 0.05 to 0.15
+  - Added explicit blue text color (#007bff) for better contrast
+  - Enhanced font weight for mobile visibility
+
+### Changed
+- **🏗️ Infrastructure Migration**: Migrated to new AWS account
+  - Deployed to CloudFront distribution (d2w6gdbi1zx8x5.cloudfront.net)
+  - Set up DynamoDB table in new account
+  - Updated Cognito callback URLs for new domain
+  - Configured 10-second cache TTL for development efficiency
+- **⚙️ Configuration Management**: Converted hardcoded origins to environment variables
+  - Improved maintainability across environments
+  - Better security practices for configuration management
+
+### Technical Details
+- **Testing Results**: Backend 95% (77/81), Frontend 87% (111/127), Verifiability 100% (5/5)
+- **Security Metrics**: 98% compliance, zero critical vulnerabilities
+- **Deployment**: Complete CloudFront + S3 production setup
+
 ## [Unreleased]
 
-### ✅ **PRODUCTION STATUS: FULLY OPERATIONAL**
-**Final Validation Results**:
-- ✅ **Test Case**: "it will rain" → clarify "NYC, tomorrow, measurable"
-- ✅ **Multiple Field Updates**: All related fields update correctly
-  - prediction_statement: "It will rain in New York City tomorrow (August 5, 2025) with measurable precipitation."
-  - verification_date: 2025-08-05T23:59:59Z (updated from today to tomorrow)
-  - verification_method: NYC-specific weather APIs and criteria
-- ✅ **UX Flow**: Floating indicator shows/hides at correct times
-- ✅ **Backend Logic**: Date conflict resolution operational
-- ✅ **Frontend Integration**: Seamless multiple field updates in UI
-
-**Status**: Complete MCP Sampling workflow operational with intelligent multiple field updates
+### Planned (Phase 3+)
+- **🌐 MCP Tool Integration**: Weather, sports, and financial API tools implementation
+- **📊 Advanced Analytics**: Verification success rate tracking and insights
+- **🔄 Automated Re-verification**: Smart retry logic for failed verifications
+- **📱 Mobile Application**: React Native app with verification notifications
+- **🌐 Social Features**: Prediction sharing and community leaderboards
 
 ### Planned (Phase 3+)
 - **🌐 MCP Tool Integration**: Weather, sports, and financial API tools implementation

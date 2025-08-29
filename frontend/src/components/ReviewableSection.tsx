@@ -32,7 +32,9 @@ const ReviewableSection: React.FC<ReviewableSectionProps> = ({
         padding: '8px 12px',
         margin: '2px',
         cursor: 'pointer',
-        backgroundColor: 'rgba(0, 123, 255, 0.05)',
+        backgroundColor: 'rgba(0, 123, 255, 0.15)',
+        color: '#007bff',
+        fontWeight: '500',
         transition: 'all 0.2s ease',
         minHeight: '44px',
         minWidth: '44px'
