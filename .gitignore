@@ -62,6 +62,12 @@ samconfig.toml
 *.p12
 *.pfx
 
+# Environment files with sensitive data
+.env
+.env.local
+.env.production
+.env.development
+
 # Build artifacts that may contain sensitive data
 frontend/dist/
 frontend/build/

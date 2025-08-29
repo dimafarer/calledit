@@ -78,6 +78,10 @@ cd backend/calledit-backend
 # Install Python dependencies (including Strands)
 pip install -r requirements.txt
 
+# Create SAM config from example
+cp samconfig.toml.example samconfig.toml
+# Edit samconfig.toml with your stack name and region
+
 # Deploy to AWS
 sam build
 sam deploy --guided
@@ -94,10 +98,12 @@ npm install
 # Create .env file from example
 cp .env.example .env
 
-# Update environment variables with your AWS configuration
-# Add both REST API and WebSocket URLs from the backend deployment
-# VITE_API_URL=https://your-api-gateway-url
-# VITE_WEBSOCKET_URL=wss://your-websocket-api-url
+# Update .env with your AWS configuration:
+# - Replace YOUR-API-ID with your API Gateway ID
+# - Replace YOUR-WEBSOCKET-ID with your WebSocket API ID
+# - Replace YOUR-REGION with your AWS region
+# - Replace Cognito values with your User Pool details
+# - Replace CloudFront domain with your distribution
 ```
 
 #### Testing Setup
