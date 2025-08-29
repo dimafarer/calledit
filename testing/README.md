@@ -19,6 +19,10 @@
 - **`test_improvement_updated.py`** - MCP sampling quick test
   - Tests improvement question workflow
   - Usage: `python active/test_improvement_updated.py`
+  
+- **`test_verification_components.py`** - Verification system unit tests
+  - Tests verification result structures, DDB scanner, agent logic
+  - Usage: `python active/test_verification_components.py`
 
 ### `/automation/` - Automated Testing Framework ✅
 **Status**: Outstanding performance (10/10 tests, 100% success)
@@ -34,6 +38,10 @@
 - **`test_database_integration.py`** - DynamoDB integration tests
 - **`test_improvement_workflow.py`** - End-to-end improvement workflow
 - **`test_performance_benchmarks.py`** - Performance testing suite
+- **`test_verification_pipeline.py`** - End-to-end verification system tests
+  - Tests complete verification workflow: DynamoDB → Agent → Results → Notifications
+  - Covers all 5 verifiability categories and tool gap detection
+  - Usage: `python integration/test_verification_pipeline.py`
 
 ### `/data/` - Test Data and Configuration 📊
 **Status**: Test cases and configuration files
