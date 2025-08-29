@@ -25,7 +25,7 @@ The verification system is already built in `/verification` folder but needs dep
 - **Handler Code** - `handlers/verification/app.py` created and deployed
 - **Code Bridge** - Verification code copied to Lambda handler
 - **Dependencies** - Strands agents and boto3 installed in Lambda package
-- **Function ARN** - `arn:aws:lambda:us-west-2:766410526940:function:called-it-verification`
+- **Function ARN** - `arn:aws:lambda:REGION:ACCOUNT:function:called-it-verification`
 
 ## Implementation Steps
 

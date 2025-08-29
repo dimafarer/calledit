@@ -7,7 +7,7 @@ def test_improvement_quick():
     print("🔧 Quick Improvement Test")
     
     try:
-        ws = websocket.create_connection("wss://k0nut3n0xa.execute-api.us-west-2.amazonaws.com/prod", timeout=5)
+        ws = websocket.create_connection("wss://YOUR-WEBSOCKET-ID.execute-api.REGION.amazonaws.com/prod", timeout=5)
         
         # Test improvement request
         message = {
