@@ -29,7 +29,8 @@ Each prediction includes AI-generated reasoning for its categorization, creating
 │       │   ├── strands_make_call/ # Strands agent with streaming
 │       │   ├── websocket/       # WebSocket connection handlers
 │       │   ├── list_predictions/# Retrieve user predictions
-│       │   └── write_to_db/     # DynamoDB write operations
+│       │   ├── write_to_db/     # DynamoDB write operations
+│       │   └── verification/    # Automated verification system
 │       ├── template.yaml        # SAM template for AWS resources
 │       └── tests/               # Backend unit tests
 ├── frontend/                    # React TypeScript frontend
@@ -37,21 +38,35 @@ Each prediction includes AI-generated reasoning for its categorization, creating
 │   │   ├── components/         # React components with category display
 │   │   ├── services/          # API, auth, and WebSocket services
 │   │   ├── types/             # TypeScript interfaces (CallResponse)
+│   │   ├── hooks/             # Custom React hooks for state management
 │   │   └── utils/             # Utility functions
 │   └── package.json           # Frontend dependencies
 ├── testing/                     # Comprehensive testing framework
+│   ├── active/                 # Working tests (100% success rate)
+│   ├── integration/            # End-to-end integration tests
 │   ├── automation/             # Automated testing tools
-│   ├── verifiability/         # Verifiability category tests
-│   ├── verifiability_category_tests.py # Main test suite (100% success)
-│   └── requirements.txt        # Testing dependencies
+│   ├── deprecated/             # Archived/non-functional tests
+│   ├── demo_prompts.py         # 40 compelling test prompts (5 categories)
+│   ├── demo_api_test.py        # WebSocket API testing with results capture
+│   └── demo_results_writer.py  # DynamoDB writer for demo data
+├── verification/                # Automated verification system (core functionality #2)
+│   ├── verify_predictions.py   # Main verification runner
+│   ├── verification_agent.py   # Strands verification agent
+│   ├── ddb_scanner.py          # DynamoDB scanner for pending predictions
+│   └── email_notifier.py       # SNS email notifications ("crying" system)
 ├── strands/                     # Strands agent development
 │   ├── demos/                  # Agent development examples
 │   └── my_agent/               # Custom agent implementation
-├── docs/                       # Comprehensive documentation
-│   ├── API.md                  # REST and WebSocket API documentation
-│   ├── TRD.md                  # Technical Requirements Document
-│   ├── TESTING.md              # Testing strategy and coverage
-│   └── infra.svg               # Infrastructure diagram
+├── docs/                       # Organized documentation structure
+│   ├── current/                # Up-to-date documentation
+│   │   ├── API.md              # REST and WebSocket API documentation
+│   │   ├── TRD.md              # Technical Requirements Document
+│   │   ├── TESTING.md          # Testing strategy and coverage
+│   │   ├── VERIFICATION_SYSTEM.md # Automated verification documentation
+│   │   └── infra.svg           # Infrastructure diagram
+│   ├── implementation-plans/   # Feature implementation plans
+│   ├── historical/             # Archived documentation
+│   └── archive/                # Deprecated documentation
 └── CHANGELOG.md                # Version history and feature tracking
 ```
 

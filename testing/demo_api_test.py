@@ -10,7 +10,7 @@ import time
 from demo_prompts import get_all_prompts
 
 # Replace with your actual WebSocket URL
-WEBSOCKET_URL = "wss://k0nut3n0xa.execute-api.us-west-2.amazonaws.com/prod"
+WEBSOCKET_URL = "wss://YOUR-WEBSOCKET-ID.execute-api.REGION.amazonaws.com/prod"
 
 def test_prediction_via_websocket(prompt, category_expected=None):
     """Test a single prediction via WebSocket streaming"""

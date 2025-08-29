@@ -32,7 +32,7 @@ testing/
 #### Step 1.1: Test Main Verifiability System ⏳ CURRENT
 - **File**: `verifiability_category_tests.py`
 - **Expected**: 100% success rate (5/5 categories)
-- **WebSocket URL**: `wss://k0nut3n0xa.execute-api.us-west-2.amazonaws.com/prod`
+- **WebSocket URL**: `wss://YOUR-WEBSOCKET-ID.execute-api.REGION.amazonaws.com/prod`
 - **Status**: About to test
 
 #### Step 1.2: Test WebSocket Functionality
