@@ -13,6 +13,7 @@ This directory contains all documentation for the CalledIt project, organized by
 - **`infra.svg`** - Current system architecture diagram
 - **`MCP_SAMPLING_COMPLETE.md`** - MCP Sampling implementation guide (ACTIVE FEATURE)
 - **`streaming_implementation_guide.md`** - WebSocket streaming implementation (CORE ARCHITECTURE)
+- **`SECURITY_CLEANUP.md`** - Security practices and cleanup checklist
 
 ### `/implementation-plans/` - Development Guides
 **Status**: 🚧 Mixed (active and completed plans)
