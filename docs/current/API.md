@@ -303,7 +303,7 @@ WebSocket errors are sent as `error` type messages with descriptive error messag
 
 The REST API supports CORS for the following origins:
 - `http://localhost:5173` (development)
-- `https://d2k653cdpjxjdu.cloudfront.net` (production)
+- `https://d2w6gdbi1zx8x5.cloudfront.net` (production)
 
 ## Examples
 
