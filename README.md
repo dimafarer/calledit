@@ -97,6 +97,12 @@ pip install -r requirements.txt
 cp samconfig.toml.example samconfig.toml
 # Edit samconfig.toml with your stack name and region
 
+# IMPORTANT: Update account-specific configurations in template.yaml
+# 1. Update CloudFront URLs in Cognito callback URLs (lines ~290-295):
+#    - Replace https://d2w6gdbi1zx8x5.cloudfront.net/ with your CloudFront domain
+# 2. Update CORS ALLOWED_ORIGINS in Lambda functions (lines ~194, ~219):
+#    - Replace https://d2w6gdbi1zx8x5.cloudfront.net with your CloudFront domain
+
 # Deploy to AWS
 sam build
 sam deploy --guided

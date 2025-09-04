@@ -1,0 +1,9 @@
+[
+  {
+    "ResourceType": "AWS::DynamoDB::Table",
+    "LogicalResourceId": "CalledItTable",
+    "ResourceIdentifier": {
+      "TableName": "calledit-db"
+    }
+  }
+]

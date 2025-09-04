@@ -539,30 +539,46 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
                       onImprove={handleImprove}
                     />
                   )}
-                  <div className="method-section">
-                    <h4>Sources:</h4>
-                    <ul>
-                      {call.verification_method.source?.map((item: string, index: number) => (
-                        <li key={`source-${index}`}>{item}</li>
-                      )) || <li>No sources available</li>}
-                    </ul>
-                  </div>
-                  <div className="method-section">
-                    <h4>Criteria:</h4>
-                    <ul>
-                      {call.verification_method.criteria?.map((item: string, index: number) => (
-                        <li key={`criteria-${index}`}>{item}</li>
-                      )) || <li>No criteria available</li>}
-                    </ul>
-                  </div>
-                  <div className="method-section">
-                    <h4>Steps:</h4>
-                    <ul>
-                      {call.verification_method.steps?.map((item: string, index: number) => (
-                        <li key={`step-${index}`}>{item}</li>
-                      )) || <li>No steps available</li>}
-                    </ul>
-                  </div>
+                  {(() => {
+                    // Parse verification_method if it's a string
+                    let method = call.verification_method;
+                    if (typeof method === 'string') {
+                      try {
+                        method = JSON.parse(method);
+                      } catch (e) {
+                        return <div className="error">Invalid verification method format</div>;
+                      }
+                    }
+                    
+                    return (
+                      <>
+                        <div className="method-section">
+                          <h4>Sources:</h4>
+                          <ul>
+                            {method.source?.map((item: string, index: number) => (
+                              <li key={`source-${index}`}>{item}</li>
+                            )) || <li>No sources available</li>}
+                          </ul>
+                        </div>
+                        <div className="method-section">
+                          <h4>Criteria:</h4>
+                          <ul>
+                            {method.criteria?.map((item: string, index: number) => (
+                              <li key={`criteria-${index}`}>{item}</li>
+                            )) || <li>No criteria available</li>}
+                          </ul>
+                        </div>
+                        <div className="method-section">
+                          <h4>Steps:</h4>
+                          <ul>
+                            {method.steps?.map((item: string, index: number) => (
+                              <li key={`step-${index}`}>{item}</li>
+                            )) || <li>No steps available</li>}
+                          </ul>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               )}
             </div>

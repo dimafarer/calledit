@@ -1,11 +1,18 @@
 import json
 import boto3
 import os
+import sys
 from datetime import datetime, timedelta, timezone
 import dateparser
 import pytz
 from strands import Agent, tool
 from strands_tools import current_time
+
+from error_handling import safe_agent_call, safe_streaming_callback, with_agent_fallback
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 @tool
 def parse_relative_date(date_string: str, timezone: str = "UTC") -> str:
@@ -115,57 +122,87 @@ def handle_improvement_request(event, context, api_gateway_management_api, conne
             'body': json.dumps({'error': str(e)})
         }
 
+@with_agent_fallback({
+    "prediction_statement": "Error processing request",
+    "verifiable_category": "human_verifiable_only", 
+    "category_reasoning": "System error occurred during processing",
+    "verification_method": {"source": "manual", "criteria": ["Manual verification required"]},
+    "error": "Lambda handler failed"
+})
 def lambda_handler(event, context):
     """
     Handle prediction requests and stream responses back to the client using Strands.
     Also handles improvement requests using MCP Sampling pattern.
     """
-    print("WebSocket message event:", event)
-    
-    # Define valid categories at the top level
-    valid_categories = [
-        "agent_verifiable",
-        "current_tool_verifiable", 
-        "strands_tool_verifiable",
-        "api_tool_verifiable",
-        "human_verifiable_only"
-    ]
-    
-    # Extract connection ID for WebSocket
-    connection_id = event.get('requestContext', {}).get('connectionId')
-    domain_name = event.get('requestContext', {}).get('domainName')
-    stage = event.get('requestContext', {}).get('stage')
-    
-    if not connection_id or not domain_name or not stage:
-        return {
-            'statusCode': 400,
-            'body': json.dumps({'error': 'Missing WebSocket connection information'})
-        }
-    
-    # Set up API Gateway Management API client
-    api_gateway_management_api = boto3.client(
-        'apigatewaymanagementapi',
-        endpoint_url=f"https://{domain_name}/{stage}"
-    )
-    
-    # Check if this is an improvement request
     try:
-        body = json.loads(event.get('body', '{}'))
-        action = body.get('action', 'makecall')
+        print("WebSocket message event:", event)
         
-        # Handle improvement requests using MCP Sampling
-        if action in ['improve_section', 'improvement_answers']:
-            return handle_improvement_request(event, context, api_gateway_management_api, connection_id)
+        # Define valid categories at the top level
+        valid_categories = [
+            "agent_verifiable",
+            "current_tool_verifiable", 
+            "strands_tool_verifiable",
+            "api_tool_verifiable",
+            "human_verifiable_only"
+        ]
         
-        # Handle normal prediction requests
-        prompt = body.get('prompt', '')
-        user_timezone = body.get('timezone', '')
+        # Extract connection ID for WebSocket
+        connection_id = event.get('requestContext', {}).get('connectionId')
+        domain_name = event.get('requestContext', {}).get('domainName')
+        stage = event.get('requestContext', {}).get('stage')
         
-        if not prompt:
+        if not connection_id or not domain_name or not stage:
+            logger.error("Missing WebSocket connection information")
             return {
                 'statusCode': 400,
-                'body': json.dumps({'error': 'No prompt provided'})
+                'body': json.dumps({'error': 'Missing WebSocket connection information'})
             }
+        
+        # Set up API Gateway Management API client with error handling
+        try:
+            api_gateway_management_api = boto3.client(
+                'apigatewaymanagementapi',
+                endpoint_url=f"https://{domain_name}/{stage}"
+            )
+        except Exception as e:
+            logger.error(f"Failed to create API Gateway client: {str(e)}")
+            return {
+                'statusCode': 500,
+                'body': json.dumps({'error': 'WebSocket connection failed'})
+            }
+        
+        # Check if this is an improvement request
+        try:
+            body = json.loads(event.get('body', '{}'))
+            action = body.get('action', 'makecall')
+            
+            # Handle improvement requests using MCP Sampling
+            if action in ['improve_section', 'improvement_answers']:
+                return handle_improvement_request(event, context, api_gateway_management_api, connection_id)
+            
+            # Handle normal prediction requests
+            prompt = body.get('prompt', '')
+            user_timezone = body.get('timezone', '')
+            
+            if not prompt:
+                logger.warning("No prompt provided in request")
+                return {
+                    'statusCode': 400,
+                    'body': json.dumps({'error': 'No prompt provided'})
+                }
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in request body: {str(e)}")
+            return {
+                'statusCode': 400,
+                'body': json.dumps({'error': 'Invalid JSON format'})
+            }
+            
+    except Exception as e:
+        logger.error(f"Critical error in lambda handler: {str(e)}", exc_info=True)
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': 'Internal server error'})
+        }
             
         if not user_timezone:
             return {
@@ -231,11 +268,17 @@ def lambda_handler(event, context):
                 )
         except Exception as e:
             print(f"Error sending to WebSocket: {str(e)}")
+    # Create safe streaming callback
+    safe_callback = safe_streaming_callback(
+        connection_id, 
+        api_gateway_management_api,
+        "Processing your prediction..."
+    )
     
-    # Create agent with streaming callback and proper prompts
+    # Create agent with safe streaming callback and proper prompts
     agent = Agent(
         tools=[current_time],
-        callback_handler=stream_callback_handler,
+        callback_handler=safe_callback,
         system_prompt="""You are a prediction verification expert. Your task is to:
             1. Analyze predictions WITHOUT modifying the original statement
             2. Create structured verification criteria
@@ -327,16 +370,29 @@ def lambda_handler(event, context):
             })
         )
         
-        # This will stream responses via the callback handler
-        response = agent(user_prompt)
-        response_str = str(response)
+        # Use safe agent call with fallback
+        fallback_response = {
+            "prediction_statement": prompt,
+            "verifiable_category": "human_verifiable_only",
+            "category_reasoning": "Unable to process prediction due to system error",
+            "verification_method": {"source": "manual", "criteria": ["Human verification required"]},
+            "verification_date": formatted_datetime_local,
+            "date_reasoning": "Fallback date due to processing error"
+        }
         
-        # Extract JSON from the response
-        try:
-            prediction_json = json.loads(response_str)
-        except json.JSONDecodeError:
-            # Try to extract JSON from markdown code blocks
-            import re
+        response = safe_agent_call(agent, user_prompt, fallback_response)
+        
+        # Handle both dict and string responses
+        if isinstance(response, dict):
+            prediction_json = response
+        else:
+            response_str = str(response)
+            # Extract JSON from the response
+            try:
+                prediction_json = json.loads(response_str)
+            except json.JSONDecodeError:
+                # Try to extract JSON from markdown code blocks
+                import re
             json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', response_str)
             if json_match:
                 try:

@@ -169,16 +169,26 @@ def lambda_handler(event, context):
                 'prediction_date': item.get('prediction_date', item.get('createdAt', '')),  # Use prediction_date or fall back to createdAt
                 'verifiable_category': item.get('verifiable_category', 'human_verifiable_only'),
                 'category_reasoning': item.get('category_reasoning', ''),
-                'verification_method': {
-                    'source': item.get('verification_method', {}).get('source', []),
-                    'criteria': item.get('verification_method', {}).get('criteria', []),
-                    'steps': item.get('verification_method', {}).get('steps', [])
-                },
+                'verification_method': {},  # Will be populated below
                 'initial_status': item.get('initial_status', 'Pending'),
                 # Add verification status fields if they exist
                 'verification_status': item.get('verification_status', ''),
                 'verification_confidence': float(item.get('verification_confidence', 0)) if item.get('verification_confidence') else None,
                 'verification_reasoning': item.get('verification_reasoning', '')
+            }
+            
+            # Handle verification_method safely (could be string or dict)
+            vm = item.get('verification_method', {})
+            if isinstance(vm, str):
+                try:
+                    vm = json.loads(vm)
+                except json.JSONDecodeError:
+                    vm = {}
+            
+            prediction['verification_method'] = {
+                'source': vm.get('source', []) if isinstance(vm, dict) else [],
+                'criteria': vm.get('criteria', []) if isinstance(vm, dict) else [],
+                'steps': vm.get('steps', []) if isinstance(vm, dict) else []
             }
             print(f"Formatted prediction: {json.dumps(prediction, cls=DecimalEncoder)}")
             predictions.append(prediction)

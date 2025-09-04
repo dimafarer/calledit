@@ -1,0 +1,52 @@
+[
+  {
+    "prompt": "The sun will rise tomorrow morning",
+    "success": false,
+    "error": "[Errno -2] Name or service not known"
+  },
+  {
+    "prompt": "Water boils at 100 degrees Celsius at sea level",
+    "success": false,
+    "error": "[Errno -2] Name or service not known"
+  },
+  {
+    "prompt": "It's currently past 2 PM",
+    "success": false,
+    "error": "[Errno -2] Name or service not known"
+  },
+  {
+    "prompt": "Today is a weekday",
+    "success": false,
+    "error": "[Errno -2] Name or service not known"
+  },
+  {
+    "prompt": "2 + 2 equals 4",
+    "success": false,
+    "error": "[Errno -2] Name or service not known"
+  },
+  {
+    "prompt": "The square root of 16 is 4",
+    "success": false,
+    "error": "[Errno -2] Name or service not known"
+  },
+  {
+    "prompt": "Bitcoin is currently trading above $50,000",
+    "success": false,
+    "error": "[Errno -2] Name or service not known"
+  },
+  {
+    "prompt": "The weather in New York City today will have a high above 60\u00b0F",
+    "success": false,
+    "error": "[Errno -2] Name or service not known"
+  },
+  {
+    "prompt": "I will feel happy when I wake up tomorrow",
+    "success": false,
+    "error": "[Errno -2] Name or service not known"
+  },
+  {
+    "prompt": "My favorite color will still be blue next week",
+    "success": false,
+    "error": "[Errno -2] Name or service not known"
+  }
+]

@@ -1,5 +1,13 @@
+import sys
+import os
+import logging
 from strands import Agent
 import json
+
+from error_handling import safe_agent_call, with_agent_fallback
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 class ReviewAgent:
     """
@@ -54,37 +62,54 @@ class ReviewAgent:
         RETURN ONLY VALID JSON - NO OTHER TEXT:
         """
         
-        # This is the MCP Sampling request - asking client to perform LLM interaction
-        response = self.agent(review_prompt)
-        response_str = str(response)
+        # Fallback response for review failures
+        fallback_response = {
+            "reviewable_sections": [],
+            "overall_assessment": "Unable to review due to system error",
+            "improvement_potential": "low"
+        }
         
         try:
-            # First try direct JSON parsing
-            return json.loads(response_str)
-        except json.JSONDecodeError:
-            # Try to extract JSON from markdown code blocks or mixed content
-            import re
+            # Use safe agent call with fallback
+            response = safe_agent_call(self.agent, review_prompt, fallback_response)
             
-            # Look for JSON in code blocks
-            json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', response_str)
-            if json_match:
-                try:
-                    return json.loads(json_match.group(1))
-                except json.JSONDecodeError:
-                    pass
+            # Handle both dict and string responses
+            if isinstance(response, dict):
+                return response
+                
+            response_str = str(response)
             
-            # Look for JSON object anywhere in the response
-            json_pattern = r'\{[\s\S]*"reviewable_sections"[\s\S]*\}'
-            json_match = re.search(json_pattern, response_str)
-            if json_match:
-                try:
-                    return json.loads(json_match.group(0))
-                except json.JSONDecodeError:
-                    pass
-            
-            print(f"Failed to parse review response: {response_str[:500]}...")
-            # Fallback if JSON parsing fails
-            return {"reviewable_sections": []}
+            try:
+                # First try direct JSON parsing
+                return json.loads(response_str)
+            except json.JSONDecodeError:
+                # Try to extract JSON from markdown code blocks or mixed content
+                import re
+                
+                # Look for JSON in code blocks
+                json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', response_str)
+                if json_match:
+                    try:
+                        return json.loads(json_match.group(1))
+                    except json.JSONDecodeError:
+                        pass
+                
+                # Look for JSON object anywhere in the response
+                json_pattern = r'\{[\s\S]*"reviewable_sections"[\s\S]*\}'
+                json_match = re.search(json_pattern, response_str)
+                if json_match:
+                    try:
+                        return json.loads(json_match.group(0))
+                    except json.JSONDecodeError:
+                        pass
+                
+                print(f"Failed to parse review response: {response_str[:500]}...")
+                # Fallback if JSON parsing fails
+                return {"reviewable_sections": []}
+                
+        except Exception as e:
+            print(f"Review agent error: {str(e)}")
+            return fallback_response
     
     def generate_improvement_questions(self, section_name, current_value):
         """
@@ -156,6 +181,41 @@ class ReviewAgent:
             
             # Fallback to single field update
             return response_str
+        elif section_name == "verification_method":
+            # Handle verification_method specifically to return proper object structure
+            regeneration_prompt = f"""
+            VERIFICATION METHOD TO IMPROVE: {original_value}
+            USER INPUT: {user_input}
+            FULL CONTEXT: {json.dumps(full_context, indent=2)}
+            
+            Improve the verification method incorporating the user's additional information.
+            
+            RETURN ONLY VALID JSON:
+            {{
+                "source": ["improved sources based on user input"],
+                "criteria": ["improved criteria based on user input"],
+                "steps": ["improved steps based on user input"]
+            }}
+            """
+            
+            response = self.agent(regeneration_prompt)
+            response_str = str(response).strip()
+            
+            try:
+                # Try to parse as JSON object
+                import re
+                json_match = re.search(r'\{[\s\S]*\}', response_str)
+                if json_match:
+                    return json.loads(json_match.group(0))
+            except json.JSONDecodeError:
+                pass
+            
+            # Fallback to original structure if parsing fails
+            return {
+                "source": [response_str],
+                "criteria": ["Updated based on user input"],
+                "steps": ["Updated verification steps"]
+            }
         else:
             # For other sections, use original single-field logic
             regeneration_prompt = f"""

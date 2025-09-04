@@ -5,6 +5,8 @@ Intelligently verifies predictions with tool gap detection
 """
 
 import time
+import sys
+import os
 from datetime import datetime, timezone
 from typing import Dict, Any
 import logging
@@ -18,6 +20,7 @@ except ImportError:
     Agent = MockStrandsModule.Agent
     current_time = MockStrandsToolsModule.current_time
 
+from error_handling import safe_agent_call, ToolFallbackManager
 from verification_result import (
     VerificationResult, VerificationStatus, 
     create_tool_gap_result, MCPToolSuggestions
@@ -28,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 class PredictionVerificationAgent:
     def __init__(self):
+        self.fallback_manager = ToolFallbackManager()
         self.agent = Agent(
             name="prediction_verifier",
             model="claude-3-sonnet-20241022",
@@ -49,7 +53,7 @@ class PredictionVerificationAgent:
         logger.info(f"Category: {category}")
         
         try:
-            # Route to appropriate verification method
+            # Route to appropriate verification method with error handling
             if category == 'agent_verifiable':
                 result = self._verify_with_reasoning(prediction_id, statement, verification_date)
             elif category == 'current_tool_verifiable':
@@ -69,7 +73,16 @@ class PredictionVerificationAgent:
             return result
             
         except Exception as e:
-            logger.error(f"Error verifying prediction: {str(e)}")
+            logger.error(f"Error verifying prediction: {str(e)}", exc_info=True)
+            # Return error result instead of crashing
+            return VerificationResult(
+                prediction_id=prediction_id,
+                status=VerificationStatus.ERROR,
+                confidence_score=0.0,
+                reasoning=f"Verification failed due to error: {str(e)}",
+                processing_time_ms=int((time.time() - start_time) * 1000),
+                verification_method="error_fallback"
+            )
             return VerificationResult(
                 prediction_id=prediction_id,
                 status=VerificationStatus.ERROR,
