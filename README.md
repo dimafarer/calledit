@@ -512,10 +512,10 @@ npm run build
 - ✅ **"Crying" Notifications**: Email alerts for successful predictions with social sharing setup
 - ✅ **Modern UI Design**: Complete responsive redesign with educational UX and streaming text effects
 - ✅ **Lambda Provisioned Concurrency**: Eliminated cold starts on 3 key functions with alias-based architecture
-- ✅ **MCP Sampling Review & Improvement System**: FULLY OPERATIONAL
-  - Complete MCP Sampling pattern with multiple field updates
+- ✅ **Verifiable Prediction Structuring System (VPSS)**: FULLY OPERATIONAL
+  - Transforms natural language into verification-ready JSON structures
   - WebSocket routing for improvement workflow (improve_section, improvement_answers)
-  - Server-initiated sampling with client-facilitated LLM interactions
+  - Server-initiated review with client-facilitated LLM interactions
   - Human-in-the-loop design with floating status indicators
   - Date conflict resolution ("today" vs "tomorrow" assumptions)
   - Enterprise-grade state management with 4 custom React hooks
@@ -525,8 +525,8 @@ npm run build
   - CORS resolution and mobile UI improvements
   - Environment variable configuration management
 
-### ✅ **MCP SAMPLING SYSTEM: PRODUCTION READY**
-- 🔍 **Strands Review Agent**: Complete MCP Sampling implementation
+### ✅ **VERIFIABLE PREDICTION STRUCTURING SYSTEM (VPSS): PRODUCTION READY**
+- 🔍 **Strands Review Agent**: Complete VPSS implementation
   - Multiple field updates: prediction_statement improvements update verification_date and verification_method
   - Date conflict resolution: Handles "today" vs "tomorrow" assumption conflicts intelligently
   - JSON response processing: Proper parsing of complex improvement responses

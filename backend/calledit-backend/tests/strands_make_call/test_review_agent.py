@@ -11,7 +11,7 @@ from review_agent import ReviewAgent
 
 
 class TestReviewAgent:
-    """Unit tests for ReviewAgent MCP Sampling functionality."""
+    """Unit tests for ReviewAgent VPSS (Verifiable Prediction Structuring System) functionality."""
     
     @pytest.fixture
     def sample_prediction_response(self):

@@ -1,8 +1,8 @@
-// Auto-test script for MCP Sampling workflow
+// Auto-test script for VPSS (Verifiable Prediction Structuring System) workflow
 // Run in browser console: autoTest()
 
 window.autoTest = async function() {
-  console.log('🚀 Starting automated MCP Sampling test...');
+  console.log('🚀 Starting automated VPSS test...');
   
   // Step 1: Fill prediction input
   const input = document.querySelector('textarea[placeholder*="Enter your call"]');

@@ -11,7 +11,8 @@ logger.setLevel(logging.INFO)
 
 class ReviewAgent:
     """
-    Strands agent that implements MCP Sampling pattern for reviewing predictions.
+    Strands agent that implements the Verifiable Prediction Structuring System (VPSS).
+    Transforms natural language predictions into structured JSON with all fields needed for verification.
     """
     
     def __init__(self, callback_handler=None):
@@ -47,7 +48,7 @@ class ReviewAgent:
     def review_prediction(self, prediction_response):
         """
         Review a prediction response and identify improvable sections.
-        This implements MCP Sampling by requesting additional LLM processing.
+        Part of VPSS - ensures all fields are complete for automated verification.
         """
         review_prompt = f"""
         PREDICTION RESPONSE TO REVIEW:
@@ -114,7 +115,7 @@ class ReviewAgent:
     def generate_improvement_questions(self, section_name, current_value):
         """
         Generate specific questions for a section that needs improvement.
-        Another MCP Sampling request for targeted question generation.
+        Part of VPSS - guides users to provide information needed for verification.
         """
         questions_prompt = f"""
         SECTION: {section_name}

@@ -16,7 +16,7 @@
   - Verifies WebSocket connection and messaging
   - Usage: `python active/test_websocket_basic.py`
   
-- **`test_improvement_updated.py`** - MCP sampling quick test
+- **`test_improvement_updated.py`** - VPSS quick test
   - Tests improvement question workflow
   - Usage: `python active/test_improvement_updated.py`
   
@@ -75,7 +75,7 @@ python active/verifiability_category_tests.py wss://your-websocket-url
 # Run basic WebSocket test
 python active/test_websocket_basic.py
 
-# Run MCP sampling test
+# Run VPSS test
 python active/test_improvement_updated.py
 ```
 
@@ -90,7 +90,7 @@ python test_runner.py
 ### ✅ Working Tests (100% Success Rate)
 - **Verifiability Categories**: 5/5 categories perfect
 - **WebSocket Basic**: Connection and messaging working
-- **MCP Sampling**: Improvement questions functional
+- **VPSS**: Improvement questions functional
 - **Automation Framework**: 10/10 tests passing
 
 ### ❌ Deprecated Tests
@@ -103,7 +103,7 @@ python test_runner.py
 ### For Development
 1. **Start with**: `active/verifiability_category_tests.py` (core functionality)
 2. **Then run**: `active/test_websocket_basic.py` (connectivity)
-3. **Finally**: `active/test_improvement_updated.py` (MCP sampling)
+3. **Finally**: `active/test_improvement_updated.py` (VPSS)
 
 ### For Comprehensive Testing
 1. **Run automation**: `automation/test_runner.py` (full suite)

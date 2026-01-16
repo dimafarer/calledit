@@ -44,7 +44,8 @@ def parse_relative_date(date_string: str, timezone: str = "UTC") -> str:
 
 def handle_improvement_request(event, context, api_gateway_management_api, connection_id):
     """
-    Handle user requests for section improvements using MCP Sampling.
+    Handle user requests for section improvements (VPSS workflow).
+    Guides users to provide information needed for complete verification structure.
     """
     try:
         from review_agent import ReviewAgent
@@ -76,7 +77,7 @@ def handle_improvement_request(event, context, api_gateway_management_api, conne
             # Create review agent
             review_agent = ReviewAgent()
             
-            # Use MCP Sampling to regenerate section
+            # Use VPSS to regenerate section with user clarifications
             improved_result = review_agent.regenerate_section(
                 section, 
                 original_value, 
@@ -132,7 +133,7 @@ def handle_improvement_request(event, context, api_gateway_management_api, conne
 def lambda_handler(event, context):
     """
     Handle prediction requests and stream responses back to the client using Strands.
-    Also handles improvement requests using MCP Sampling pattern.
+    Also handles improvement requests using VPSS (Verifiable Prediction Structuring System).
     """
     try:
         print("WebSocket message event:", event)
@@ -176,7 +177,7 @@ def lambda_handler(event, context):
             body = json.loads(event.get('body', '{}'))
             action = body.get('action', 'makecall')
             
-            # Handle improvement requests using MCP Sampling
+            # Handle improvement requests using VPSS
             if action in ['improve_section', 'improvement_answers']:
                 return handle_improvement_request(event, context, api_gateway_management_api, connection_id)
             
@@ -478,7 +479,7 @@ def lambda_handler(event, context):
             })
         )
         
-        # Phase 2: Real Strands review using MCP Sampling
+        # Phase 2: Review using VPSS (Verifiable Prediction Structuring System)
         try:
             from review_agent import ReviewAgent
             
@@ -494,7 +495,7 @@ def lambda_handler(event, context):
             # Create review agent with same callback handler
             review_agent = ReviewAgent(callback_handler=stream_callback_handler)
             
-            # Use MCP Sampling to review the prediction
+            # Use VPSS to review the prediction structure
             review_result = review_agent.review_prediction(sanitized_response)
             
             # Send review results

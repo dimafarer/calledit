@@ -1,4 +1,4 @@
-# Backend Multiple Field Update Fix
+# Backend Multiple Field Update Fix - VPSS
 
 **Date**: January 30, 2025  
 **Status**: ✅ COMPLETE & VALIDATED
@@ -6,7 +6,7 @@
 
 ## Problem Description
 
-When users improved predictions through the MCP Sampling workflow, only the specific field being improved (e.g., `prediction_statement`) was updated, while related fields that should change based on the new information (e.g., `verification_date`, `verification_method`) remained unchanged.
+When users improved predictions through the VPSS workflow, only the specific field being improved (e.g., `prediction_statement`) was updated, while related fields that should change based on the new information (e.g., `verification_date`, `verification_method`) remained unchanged.
 
 ### Example Issue:
 - **Original**: "it will rain" (assumes today)
@@ -112,12 +112,12 @@ Result:
 
 ✅ **User Experience**: Improvements now work as expected  
 ✅ **Data Consistency**: All related fields update together  
-✅ **MCP Sampling**: Complete workflow now functional  
+✅ **VPSS Workflow**: Complete workflow now functional  
 ✅ **Production Ready**: No breaking changes, backward compatible
 
 ---
 
-**Result**: MCP Sampling Review & Improvement System now fully operational with intelligent multiple field updates.
+**Result**: Verifiable Prediction Structuring System (VPSS) now fully operational with intelligent multiple field updates.
 
 ## ✅ **FINAL VALIDATION**
 **Test**: "it will rain" → clarify "NYC, tomorrow, measurable"

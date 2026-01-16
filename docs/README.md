@@ -11,7 +11,7 @@ This directory contains all documentation for the CalledIt project, organized by
 - **`TRD.md`** - Technical Requirements Document
 - **`TESTING.md`** - Testing strategy and coverage
 - **`infra.svg`** - Current system architecture diagram
-- **`MCP_SAMPLING_COMPLETE.md`** - MCP Sampling implementation guide (ACTIVE FEATURE)
+- **`VPSS_COMPLETE.md`** - Verifiable Prediction Structuring System guide (ACTIVE FEATURE)
 - **`streaming_implementation_guide.md`** - WebSocket streaming implementation (CORE ARCHITECTURE)
 - **`SECURITY_CLEANUP.md`** - Security practices and cleanup checklist
 - **`VERIFICATION_SYSTEM.md`** - Automated verification system operational guide
@@ -30,10 +30,10 @@ This directory contains all documentation for the CalledIt project, organized by
 - **Key Commits**: Phase 1 verification → EventBridge integration → "Crying" notifications
 - **`VERIFICATION_SYSTEM.md`** - EventBridge + Strands verification agent
 
-#### `/v1.5-mcp-sampling/` - MCP Sampling System (COMPLETED)
+#### `/v1.5-vpss/` - Verifiable Prediction Structuring System (COMPLETED)
 - **Git Commits**: `29929da` - `3fb77b8` (Jan 2025)
 - **Key Commits**: Frontend plan → Backend fixes → Complete documentation
-- **`MCP_SAMPLING_FRONTEND_PLAN.md`** - Frontend implementation plan
+- **`VPSS_FRONTEND_PLAN.md`** - Frontend implementation plan
 - **`STRANDS_REVIEW_FEATURE.md`** - Review agent specification
 - **`BACKEND_MULTIPLE_FIELD_FIX.md`** - Multiple field update solution
 
