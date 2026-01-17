@@ -1,0 +1,34 @@
+docs: organize documentation into proper folder structure
+
+Moved all loose .md files from root directory into organized docs structure
+to improve maintainability and discoverability.
+
+Changes:
+- Created docs/guides/ for operational guides and how-tos
+- Moved handler cleanup docs to docs/guides/
+- Moved phase completion reports to docs/historical/
+- Reformatted and improved LOCAL_DEBUG_SETUP.md
+- Deleted obsolete files (loggingcalls.md, temporary guides)
+- Updated README.md with new documentation paths
+
+New Structure:
+docs/
+├── guides/                    (NEW)
+│   ├── HANDLER_CLEANUP_ANALYSIS.md
+│   ├── HANDLER_CLEANUP_COMPLETE.md
+│   ├── LOCAL_DEBUG_SETUP.md
+│   └── STRANDS_BEST_PRACTICES_REVIEW.md
+└── historical/                (UPDATED)
+    ├── PHASE1_COMPLETE.md
+    ├── PHASE2_COMPLETE.md
+    └── MCP_RENAME_PLAN.md
+
+Benefits:
+- Cleaner root directory (removed 9 .md files)
+- Better organization following existing docs/ pattern
+- Easier to find relevant documentation
+- Consistent with project structure
+
+Files Moved: 9
+Files Deleted: 4 (obsolete/temporary)
+Files Created: 4 (organized versions)

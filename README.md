@@ -24,13 +24,26 @@ Each prediction includes AI-generated reasoning for its categorization, creating
 .
 ├── backend/                      # Backend serverless application
 │   └── calledit-backend/
-│       ├── handlers/            # Lambda function handlers
-│       │   ├── auth_token/      # Cognito token management
-│       │   ├── strands_make_call/ # Strands agent with streaming
-│       │   ├── websocket/       # WebSocket connection handlers
+│       ├── handlers/            # Lambda function handlers (8 active)
+│       │   ├── auth_token/      # Cognito token exchange
+│       │   ├── strands_make_call/ # Strands agent with streaming + VPSS
+│       │   │   ├── strands_make_call_stream.py  # Main handler
+│       │   │   ├── review_agent.py              # VPSS implementation
+│       │   │   ├── parser_agent.py              # Prediction parsing
+│       │   │   ├── utils.py                     # Shared utilities
+│       │   │   ├── error_handling.py            # Error management
+│       │   │   └── graph_state.py               # State management
+│       │   ├── websocket/       # WebSocket connection handlers (connect/disconnect)
 │       │   ├── list_predictions/# Retrieve user predictions
 │       │   ├── write_to_db/     # DynamoDB write operations
-│       │   └── verification/    # Automated verification system
+│       │   ├── verification/    # Automated verification system (EventBridge)
+│       │   │   ├── app.py                       # Main handler
+│       │   │   ├── verification_agent.py        # Strands verification agent
+│       │   │   ├── ddb_scanner.py               # DynamoDB scanner
+│       │   │   ├── status_updater.py            # Updates verification status
+│       │   │   ├── s3_logger.py                 # Logs to S3
+│       │   │   └── email_notifier.py            # SNS notifications
+│       │   └── notification_management/ # SNS email subscription management
 │       ├── template.yaml        # SAM template for AWS resources
 │       └── tests/               # Backend unit tests
 ├── frontend/                    # React TypeScript frontend
@@ -38,7 +51,7 @@ Each prediction includes AI-generated reasoning for its categorization, creating
 │   │   ├── components/         # React components with category display
 │   │   ├── services/          # API, auth, and WebSocket services
 │   │   ├── types/             # TypeScript interfaces (CallResponse)
-│   │   ├── hooks/             # Custom React hooks for state management
+│   │   ├── hooks/             # Custom React hooks (4 for VPSS)
 │   │   └── utils/             # Utility functions
 │   └── package.json           # Frontend dependencies
 ├── testing/                     # Comprehensive testing framework
@@ -49,17 +62,18 @@ Each prediction includes AI-generated reasoning for its categorization, creating
 │   ├── demo_prompts.py         # 40 compelling test prompts (5 categories)
 │   ├── demo_api_test.py        # WebSocket API testing with results capture
 │   └── demo_results_writer.py  # DynamoDB writer for demo data
-├── verification/                # Automated verification system (core functionality #2)
+├── verification/                # Automated verification system (standalone)
 │   ├── verify_predictions.py   # Main verification runner
 │   ├── verification_agent.py   # Strands verification agent
 │   ├── ddb_scanner.py          # DynamoDB scanner for pending predictions
-│   └── email_notifier.py       # SNS email notifications ("crying" system)
+│   └── email_notifier.py       # SNS email notifications
 ├── strands/                     # Strands agent development
 │   ├── demos/                  # Agent development examples
 │   └── my_agent/               # Custom agent implementation
 ├── docs/                       # Organized documentation structure
 │   ├── current/                # Up-to-date documentation
 │   │   ├── API.md              # REST and WebSocket API documentation
+│   │   ├── APPLICATION_FLOW.md # Complete system flow documentation
 │   │   ├── TRD.md              # Technical Requirements Document
 │   │   ├── TESTING.md          # Testing strategy and coverage
 │   │   ├── VERIFICATION_SYSTEM.md # Automated verification documentation
@@ -218,8 +232,8 @@ aws apigatewayv2 get-apis
 sam logs -n MakeCallStreamFunction --stack-name calledit-backend
 
 # Verify Strands dependencies in requirements.txt
-# strands-agents>=0.1.0
-# strands-agents-tools>=0.1.0
+# strands-agents>=1.7.0
+# strands-agents-tools>=0.2.6
 ```
 
 3. **Streaming Issues**
@@ -266,6 +280,24 @@ sam logs -n MakeCallStreamFunction --stack-name calledit-backend
 # Categories: agent_verifiable, current_tool_verifiable, strands_tool_verifiable, api_tool_verifiable, human_verifiable_only
 ```
 
+7. **Handler Structure Issues**
+```bash
+# Verify correct handler count (should be 8)
+ls -la backend/calledit-backend/handlers/
+
+# Expected directories:
+# - auth_token/
+# - list_predictions/
+# - notification_management/
+# - strands_make_call/
+# - verification/
+# - websocket/
+# - write_to_db/
+
+# If you see old handlers (hello_world, make_call, prompt_bedrock, prompt_agent, shared):
+# These were removed in January 2026 cleanup - see HANDLER_CLEANUP_COMPLETE.md
+```
+
 ## Data Flow
 The application follows a serverless event-driven architecture with real-time streaming capabilities.
 
@@ -287,6 +319,81 @@ Key component interactions:
 7. Final predictions stored in DynamoDB via REST API
 8. Frontend receives real-time updates during processing
 
+## Active Lambda Functions (8)
+
+After handler cleanup (January 2026), the application uses 8 Lambda functions organized by purpose:
+
+### REST API Functions (4)
+1. **AuthTokenFunction** - `handlers/auth_token/`
+   - Cognito OAuth token exchange
+   - Converts authorization codes to JWT tokens
+   - No provisioned concurrency
+
+2. **LogCall** - `handlers/write_to_db/`
+   - Saves predictions to DynamoDB
+   - Handles CORS for frontend
+   - **Provisioned Concurrency**: 1 instance (alias: live)
+
+3. **ListPredictions** - `handlers/list_predictions/`
+   - Retrieves user predictions from DynamoDB
+   - Supports pagination and filtering
+   - **Provisioned Concurrency**: 1 instance (alias: live)
+
+4. **NotificationManagementFunction** - `handlers/notification_management/`
+   - Manages SNS email subscriptions
+   - Endpoints: /subscribe-notifications, /unsubscribe-notifications, /notification-status
+   - No provisioned concurrency
+
+### WebSocket Functions (3)
+5. **ConnectFunction** - `handlers/websocket/connect.py`
+   - Handles WebSocket $connect route
+   - Manages connection lifecycle
+   - No provisioned concurrency
+
+6. **DisconnectFunction** - `handlers/websocket/disconnect.py`
+   - Handles WebSocket $disconnect route
+   - Cleanup on connection close
+   - No provisioned concurrency
+
+7. **MakeCallStreamFunction** - `handlers/strands_make_call/`
+   - **PRIMARY FUNCTION**: Main prediction processing with Strands + VPSS
+   - Handles 3 WebSocket routes: makecall, improve_section, improvement_answers
+   - Real-time streaming via WebSocket
+   - Timeout: 300 seconds (5 minutes)
+   - Memory: 512 MB
+   - **Provisioned Concurrency**: 1 instance (alias: live)
+   - **Components**:
+     - `strands_make_call_stream.py` - Main handler
+     - `review_agent.py` - VPSS implementation
+     - `parser_agent.py` - Prediction parsing
+     - `utils.py` - Shared utilities
+     - `error_handling.py` - Error management
+     - `graph_state.py` - State management
+
+### Scheduled Functions (1)
+8. **VerificationFunction** - `handlers/verification/`
+   - Automated verification system
+   - Triggered by EventBridge every 15 minutes
+   - Processes ALL pending predictions
+   - Timeout: 300 seconds (5 minutes)
+   - Memory: 512 MB
+   - No provisioned concurrency (scheduled execution)
+   - **Components**:
+     - `app.py` - Main handler
+     - `verification_agent.py` - Strands verification agent
+     - `ddb_scanner.py` - DynamoDB scanner
+     - `status_updater.py` - Updates verification status
+     - `s3_logger.py` - Logs to S3
+     - `email_notifier.py` - SNS notifications
+
+### Provisioned Concurrency Architecture
+Three critical functions use provisioned concurrency to eliminate cold starts:
+- **LogCall** (alias: live) - 1 instance always warm
+- **ListPredictions** (alias: live) - 1 instance always warm
+- **MakeCallStreamFunction** (alias: live) - 1 instance always warm
+
+This ensures zero cold start delays for the most frequently used functions.
+
 ## Infrastructure
 
 ![Infrastructure diagram](./docs/infra.svg)
@@ -298,14 +405,7 @@ The application uses the following AWS resources:
   - Implements CORS and Cognito authorization
 - **WebSocketApi** (AWS::ApiGatewayV2::Api): Real-time streaming
   - Handles WebSocket connections for streaming responses
-  - Routes: $connect, $disconnect, makecall
-
-### Lambda Functions
-- **MakeCallStreamFunction**: Strands agent with streaming via WebSocket
-- **ConnectFunction/DisconnectFunction**: WebSocket connection management
-- **LogCall**: Writes predictions to DynamoDB
-- **ListPredictions**: Retrieves user predictions
-- **AuthTokenFunction**: Handles Cognito token exchange
+  - Routes: $connect, $disconnect, makecall, improve_section, improvement_answers
 
 ### AI & Orchestration
 - **Strands Agents**: Orchestrate between reasoning models and tools
@@ -317,8 +417,12 @@ The application uses the following AWS resources:
 - **UserPoolClient**: Configures OAuth flows
 - **UserPoolDomain**: Provides hosted UI for authentication
 
-### Database
+### Database & Storage
 - **DynamoDB** table "calledit-db" for storing predictions and verification data
+- **S3 Bucket** for verification logs with encryption and lifecycle policies
+
+### Notifications
+- **SNS Topic** for verification notifications ("crying" system)
 
 ### Key Features
 - **🎯 Verifiability Categorization**: Automatic classification into 5 categories with AI reasoning
@@ -331,7 +435,10 @@ The application uses the following AWS resources:
 - **💾 Complete Data Persistence**: Categories and reasoning stored in DynamoDB
 - **📢 "Crying" System**: Celebrate successful predictions with notifications and social sharing
 - **📧 Email Notifications**: Get notified when your predictions are verified as TRUE
-- **⚡ Zero Cold Starts**: Provisioned concurrency on critical functions eliminates delays
+- **⚡ Zero Cold Starts**: Provisioned concurrency on 3 critical functions eliminates delays
+- **🔄 VPSS (Verifiable Prediction Structuring System)**: Human-in-the-loop prediction refinement
+- **🤖 Automated Verification**: EventBridge-scheduled verification every 15 minutes
+- **📝 Comprehensive Logging**: S3-based audit trail for all verifications
 
 ## Deployment
 
@@ -357,6 +464,32 @@ sam deploy --no-confirm-changeset
 # Note the output URLs:
 # - REST API URL for VITE_API_URL
 # - WebSocket URL for VITE_WEBSOCKET_URL
+```
+
+#### Verify Deployment
+
+After deployment, verify all 8 functions are active:
+
+```bash
+# List all Lambda functions in the stack
+aws lambda list-functions --query "Functions[?starts_with(FunctionName, 'calledit-backend')].FunctionName"
+
+# Expected output (8 functions):
+# - calledit-backend-AuthTokenFunction-xxx
+# - calledit-backend-LogCall-xxx
+# - calledit-backend-ListPredictions-xxx
+# - calledit-backend-NotificationManagementFunction-xxx
+# - calledit-backend-ConnectFunction-xxx
+# - calledit-backend-DisconnectFunction-xxx
+# - calledit-backend-MakeCallStreamFunction-xxx
+# - calledit-backend-verification
+
+# Verify provisioned concurrency on critical functions
+python backend/calledit-backend/tests/test_provisioned_concurrency.py
+
+# Expected output:
+# 🎯 Overall: 3/3 tests passed
+# 🎉 All provisioned concurrency tests PASSED!
 ```
 
 #### Frontend Deployment
@@ -426,13 +559,29 @@ See [docs/TESTING.md](docs/TESTING.md) for comprehensive testing documentation.
 
 ### Core Documentation
 - **[CHANGELOG.md](CHANGELOG.md)** - Version history and feature releases
-- **[docs/API.md](docs/API.md)** - REST and WebSocket API documentation
-- **[docs/TRD.md](docs/TRD.md)** - Technical Requirements Document
-- **[docs/TESTING.md](docs/TESTING.md)** - Testing strategy and coverage
+- **[docs/current/APPLICATION_FLOW.md](docs/current/APPLICATION_FLOW.md)** - Complete system flow documentation
+  - Authentication flow
+  - Prediction creation flow (step-by-step)
+  - VPSS workflow (Verifiable Prediction Structuring System)
+  - Data persistence flow
+  - Verification system flow
+  - Component interactions with diagrams
+  - 4 complete user journey examples
+- **[docs/current/API.md](docs/current/API.md)** - REST and WebSocket API documentation
+- **[docs/current/TRD.md](docs/current/TRD.md)** - Technical Requirements Document
+- **[docs/current/TESTING.md](docs/current/TESTING.md)** - Testing strategy and coverage
+- **[docs/current/VERIFICATION_SYSTEM.md](docs/current/VERIFICATION_SYSTEM.md)** - Automated verification documentation
+
+### Implementation Documentation
+- **[docs/guides/HANDLER_CLEANUP_COMPLETE.md](docs/guides/HANDLER_CLEANUP_COMPLETE.md)** - Handler cleanup details (January 2026)
+- **[docs/guides/STRANDS_BEST_PRACTICES_REVIEW.md](docs/guides/STRANDS_BEST_PRACTICES_REVIEW.md)** - Strands refactoring recommendations
+- **[docs/guides/LOCAL_DEBUG_SETUP.md](docs/guides/LOCAL_DEBUG_SETUP.md)** - SAM local debugging in WSL
+
+### Historical Documentation
+- **[docs/historical/](docs/historical/)** - Archived completion reports and historical plans
 
 ### Additional Resources
-- **[docs/infra.svg](docs/infra.svg)** - Infrastructure architecture diagram
-- **[docs/UI_IMPROVEMENTS.md](docs/UI_IMPROVEMENTS.md)** - UI/UX improvement plan and timeline
+- **[docs/current/infra.svg](docs/current/infra.svg)** - Infrastructure architecture diagram
 - **[testing/README.md](testing/README.md)** - Testing framework overview
 - **[strands/demos/](strands/demos/)** - Strands agent development examples
 
@@ -504,7 +653,7 @@ npm run build
 - ✅ **Automated Testing**: 100% success rate test suite
 - ✅ **Visual UI**: Category badges with reasoning display
 - ✅ **Data Persistence**: Complete DynamoDB integration
-- ✅ **Comprehensive Documentation**: API, TRD, and testing docs
+- ✅ **Comprehensive Documentation**: API, TRD, APPLICATION_FLOW, and testing docs
 - ✅ **Automated Verification System**: Strands agent processes ALL predictions every 15 minutes
 - ✅ **Production Deployment**: EventBridge scheduling, S3 logging, SNS notifications
 - ✅ **Frontend Integration**: Real-time verification status display with confidence scores
@@ -524,6 +673,21 @@ npm run build
   - Comprehensive security fixes (KMS encryption, log injection prevention)
   - CORS resolution and mobile UI improvements
   - Environment variable configuration management
+
+### Recent Updates (January 2026)
+- ✅ **Handler Cleanup**: Removed 5 deprecated handlers (38% reduction)
+  - Deleted: hello_world, make_call, prompt_bedrock, prompt_agent, shared
+  - Active: 8 Lambda functions (see [HANDLER_CLEANUP_COMPLETE.md](HANDLER_CLEANUP_COMPLETE.md))
+  - Reduced function count from 13 to 8
+  - Faster deployments and cleaner codebase
+- ✅ **Documentation Overhaul**: Created comprehensive [APPLICATION_FLOW.md](docs/current/APPLICATION_FLOW.md)
+  - Complete system flow documentation with diagrams
+  - Step-by-step user journeys
+  - Component interaction details
+- ✅ **Security Hardening**: Completed security audit before GitHub push
+  - Verified no credentials in codebase
+  - Confirmed .gitignore protection
+  - Ready for public repository
 
 ### ✅ **VERIFIABLE PREDICTION STRUCTURING SYSTEM (VPSS): PRODUCTION READY**
 - 🔍 **Strands Review Agent**: Complete VPSS implementation
