@@ -1,0 +1,21 @@
+chore: Clean up unused Lambda handlers
+
+Removed 5 deprecated Lambda handlers and their tests to streamline
+codebase before Strands refactoring. All handlers were superseded by
+newer implementations or were demo/test functions.
+
+Deleted:
+- handlers/hello_world/ (demo function)
+- handlers/make_call/ (replaced by strands_make_call streaming)
+- handlers/prompt_bedrock/ (superseded by Strands agents)
+- handlers/prompt_agent/ (superseded by Strands agents)
+- handlers/shared/ (unused utilities)
+- tests/hello_world/
+- tests/make_call/
+
+Modified:
+- template.yaml: Removed 5 function definitions and outputs
+
+Result: 38% reduction in Lambda functions (13 → 8)
+
+Verified: Deployment successful, no behavioral changes detected

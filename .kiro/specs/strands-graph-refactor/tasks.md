@@ -13,21 +13,21 @@ This implementation plan refactors the CalledIt prediction verification system f
   - Set up test infrastructure with pytest and hypothesis
   - _Requirements: 1.1, 14.2_
 
-- [ ] 2. Implement Parser Agent
-  - [ ] 2.1 Create Parser Agent with focused system prompt (~25 lines)
+- [-] 2. Implement Parser Agent
+  - [x] 2.1 Create Parser Agent with focused system prompt (~25 lines)
     - Define agent with explicit name "parser_agent"
     - Specify model "claude-3-5-sonnet-20241022"
     - Include parse_relative_date and current_time tools
     - Write system prompt for prediction extraction and time parsing
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 9.1_
   
-  - [ ] 2.2 Implement parser node function
+  - [x] 2.2 Implement parser node function
     - Create parser_node_function that invokes Parser Agent
     - Parse JSON response with single json.loads call
     - Update graph state with prediction_statement, verification_date, date_reasoning
     - _Requirements: 2.5, 8.3_
   
-  - [ ] 2.3 Write unit tests for Parser Agent
+  - [x] 2.3 Write unit tests for Parser Agent
     - Test exact text preservation (specific examples)
     - Test 12-hour to 24-hour conversion (3:00pm → 15:00, this morning → 09:00)
     - Test timezone handling (America/New_York, Europe/London, UTC)
