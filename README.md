@@ -62,11 +62,6 @@ Each prediction includes AI-generated reasoning for its categorization, creating
 │   ├── demo_prompts.py         # 40 compelling test prompts (5 categories)
 │   ├── demo_api_test.py        # WebSocket API testing with results capture
 │   └── demo_results_writer.py  # DynamoDB writer for demo data
-├── verification/                # Automated verification system (standalone)
-│   ├── verify_predictions.py   # Main verification runner
-│   ├── verification_agent.py   # Strands verification agent
-│   ├── ddb_scanner.py          # DynamoDB scanner for pending predictions
-│   └── email_notifier.py       # SNS email notifications
 ├── strands/                     # Strands agent development
 │   ├── demos/                  # Agent development examples
 │   └── my_agent/               # Custom agent implementation

@@ -1,8 +1,0 @@
-mkdir ./bedrock-layer
-cd bedrock-layer
-mkdir ./boto3-layer
-pip3 install -t ./boto3-layer boto3
-ls -al ./boto3-layer
-zip -r boto3-layer.zip ./boto3-layer
-ls -al
-aws lambda publish-layer-version --layer-name boto3-layer --zip-file fileb://boto3-layer.zip
