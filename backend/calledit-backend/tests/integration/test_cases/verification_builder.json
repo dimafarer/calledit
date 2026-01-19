@@ -1,0 +1,42 @@
+[
+  {
+    "id": "vb-001-api-method",
+    "description": "Verification method for API-verifiable prediction",
+    "prompt": "it will snow tonight",
+    "timezone": "America/New_York",
+    "expected_category": "api_tool_verifiable",
+    "expected_source_contains": "weather",
+    "expected_criteria_count": 3,
+    "expected_steps_count": 3
+  },
+  {
+    "id": "vb-002-current-method",
+    "description": "Verification method for current-time prediction",
+    "prompt": "it's after 3pm",
+    "timezone": "America/New_York",
+    "expected_category": "current_tool_verifiable",
+    "expected_source_contains": "time",
+    "expected_criteria_count": 2,
+    "expected_steps_count": 2
+  },
+  {
+    "id": "vb-003-agent-method",
+    "description": "Verification method for agent-verifiable prediction",
+    "prompt": "the sun will rise tomorrow",
+    "timezone": "UTC",
+    "expected_category": "agent_verifiable",
+    "expected_source_contains": "astronomical",
+    "expected_criteria_count": 2,
+    "expected_steps_count": 2
+  },
+  {
+    "id": "vb-004-human-method",
+    "description": "Verification method for human-only prediction",
+    "prompt": "I will feel happy tomorrow",
+    "timezone": "America/New_York",
+    "expected_category": "human_verifiable_only",
+    "expected_source_contains": "self",
+    "expected_criteria_count": 1,
+    "expected_steps_count": 1
+  }
+]

@@ -2,16 +2,31 @@
 
 This document provides a detailed walkthrough of how predictions flow through the 3-agent graph system, from user input to final response.
 
+**Last Updated**: 2025-01-19  
+**Production Status**: ✅ Deployed and working correctly
+
 ## Overview
 
-The CalledIt prediction verification system uses a **Strands Graph** with **3 specialized agents** orchestrated through **custom nodes** that manage state transformation between agents.
+The CalledIt prediction verification system uses a **Strands Graph** with **3 specialized agents** orchestrated through **plain Agent nodes** where the Graph automatically propagates outputs between agents.
 
 ### Architecture Pattern
 
 - **Sequential workflow**: Parser → Categorizer → Verification Builder
-- **Custom nodes**: Each agent wrapped in `StateManagingAgentNode` for state management
-- **Structured data flow**: JSON parsing and prompt building at each step
-- **State accumulation**: Each agent adds fields to shared state dict
+- **Plain Agent nodes**: Agents added directly to the graph (correct Strands pattern)
+- **Automatic output propagation**: Graph handles passing results between agents
+- **JSON extraction after execution**: Parse results via `result.results[node_id].result`
+- **No manual state management**: Graph's `_build_node_input()` handles everything
+
+### Key Insight from Official Strands Documentation
+
+**The Graph automatically propagates outputs between nodes!**
+
+- Entry nodes receive the original task
+- Dependent nodes receive: original task + results from all completed dependencies
+- No custom state management needed
+- Parse JSON after graph execution, not during
+
+**Reference**: [Strands Graph Documentation](https://strandsagents.com/latest/documentation/docs/user-guide/concepts/multi-agent/graph/)
 
 ## High-Level Flow Diagram
 
@@ -23,7 +38,7 @@ graph LR
     Builder --> End[Response to Frontend]
 ```
 
-**Note**: A 4th agent (Review Agent) is planned but not yet implemented.
+**Note**: A 4th agent (Review Agent) is planned for future implementation.
 
 ---
 
@@ -63,14 +78,13 @@ Let's trace a prediction through the entire system:
 - `current_datetime_utc`: "2026-01-18 18:24:33 UTC"
 - `current_datetime_local`: "2026-01-18 13:24:33 EST"
 
-**Creates initial state**:
+**Builds initial prompt with context**:
 ```python
-initial_state = {
-    "user_prompt": "it will snow tonight",
-    "user_timezone": "America/New_York",
-    "current_datetime_utc": "2026-01-18 18:24:33 UTC",
-    "current_datetime_local": "2026-01-18 13:24:33 EST"
-}
+initial_prompt = f"""PREDICTION: {user_prompt}
+CURRENT DATE: {current_datetime_local}
+TIMEZONE: {user_timezone}
+
+Extract the prediction and parse the verification date."""
 ```
 
 **Sends processing status**:
@@ -89,35 +103,41 @@ initial_state = {
 **File**: `backend/calledit-backend/handlers/strands_make_call/prediction_graph.py`
 
 ```python
-# Graph receives initial_state and starts at entry point: "parser"
-result = prediction_graph(initial_state, callback_handler=callback_handler)
+# Graph receives initial_prompt and starts at entry point: "parser"
+result = prediction_graph(initial_prompt, callback_handler=callback_handler)
 ```
 
 The graph executes nodes sequentially: `parser` → `categorizer` → `verification_builder`
+
+**How the Graph Works**:
+1. Parser receives the initial prompt
+2. Categorizer receives: initial prompt + Parser's output
+3. Verification Builder receives: initial prompt + Parser's output + Categorizer's output
+
+**The Graph handles all of this automatically!**
 
 ---
 
 ## 🔵 Node 1: Parser Agent
 
 **File**: `backend/calledit-backend/handlers/strands_make_call/parser_agent.py`  
-**Wrapper**: `StateManagingAgentNode` in `custom_node.py`
+**Pattern**: Plain Agent node (added directly to graph)
 
 **Responsibility**: Extract exact prediction text and parse time references
 
-### Flow Inside Custom Node
+### Agent Configuration
 
-#### 1. Receive State
 ```python
-state = {
-    "user_prompt": "it will snow tonight",
-    "user_timezone": "America/New_York",
-    "current_datetime_utc": "2026-01-18 18:24:33 UTC",
-    "current_datetime_local": "2026-01-18 13:24:33 EST"
-}
+parser_agent = Agent(
+    model="anthropic.claude-3-5-sonnet-20241022-v2:0",
+    tools=[parse_relative_date, current_time],
+    system_prompt=PARSER_PROMPT
+)
 ```
 
-#### 2. Build Prompt
-**Function**: `build_parser_prompt(state)`
+### Input Received
+
+The Parser is the **entry node**, so it receives the initial prompt:
 
 ```
 PREDICTION: it will snow tonight
@@ -127,248 +147,156 @@ TIMEZONE: America/New_York
 Extract the prediction and parse the verification date.
 ```
 
-#### 3. Invoke Parser Agent
-- Agent uses `parse_relative_date` tool to parse "tonight"
-- Tool converts "tonight" → "22:00" (10 PM)
-- Agent converts to 24-hour format
-- Agent returns JSON response
+### Agent Processing
 
-**Agent Response**:
+1. **Analyzes** the prediction text
+2. **Uses** `parse_relative_date` tool to parse "tonight"
+3. **Converts** "tonight" → "22:00" (10 PM)
+4. **Converts** to 24-hour format
+5. **Returns** JSON response
+
+### Agent Output
+
 ```json
 {
     "prediction_statement": "it will snow tonight",
     "verification_date": "2026-01-18 22:00:00",
-    "date_reasoning": "Parsed 'tonight' as 22:00 (10 PM) in user's timezone"
+    "date_reasoning": "Parsed 'tonight' as 22:00 (10 PM) in user's timezone (America/New_York). The term 'tonight' refers to the evening hours of the current day, typically around 10 PM."
 }
 ```
 
-#### 4. Parse Response
-**Function**: `parse_parser_response(response, state)`
-
-Extracts fields from JSON and validates structure.
-
-#### 5. Update State
-```python
-updated_state = {
-    # Original fields (preserved)
-    "user_prompt": "it will snow tonight",
-    "user_timezone": "America/New_York",
-    "current_datetime_utc": "2026-01-18 18:24:33 UTC",
-    "current_datetime_local": "2026-01-18 13:24:33 EST",
-    
-    # New fields (added by Parser)
-    "prediction_statement": "it will snow tonight",
-    "verification_date": "2026-01-18 22:00:00",
-    "date_reasoning": "Parsed 'tonight' as 22:00 (10 PM) in user's timezone"
-}
-```
-
-**State now has 7 fields** (4 original + 3 new)
-
-#### 6. Return Result
-```python
-return MultiAgentResult(
-    status=Status.COMPLETED,
-    state=updated_state  # Passed to next node
-)
-```
+**This output is automatically passed to the next node by the Graph!**
 
 ---
 
 ## 🟢 Node 2: Categorizer Agent
 
 **File**: `backend/calledit-backend/handlers/strands_make_call/categorizer_agent.py`  
-**Wrapper**: `StateManagingAgentNode` in `custom_node.py`
+**Pattern**: Plain Agent node (added directly to graph)
 
 **Responsibility**: Classify prediction into one of 5 verifiability categories
 
-### Flow Inside Custom Node
+### Agent Configuration
 
-#### 1. Receive State (from Parser)
 ```python
-state = {
-    "user_prompt": "it will snow tonight",
-    "user_timezone": "America/New_York",
-    "current_datetime_utc": "2026-01-18 18:24:33 UTC",
-    "current_datetime_local": "2026-01-18 13:24:33 EST",
-    "prediction_statement": "it will snow tonight",
-    "verification_date": "2026-01-18 22:00:00",
-    "date_reasoning": "Parsed 'tonight' as 22:00 (10 PM) in user's timezone"
-}
+categorizer_agent = Agent(
+    model="anthropic.claude-3-5-sonnet-20241022-v2:0",
+    system_prompt=CATEGORIZER_PROMPT
+)
 ```
 
-#### 2. Build Prompt
-**Function**: `build_categorizer_prompt(state)`
+### Input Received
+
+The Categorizer receives **both** the original prompt **and** the Parser's output:
 
 ```
 PREDICTION: it will snow tonight
-VERIFICATION DATE: 2026-01-18 22:00:00
+CURRENT DATE: 2026-01-18 13:24:33 EST
+TIMEZONE: America/New_York
 
-Categorize this prediction's verifiability.
+Extract the prediction and parse the verification date.
+
+[Parser's JSON output from above]
 ```
 
-#### 3. Invoke Categorizer Agent
-- Agent analyzes: "Weather prediction needs external API"
-- Agent selects category: `api_tool_verifiable`
-- Agent provides reasoning
-- Agent returns JSON response
+**The Graph automatically combines these!**
 
-**Agent Response**:
+### Agent Processing
+
+1. **Analyzes** the prediction: "Weather prediction"
+2. **Determines** it needs external API data
+3. **Selects** category: `api_tool_verifiable`
+4. **Provides** detailed reasoning
+5. **Returns** JSON response
+
+### Agent Output
+
 ```json
 {
     "verifiable_category": "api_tool_verifiable",
-    "category_reasoning": "Weather predictions require real-time weather API data to verify. Cannot be determined through reasoning alone or simple tools."
+    "category_reasoning": "This is a weather prediction ('it will snow tonight') that requires checking actual weather conditions. Weather verification needs access to weather data through external APIs or weather services. While it's a straightforward yes/no verification, it cannot be determined through pure reasoning, current time, or calculation tools. Only real-time or historical weather data from an external source can verify if it actually snowed on the specified date and location."
 }
 ```
 
-#### 4. Parse Response
-**Function**: `parse_categorizer_response(response, state)`
-
-Validates category is in valid set:
-- `agent_verifiable`
-- `current_tool_verifiable`
-- `strands_tool_verifiable`
-- `api_tool_verifiable` ✓
-- `human_verifiable_only`
-
-#### 5. Update State
-```python
-updated_state = {
-    # All previous fields (preserved)
-    "user_prompt": "it will snow tonight",
-    "user_timezone": "America/New_York",
-    "current_datetime_utc": "2026-01-18 18:24:33 UTC",
-    "current_datetime_local": "2026-01-18 13:24:33 EST",
-    "prediction_statement": "it will snow tonight",
-    "verification_date": "2026-01-18 22:00:00",
-    "date_reasoning": "Parsed 'tonight' as 22:00 (10 PM) in user's timezone",
-    
-    # New fields (added by Categorizer)
-    "verifiable_category": "api_tool_verifiable",
-    "category_reasoning": "Weather predictions require real-time weather API data..."
-}
-```
-
-**State now has 9 fields** (7 previous + 2 new)
-
-#### 6. Return Result
-```python
-return MultiAgentResult(
-    status=Status.COMPLETED,
-    state=updated_state  # Passed to next node
-)
-```
+**This output is automatically passed to the next node by the Graph!**
 
 ---
 
 ## 🟡 Node 3: Verification Builder Agent
 
 **File**: `backend/calledit-backend/handlers/strands_make_call/verification_builder_agent.py`  
-**Wrapper**: `StateManagingAgentNode` in `custom_node.py`
+**Pattern**: Plain Agent node (added directly to graph)
 
 **Responsibility**: Construct detailed verification method (source, criteria, steps)
 
-### Flow Inside Custom Node
+### Agent Configuration
 
-#### 1. Receive State (from Categorizer)
 ```python
-state = {
-    "user_prompt": "it will snow tonight",
-    "user_timezone": "America/New_York",
-    "current_datetime_utc": "2026-01-18 18:24:33 UTC",
-    "current_datetime_local": "2026-01-18 13:24:33 EST",
-    "prediction_statement": "it will snow tonight",
-    "verification_date": "2026-01-18 22:00:00",
-    "date_reasoning": "Parsed 'tonight' as 22:00 (10 PM) in user's timezone",
-    "verifiable_category": "api_tool_verifiable",
-    "category_reasoning": "Weather predictions require real-time weather API data..."
-}
+verification_builder_agent = Agent(
+    model="anthropic.claude-3-5-sonnet-20241022-v2:0",
+    system_prompt=VERIFICATION_BUILDER_PROMPT
+)
 ```
 
-#### 2. Build Prompt
-**Function**: `build_verification_builder_prompt(state)`
+### Input Received
+
+The Verification Builder receives the original prompt **and** outputs from **both** previous agents:
 
 ```
 PREDICTION: it will snow tonight
-CATEGORY: api_tool_verifiable
-VERIFICATION DATE: 2026-01-18 22:00:00
+CURRENT DATE: 2026-01-18 13:24:33 EST
+TIMEZONE: America/New_York
 
-Build a detailed verification method for this prediction.
+Extract the prediction and parse the verification date.
+
+[Parser's JSON output]
+
+[Categorizer's JSON output]
 ```
 
-#### 3. Invoke Verification Builder Agent
-- Agent creates verification plan for weather prediction
-- Agent specifies sources (APIs, databases)
-- Agent defines measurable criteria
-- Agent outlines verification steps
-- Agent returns JSON response
+**The Graph automatically combines all of these!**
 
-**Agent Response**:
+### Agent Processing
+
+1. **Analyzes** the prediction and category
+2. **Creates** verification plan for weather prediction
+3. **Specifies** multiple reliable sources
+4. **Defines** measurable criteria
+5. **Outlines** detailed verification steps
+6. **Returns** JSON response
+
+### Agent Output
+
 ```json
 {
     "verification_method": {
         "source": [
-            "Weather API (OpenWeatherMap, Weather.gov)",
-            "NOAA Weather Service",
-            "Local weather station data"
+            "National Weather Service (weather.gov) historical data",
+            "Weather API services (OpenWeatherMap, WeatherAPI)",
+            "Local weather station records for the prediction location",
+            "NOAA Climate Data Online"
         ],
         "criteria": [
-            "Snow accumulation > 0 inches recorded",
-            "Precipitation type classified as snow",
-            "Observation time between 18:00-23:59 local time",
-            "Multiple sources confirm snowfall"
+            "Snowfall accumulation greater than 0 inches recorded",
+            "Precipitation type classified as snow (not rain or mixed)",
+            "Weather observation timestamp falls within 'tonight' timeframe (evening of 2026-01-18)",
+            "Multiple independent sources confirm snowfall occurrence",
+            "Location-specific data matches user's timezone area"
         ],
         "steps": [
-            "Query weather API at verification time (22:00 EST)",
-            "Check precipitation type and accumulation amount",
-            "Verify snow occurred during 'tonight' timeframe (evening hours)",
-            "Cross-reference with NOAA and local weather station",
-            "Confirm at least 2 sources report snowfall"
+            "Identify the specific location based on user's timezone (America/New_York region)",
+            "Query weather APIs for historical data at verification time (2026-01-18 22:00:00 EST)",
+            "Check National Weather Service archives for snowfall reports on 2026-01-18 evening",
+            "Verify precipitation type was classified as snow in weather records",
+            "Confirm snowfall accumulation amount (any measurable amount constitutes 'snow')",
+            "Cross-reference at least 2-3 independent weather data sources",
+            "Document the verification result with source citations"
         ]
     }
 }
 ```
 
-#### 4. Parse Response
-**Function**: `parse_verification_builder_response(response, state)`
-
-Validates structure:
-- `source` is a list ✓
-- `criteria` is a list ✓
-- `steps` is a list ✓
-
-#### 5. Update State
-```python
-updated_state = {
-    # All previous fields (preserved)
-    "user_prompt": "it will snow tonight",
-    "user_timezone": "America/New_York",
-    "current_datetime_utc": "2026-01-18 18:24:33 UTC",
-    "current_datetime_local": "2026-01-18 13:24:33 EST",
-    "prediction_statement": "it will snow tonight",
-    "verification_date": "2026-01-18 22:00:00",
-    "date_reasoning": "Parsed 'tonight' as 22:00 (10 PM) in user's timezone",
-    "verifiable_category": "api_tool_verifiable",
-    "category_reasoning": "Weather predictions require real-time weather API data...",
-    
-    # New field (added by Verification Builder)
-    "verification_method": {
-        "source": ["Weather API...", "NOAA...", "Local weather station..."],
-        "criteria": ["Snow accumulation > 0 inches...", ...],
-        "steps": ["Query weather API...", ...]
-    }
-}
-```
-
-**State now has 10 fields** (9 previous + 1 new)
-
-#### 6. Return Result
-```python
-return MultiAgentResult(
-    status=Status.COMPLETED,
-    state=updated_state  # This is the final state
-)
-```
+**This is the final output from the graph!**
 
 ---
 
@@ -376,35 +304,74 @@ return MultiAgentResult(
 
 **File**: `backend/calledit-backend/handlers/strands_make_call/prediction_graph.py`
 
-The graph returns the final state with all accumulated data:
+The graph returns a `MultiAgentResult` with results from all nodes:
 
 ```python
-final_state = {
-    # Original inputs (4 fields)
-    "user_prompt": "it will snow tonight",
-    "user_timezone": "America/New_York",
-    "current_datetime_utc": "2026-01-18 18:24:33 UTC",
-    "current_datetime_local": "2026-01-18 13:24:33 EST",
+result = prediction_graph(initial_prompt, callback_handler=callback_handler)
+
+# result.results contains outputs from each node:
+# result.results["parser"] = AgentResult with Parser's JSON
+# result.results["categorizer"] = AgentResult with Categorizer's JSON
+# result.results["verification_builder"] = AgentResult with Verification Builder's JSON
+```
+
+### Parsing Graph Results
+
+We parse the JSON from each agent **after** graph execution:
+
+```python
+def parse_graph_results(result) -> Dict[str, Any]:
+    """Extract and parse JSON from all agent outputs"""
+    parsed_data = {}
     
-    # Parser outputs (3 fields)
+    # Parse parser output
+    if "parser" in result.results:
+        parser_result = str(result.results["parser"].result)
+        json_text = extract_json_from_text(parser_result)
+        parser_data = json.loads(json_text)
+        parsed_data["prediction_statement"] = parser_data.get("prediction_statement", "")
+        parsed_data["verification_date"] = parser_data.get("verification_date", "")
+        parsed_data["date_reasoning"] = parser_data.get("date_reasoning", "")
+    
+    # Parse categorizer output
+    if "categorizer" in result.results:
+        categorizer_result = str(result.results["categorizer"].result)
+        json_text = extract_json_from_text(categorizer_result)
+        categorizer_data = json.loads(json_text)
+        parsed_data["verifiable_category"] = categorizer_data.get("verifiable_category", "")
+        parsed_data["category_reasoning"] = categorizer_data.get("category_reasoning", "")
+    
+    # Parse verification builder output
+    if "verification_builder" in result.results:
+        verification_result = str(result.results["verification_builder"].result)
+        json_text = extract_json_from_text(verification_result)
+        verification_data = json.loads(json_text)
+        parsed_data["verification_method"] = verification_data.get("verification_method", {})
+    
+    return parsed_data
+```
+
+### Final Parsed Data
+
+```python
+final_data = {
+    # Parser outputs
     "prediction_statement": "it will snow tonight",
     "verification_date": "2026-01-18 22:00:00",
-    "date_reasoning": "Parsed 'tonight' as 22:00 (10 PM) in user's timezone",
+    "date_reasoning": "Parsed 'tonight' as 22:00 (10 PM)...",
     
-    # Categorizer outputs (2 fields)
+    # Categorizer outputs
     "verifiable_category": "api_tool_verifiable",
-    "category_reasoning": "Weather predictions require real-time weather API data...",
+    "category_reasoning": "This is a weather prediction...",
     
-    # Verification Builder outputs (1 field)
+    # Verification Builder outputs
     "verification_method": {
-        "source": ["Weather API...", "NOAA...", "Local weather station..."],
-        "criteria": ["Snow accumulation > 0 inches...", ...],
-        "steps": ["Query weather API...", ...]
+        "source": ["National Weather Service...", ...],
+        "criteria": ["Snowfall accumulation...", ...],
+        "steps": ["Identify the specific location...", ...]
     }
 }
 ```
-
-**Total: 10 fields in final state**
 
 ---
 
@@ -412,7 +379,7 @@ final_state = {
 
 **File**: `backend/calledit-backend/handlers/strands_make_call/strands_make_call_graph.py`
 
-Lambda converts the final state into the expected API response format:
+Lambda converts the parsed data into the expected API response format:
 
 ```python
 response_data = {
@@ -423,14 +390,14 @@ response_data = {
     "user_timezone": "America/New_York",           # User's original timezone
     "local_prediction_date": "2026-01-18 13:24:33 EST",  # Local time representation
     "verifiable_category": "api_tool_verifiable",
-    "category_reasoning": "Weather predictions require real-time weather API data...",
+    "category_reasoning": "This is a weather prediction...",
     "verification_method": {
-        "source": ["Weather API...", "NOAA...", "Local weather station..."],
-        "criteria": ["Snow accumulation > 0 inches...", ...],
-        "steps": ["Query weather API...", ...]
+        "source": ["National Weather Service...", ...],
+        "criteria": ["Snowfall accumulation...", ...],
+        "steps": ["Identify the specific location...", ...]
     },
     "initial_status": "pending",
-    "date_reasoning": "Parsed 'tonight' as 22:00 (10 PM) in user's timezone"
+    "date_reasoning": "Parsed 'tonight' as 22:00 (10 PM)..."
 }
 ```
 
@@ -462,82 +429,101 @@ Frontend receives the response and displays it to the user.
 
 ## Key Concepts
 
-### Custom Node Pattern (StateManagingAgentNode)
+### Plain Agent Pattern (Current Implementation)
 
-**File**: `backend/calledit-backend/handlers/strands_make_call/custom_node.py`
-
-Each custom node acts as a wrapper that:
-
-1. **Receives** state dict from previous node
-2. **Builds** a prompt from that state (via prompt builder function)
-3. **Invokes** its agent with the prompt
-4. **Parses** the JSON response (via response parser function)
-5. **Updates** the state with new fields
-6. **Returns** the updated state to the next node
-
-**Why custom nodes are necessary**:
-- Our agents return **structured JSON** (not conversational text)
-- We need to **parse** that JSON and **validate** it
-- We need to **build prompts** from accumulated state
-- Strands Graph requires nodes to be **Agent or MultiAgentBase objects** (not plain functions)
-
-### State Flow Visualization
-
-State flows like a snowball rolling downhill, accumulating data at each step:
-
-```
-Initial State (4 fields)
-    ↓
-    [Parser Node]
-    ↓
-State with Parser outputs (7 fields)
-    ↓
-    [Categorizer Node]
-    ↓
-State with Categorizer outputs (9 fields)
-    ↓
-    [Verification Builder Node]
-    ↓
-Final State (10 fields)
-```
-
-**Key principle**: Each agent only adds its specific outputs, preserving everything from previous agents.
-
-### Prompt Building
-
-Each node has a **prompt builder function** that constructs the agent's prompt from the current state:
+**The correct Strands pattern for JSON workflows**:
 
 ```python
-def build_parser_prompt(state: Dict) -> str:
-    return f"""PREDICTION: {state.get('user_prompt', '')}
-CURRENT DATE: {state.get('current_datetime_local', '')}
-TIMEZONE: {state.get('user_timezone', 'UTC')}
+from strands import Agent
+from strands.multiagent import GraphBuilder
 
-Extract the prediction and parse the verification date."""
+# Create agents
+parser_agent = Agent(model="...", system_prompt="...", tools=[...])
+categorizer_agent = Agent(model="...", system_prompt="...")
+verification_builder_agent = Agent(model="...", system_prompt="...")
+
+# Build graph with plain agents
+builder = GraphBuilder()
+builder.add_node(parser_agent, "parser")
+builder.add_node(categorizer_agent, "categorizer")
+builder.add_node(verification_builder_agent, "verification_builder")
+builder.add_edge("parser", "categorizer")
+builder.add_edge("categorizer", "verification_builder")
+builder.set_entry_point("parser")
+graph = builder.build()
+
+# Execute graph
+result = graph("Initial prompt with context")
+
+# Parse JSON results after execution
+parser_output = str(result.results["parser"].result)
+parser_data = json.loads(extract_json_from_text(parser_output))
 ```
 
-This allows each agent to receive exactly the information it needs from previous agents.
+**Why this pattern works**:
+- Graph automatically propagates outputs between agents
+- No manual state management needed
+- Simpler and more maintainable
+- Follows official Strands documentation
 
-### Response Parsing
+### JSON Extraction Helper
 
-Each node has a **response parser function** that extracts data from the agent's JSON response:
+Since agents may wrap JSON in markdown code blocks, we use a helper function:
 
 ```python
-def parse_parser_response(response: str, state: Dict) -> Dict:
-    try:
-        result = json.loads(response)
-        return {
-            **state,  # Preserve all previous fields
-            "prediction_statement": result.get("prediction_statement", ""),
-            "verification_date": result.get("verification_date", ""),
-            "date_reasoning": result.get("date_reasoning", "")
-        }
-    except json.JSONDecodeError:
-        # Fallback with safe defaults
-        return {**state, "prediction_statement": state.get('user_prompt', '')}
+def extract_json_from_text(text: str) -> str:
+    """
+    Extract JSON from text that might be wrapped in markdown or have extra text.
+    
+    Tries multiple strategies:
+    1. Direct JSON parse (if text is already clean JSON)
+    2. Extract from ```json ... ``` markdown blocks
+    3. Extract from ``` ... ``` code blocks
+    4. Find JSON object/array in text
+    """
+    import re
+    
+    text = text.strip()
+    
+    # Strategy 1: Direct parse
+    if text.startswith('{') or text.startswith('['):
+        return text
+    
+    # Strategy 2: Extract from ```json ... ```
+    json_block_match = re.search(r'```json\s*\n(.*?)\n```', text, re.DOTALL)
+    if json_block_match:
+        return json_block_match.group(1).strip()
+    
+    # ... more strategies ...
+    
+    return text
 ```
 
-This handles JSON parsing errors gracefully with fallback values.
+This provides robust JSON extraction regardless of how the agent formats its response.
+
+### Output Flow Visualization
+
+Outputs flow through the graph automatically:
+
+```
+Initial Prompt
+    ↓
+    [Parser Agent]
+    ↓
+Parser's JSON Output
+    ↓
+    [Categorizer Agent receives: Initial Prompt + Parser Output]
+    ↓
+Categorizer's JSON Output
+    ↓
+    [Verification Builder receives: Initial Prompt + Parser Output + Categorizer Output]
+    ↓
+Verification Builder's JSON Output
+    ↓
+Parse all JSON after execution
+```
+
+**Key principle**: The Graph handles all output propagation automatically. We just parse the results at the end.
 
 ---
 
@@ -562,28 +548,97 @@ Throughout the graph execution, the **callback handler** streams events to the f
 {"type": "status", "status": "processing"}
 ```
 
-The callback handler is passed to each agent invocation, allowing real-time streaming of the agent's thinking process.
+4. **Lifecycle Events**:
+- `init_event_loop`: Event loop initialized
+- `start_event_loop`: Event loop cycle starting
+- `complete`: Processing complete
+- `force_stop`: Agent force-stopped
+
+The callback handler is passed to the graph execution, allowing real-time streaming of all agent activities.
+
+### Callback Handler Implementation
+
+```python
+def create_streaming_callback(connection_id, api_gateway_client):
+    """Create comprehensive callback handler for graph streaming"""
+    
+    def callback_handler(**kwargs):
+        try:
+            # Text generation events
+            if "data" in kwargs:
+                api_gateway_client.post_to_connection(
+                    ConnectionId=connection_id,
+                    Data=json.dumps({"type": "text", "content": kwargs["data"]})
+                )
+            
+            # Tool usage events
+            elif "current_tool_use" in kwargs and kwargs["current_tool_use"].get("name"):
+                api_gateway_client.post_to_connection(
+                    ConnectionId=connection_id,
+                    Data=json.dumps({
+                        "type": "tool",
+                        "name": kwargs["current_tool_use"]["name"],
+                        "input": kwargs["current_tool_use"].get("input", {})
+                    })
+                )
+            
+            # Lifecycle events
+            elif kwargs.get("complete"):
+                api_gateway_client.post_to_connection(
+                    ConnectionId=connection_id,
+                    Data=json.dumps({"type": "status", "status": "complete"})
+                )
+                
+        except Exception as e:
+            # Graceful error handling - don't crash agent
+            logger.error(f"Callback error: {str(e)}", exc_info=True)
+            # Don't re-raise - callback errors shouldn't stop execution
+    
+    return callback_handler
+```
 
 ---
 
 ## Error Handling
 
-Each custom node includes error handling:
+Error handling is simple and follows Strands best practices:
+
+### JSON Parsing Errors
 
 ```python
 try:
-    # Invoke agent and parse response
-    response = self.agent(prompt, callback_handler=callback_handler)
-    updated_state = self.response_parser(str(response), state)
-    return MultiAgentResult(status=Status.COMPLETED, state=updated_state)
-    
-except Exception as e:
-    # Return error state with fallback values
-    error_state = {**state, "error": f"{self.name} error: {str(e)}"}
-    return MultiAgentResult(status=Status.FAILED, state=error_state)
+    json_text = extract_json_from_text(agent_output)
+    data = json.loads(json_text)
+except json.JSONDecodeError as e:
+    logger.error(f"JSON parsing failed: {str(e)}")
+    # Use fallback values
+    data = {
+        "prediction_statement": user_prompt,
+        "verifiable_category": "human_verifiable_only",
+        "verification_method": {
+            "source": ["Manual verification"],
+            "criteria": ["Human judgment required"],
+            "steps": ["Manual review needed"]
+        }
+    }
 ```
 
-This ensures the graph continues even if one agent fails, using fallback values.
+### Graph Execution Errors
+
+```python
+try:
+    result = prediction_graph(initial_prompt, callback_handler=callback_handler)
+    parsed_data = parse_graph_results(result)
+except Exception as e:
+    logger.error(f"Graph execution failed: {str(e)}", exc_info=True)
+    # Return error state with fallback values
+    return {
+        "error": f"Graph execution failed: {str(e)}",
+        "prediction_statement": user_prompt,
+        "verifiable_category": "human_verifiable_only",
+        # ... other fallback values
+    }
+```
 
 ---
 
@@ -592,7 +647,6 @@ This ensures the graph continues even if one agent fails, using fallback values.
 ### Core Files
 
 - **Graph Definition**: `backend/calledit-backend/handlers/strands_make_call/prediction_graph.py`
-- **Custom Node**: `backend/calledit-backend/handlers/strands_make_call/custom_node.py`
 - **Lambda Handler**: `backend/calledit-backend/handlers/strands_make_call/strands_make_call_graph.py`
 
 ### Agent Files
@@ -606,6 +660,7 @@ This ensures the graph continues even if one agent fails, using fallback values.
 - **Design Document**: `.kiro/specs/strands-graph-refactor/design.md`
 - **Best Practices**: `.kiro/steering/strands-best-practices.md`
 - **Tasks**: `.kiro/specs/strands-graph-refactor/tasks.md`
+- **Cleanup Log**: `.kiro/specs/strands-graph-refactor/CLEANUP_LOG.md`
 
 ---
 
@@ -614,9 +669,23 @@ This ensures the graph continues even if one agent fails, using fallback values.
 The 3-agent graph system provides a clean, maintainable architecture for prediction verification:
 
 1. **Separation of concerns**: Each agent has one focused responsibility
-2. **State management**: Custom nodes handle all JSON parsing and prompt building
-3. **Streaming**: Real-time feedback via WebSocket callbacks
-4. **Error handling**: Graceful fallbacks at each step
-5. **Testability**: Each agent can be tested in isolation
+2. **Automatic output propagation**: Graph handles passing results between agents
+3. **Simple JSON parsing**: Extract and parse after graph execution
+4. **Streaming**: Real-time feedback via WebSocket callbacks
+5. **Error handling**: Graceful fallbacks with simple try/except blocks
+6. **Testability**: Each agent can be tested in isolation
 
-The custom node pattern is the key innovation that makes this architecture work, bridging the gap between Strands' conversational agent model and our structured data flow requirements.
+**The plain Agent pattern is the key to this architecture**, following official Strands documentation and trusting the framework to handle complexity.
+
+---
+
+## Educational Note
+
+This implementation represents the **correct** Strands pattern discovered after consulting official documentation. Earlier attempts used custom nodes with manual state management, which added unnecessary complexity.
+
+**Key lesson**: Always consult official framework documentation before implementing patterns. The simpler solution is often the correct solution.
+
+**References**:
+- [Strands Graph User Guide](https://strandsagents.com/latest/documentation/docs/user-guide/concepts/multi-agent/graph/)
+- [Input Propagation](https://strandsagents.com/latest/documentation/docs/user-guide/concepts/multi-agent/graph/#input-propagation)
+- [Custom Nodes (for deterministic logic only)](https://strandsagents.com/latest/documentation/docs/user-guide/concepts/multi-agent/graph/#custom-node-types)

@@ -1,0 +1,37 @@
+[
+  {
+    "id": "parser-001-exact-text",
+    "description": "Parser preserves exact prediction text",
+    "prompt": "it will snow heavily tonight in Boston",
+    "timezone": "America/New_York",
+    "expected_prediction": "it will snow heavily tonight in Boston"
+  },
+  {
+    "id": "parser-002-time-conversion",
+    "description": "Parser converts 12-hour to 24-hour format",
+    "prompt": "the meeting will end at 3:00pm",
+    "timezone": "America/New_York",
+    "contains_time": "15:00"
+  },
+  {
+    "id": "parser-003-morning-time",
+    "description": "Parser handles 'this morning' time reference",
+    "prompt": "it will rain this morning",
+    "timezone": "America/New_York",
+    "contains_time": "09:00"
+  },
+  {
+    "id": "parser-004-timezone-respect",
+    "description": "Parser respects user timezone",
+    "prompt": "it will be sunny tomorrow",
+    "timezone": "Europe/London",
+    "expected_timezone": "Europe/London"
+  },
+  {
+    "id": "parser-005-relative-date",
+    "description": "Parser handles relative date references",
+    "prompt": "the project will be done next week",
+    "timezone": "UTC",
+    "has_future_date": true
+  }
+]

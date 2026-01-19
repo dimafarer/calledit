@@ -1,0 +1,45 @@
+[
+  {
+    "id": "bc-001-weather-api",
+    "description": "Weather prediction requiring API verification",
+    "prompt": "it will snow tonight",
+    "timezone": "America/New_York",
+    "expected_category": "api_tool_verifiable",
+    "expected_fields": [
+      "prediction_statement",
+      "verification_date",
+      "verifiable_category",
+      "category_reasoning",
+      "verification_method",
+      "date_reasoning"
+    ]
+  },
+  {
+    "id": "bc-002-time-current",
+    "description": "Time-based prediction verifiable with current_time tool",
+    "prompt": "it's after 3pm",
+    "timezone": "America/New_York",
+    "expected_category": "current_tool_verifiable"
+  },
+  {
+    "id": "bc-003-knowledge-agent",
+    "description": "Knowledge-based prediction requiring agent verification",
+    "prompt": "the sun will rise tomorrow",
+    "timezone": "UTC",
+    "expected_category": "agent_verifiable"
+  },
+  {
+    "id": "bc-004-timezone-handling",
+    "description": "Test timezone handling with different timezone",
+    "prompt": "it will rain this evening",
+    "timezone": "Europe/London",
+    "expected_category": "api_tool_verifiable"
+  },
+  {
+    "id": "bc-005-human-only",
+    "description": "Subjective prediction requiring human verification",
+    "prompt": "I will feel happy tomorrow",
+    "timezone": "America/Los_Angeles",
+    "expected_category": "human_verifiable_only"
+  }
+]

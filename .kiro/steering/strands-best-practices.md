@@ -87,6 +87,37 @@ echo "strands-agents>=1.7.0" >> backend/calledit-backend/handlers/strands_make_c
 - Other developers can install exact dependencies
 - CI/CD pipelines need requirements.txt
 
+## TTY Error Handling - CRITICAL
+
+**RULE**: When encountering TTY errors (`not a tty`, `TTY=not a tty`), IMMEDIATELY ask the user to run the command manually.
+
+**DO NOT**:
+- ❌ Try alternative approaches
+- ❌ Attempt workarounds
+- ❌ Use different tools
+- ❌ Continue with partial results
+
+**DO**:
+- ✅ Stop immediately
+- ✅ Ask user to run the exact command
+- ✅ Wait for user to provide output
+- ✅ Continue with user-provided results
+
+**Example Response**:
+```
+I'm encountering a TTY error. Could you please run this command and paste the output?
+
+[exact command here]
+```
+
+**Why This Matters**:
+- User can run commands successfully in their terminal
+- Avoids wasted time on workarounds
+- Gets accurate results immediately
+- User explicitly offered to run commands
+
+---
+
 ## Core Principles
 
 ### 1. Agent Design Philosophy
