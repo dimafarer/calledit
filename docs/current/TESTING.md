@@ -1,9 +1,11 @@
 # Testing Documentation
 ## CalledIt: Serverless Prediction Verification Platform
 
-**Document Version:** 1.0  
-**Date:** January 27, 2025  
-**Last Updated:** January 27, 2025
+**Document Version:** 2.0  
+**Date:** January 19, 2026  
+**Last Updated:** January 19, 2026
+
+**Testing Architecture:** Integration tests with real agent invocations (no mocks)
 
 ---
 
@@ -28,34 +30,90 @@ This document outlines the comprehensive testing strategy for CalledIt, covering
 
 ## 2. Test Categories
 
-### 2.1 Unit Tests
-**Location**: `/backend/calledit-backend/tests/`
+### 2.1 Integration Tests (Primary Test Suite)
+**Location**: `/backend/calledit-backend/tests/integration/`
+**Framework**: pytest with real agent invocations
+**Status**: ✅ 18 tests passing (100% success rate)
 
-#### Backend Lambda Functions
-- **auth_token/test_auth_token.py**: Cognito token exchange testing
-- **hello_world/test_app.py**: Basic API endpoint testing
-- **list_predictions/test_list_predictions.py**: Prediction retrieval testing
-- **make_call/test_make_call.py**: Prediction processing testing
-- **write_to_db/test_write_to_db.py**: Database write operations testing
+#### Test Philosophy
+- **Real Agent Invocations**: Tests use actual LLM calls, not mocks
+- **Production-Like**: Tests validate actual agent behavior
+- **Structured Test Cases**: JSON files define test scenarios
+- **Strands Best Practices**: Following official Strands testing patterns
 
-#### Frontend Components
-- **components/*.test.tsx**: React component unit tests
-- **services/*.test.ts**: Service layer testing
-- **utils/*.test.ts**: Utility function testing
+#### Test Structure
+```
+tests/integration/
+├── conftest.py                          # Shared fixtures
+├── test_backward_compatibility.py       # 4 tests - API compatibility
+├── test_parser_agent.py                 # 4 tests - Parser Agent
+├── test_categorizer_agent.py            # 6 tests - Categorizer Agent
+├── test_verification_builder.py         # 4 tests - Verification Builder
+└── test_cases/                          # JSON test data
+    ├── backward_compatibility.json
+    ├── parser_agent.json
+    ├── categorizer_agent.json
+    └── verification_builder.json
+```
 
-### 2.2 Integration Tests
-**Status**: Planned for future implementation
+#### Test Categories
 
-#### API Integration Tests
-- REST API endpoint integration
-- WebSocket API connection and messaging
-- DynamoDB integration testing
-- Cognito authentication flows
+**Backward Compatibility Tests (4 tests)**
+- Input format compatibility
+- Output format compatibility
+- Action type support
+- Event type consistency
 
-#### Service Integration Tests
-- Strands agent integration
-- Amazon Bedrock integration
-- Cross-service communication testing
+**Parser Agent Tests (4 tests)**
+- Prediction statement extraction
+- Date parsing and reasoning
+- Timezone handling
+- Date reasoning presence
+
+**Categorizer Agent Tests (6 tests)**
+- Category validation
+- Expected category matching
+- Category reasoning presence
+- Reasoning quality
+- Valid category enforcement
+- Category consistency
+
+**Verification Builder Tests (4 tests)**
+- Verification method structure
+- Method adaptation to category
+- Sufficient detail validation
+- Count expectations
+
+#### Running Integration Tests
+```bash
+# Run all integration tests
+/home/wsluser/projects/calledit/venv/bin/python -m pytest backend/calledit-backend/tests/integration/ -v
+
+# Run specific test file
+/home/wsluser/projects/calledit/venv/bin/python -m pytest backend/calledit-backend/tests/integration/test_parser_agent.py -v
+
+# Run with coverage
+/home/wsluser/projects/calledit/venv/bin/python -m pytest backend/calledit-backend/tests/integration/ --cov
+```
+
+### 2.2 Unit Tests (Deprecated)
+**Status**: ❌ Removed (January 2026)
+**Reason**: Old mock-heavy tests replaced with integration tests
+
+**Previous locations** (now deleted):
+- auth_token/test_auth_token.py
+- list_predictions/test_list_predictions.py
+- strands_make_call/test_*.py
+- write_to_db/test_write_to_db.py
+
+**Replacement**: Integration tests with real agent invocations
+
+#### Frontend Component Tests
+**Location**: `/frontend/src/components/*.test.tsx`
+**Status**: Active
+- React component unit tests
+- Service layer testing
+- Utility function testing
 
 ### 2.3 End-to-End Tests
 **Location**: `/testing/verifiability_category_tests.py`

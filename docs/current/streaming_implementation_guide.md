@@ -6,17 +6,17 @@ This guide documents the complete WebSocket streaming implementation for the Cal
 
 ### Current Implementation
 
-The CalledIt application now supports real-time streaming responses using:
+The CalledIt application supports real-time streaming responses using:
 
 1. **AWS API Gateway WebSockets** - Handles bidirectional communication
-2. **Strands AI Agent** - Generates structured prediction verification with streaming callbacks
+2. **3-Agent Graph** - Parser → Categorizer → Verification Builder with streaming callbacks
 3. **React WebSocket Service** - Manages frontend WebSocket connections and real-time updates
-4. **Lambda Streaming Handler** - Processes predictions and streams responses via WebSocket
+4. **Lambda Streaming Handler** - Processes predictions via graph and streams responses
 
 ### Data Flow
 
 ```
-User Input → React Frontend → WebSocket API Gateway → Lambda (Strands Agent) → Bedrock AI
+User Input → React Frontend → WebSocket API Gateway → Lambda (3-Agent Graph) → Bedrock AI
      ↑                                                                              ↓
 Real-time UI Updates ← WebSocket Streaming ← Callback Handler ← AI Response Chunks
 ```
@@ -45,7 +45,7 @@ MakeCallStreamFunction:
   Type: AWS::Serverless::Function
   Properties:
     CodeUri: handlers/strands_make_call/
-    Handler: strands_make_call_stream.lambda_handler
+    Handler: strands_make_call_graph.lambda_handler
     Runtime: python3.12
     Timeout: 300
     MemorySize: 512

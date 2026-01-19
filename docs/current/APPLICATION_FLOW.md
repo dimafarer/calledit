@@ -1,8 +1,10 @@
 # CalledIt Application Flow Documentation
 
-**Version**: 1.5.1  
-**Date**: January 16, 2026  
+**Version**: 1.6.0  
+**Date**: January 19, 2026  
 **Status**: Active
+
+**Architecture**: 3-Agent Graph (Parser → Categorizer → Verification Builder)
 
 ## Table of Contents
 1. [System Overview](#system-overview)
@@ -31,7 +33,11 @@ CalledIt is a serverless application that transforms natural language prediction
        │
        ├─── REST API ────────────► API Gateway ──► Lambda ──► DynamoDB
        │
-       └─── WebSocket ───────────► WebSocket API ──► Lambda ──► Strands ──► Bedrock
+       └─── WebSocket ───────────► WebSocket API ──► Lambda ──► 3-Agent Graph ──► Bedrock
+                                                                    │
+                                                                    ├──► Parser Agent
+                                                                    ├──► Categorizer Agent
+                                                                    ├──► Verification Builder
                                                                     │
                                                                     └──► Tools
 ```
@@ -39,7 +45,7 @@ CalledIt is a serverless application that transforms natural language prediction
 ### Core Technologies
 - **Frontend**: React 18 + TypeScript + Vite
 - **Backend**: Python 3.12 + AWS Lambda
-- **AI**: Strands Agents + Amazon Bedrock
+- **AI**: Strands 3-Agent Graph + Amazon Bedrock
 - **Database**: DynamoDB
 - **Auth**: AWS Cognito
 - **APIs**: API Gateway (REST + WebSocket)
@@ -112,27 +118,35 @@ This is the core workflow where users create predictions with real-time AI proce
    └──► Routes to MakeCallStreamFunction
 
 3. LAMBDA PROCESSING
-   strands_make_call_stream.py
+   strands_make_call_graph.py
    │
    ├──► Validates request
    ├──► Extracts connection_id for streaming
-   ├──► Creates Strands Agent with tools
+   ├──► Executes 3-agent graph
    │
    └──► Sends initial status: "processing"
 
-4. STRANDS AGENT EXECUTION
-   Agent processes prediction
+4. 3-AGENT GRAPH EXECUTION
+   Parser → Categorizer → Verification Builder
    │
-   ├──► Uses current_time tool for context
+   ├──► PARSER AGENT
+   │    ├──► Extracts prediction statement (exact text)
+   │    ├──► Parses dates/times (12h → 24h conversion)
+   │    ├──► Uses current_time and parse_relative_date tools
    │    └──► Streams: { type: "tool", name: "current_time" }
    │
-   ├──► Bedrock reasoning (Claude)
-   │    └──► Streams text chunks: { type: "text", content: "..." }
+   ├──► CATEGORIZER AGENT
+   │    ├──► Receives parser output
+   │    ├──► Analyzes verifiability
+   │    ├──► Classifies into 5 categories
+   │    └──► Provides reasoning for classification
    │
-   ├──► Analyzes verifiability category
-   │    └──► Determines: agent_verifiable, current_tool_verifiable, etc.
-   │
-   └──► Generates structured JSON response
+   └──► VERIFICATION BUILDER AGENT
+        ├──► Receives categorizer output
+        ├──► Generates verification method
+        ├──► Creates source list
+        ├──► Defines criteria
+        └──► Outlines verification steps
 
 5. RESPONSE STREAMING
    Real-time updates sent to frontend
@@ -143,13 +157,15 @@ This is the core workflow where users create predictions with real-time AI proce
    │
    └──► Final response: { type: "call_response", content: {...} }
 
-6. VPSS REVIEW (Phase 2)
-   ReviewAgent analyzes response
+6. FUTURE: VPSS REVIEW (Task 10)
+   ReviewAgent will analyze response
    │
-   ├──► Identifies improvable sections
-   ├──► Generates questions for each section
+   ├──► Identify improvable sections
+   ├──► Generate questions for each section
    │
-   └──► Sends: { type: "review_complete", data: {...} }
+   └──► Send: { type: "review_complete", data: {...} }
+   
+   Note: VPSS is not yet integrated into the 3-agent graph
 
 7. FRONTEND DISPLAY
    StreamingCall.tsx renders result
@@ -157,7 +173,6 @@ This is the core workflow where users create predictions with real-time AI proce
    ├──► Shows prediction statement
    ├──► Displays verifiability category with badge
    ├──► Shows verification method (source, criteria, steps)
-   ├──► Highlights reviewable sections (if any)
    │
    └──► Enables "Log Call" button
 ```
@@ -189,9 +204,9 @@ onComplete: (response) => {
 }
 ```
 
-#### Backend (strands_make_call_stream.py)
+#### Backend (strands_make_call_graph.py)
 ```python
-# 1. Create agent with streaming callback
+# 1. Execute 3-agent graph with streaming callback
 def stream_callback_handler(**kwargs):
     if "data" in kwargs:
         # Stream text chunks
@@ -206,30 +221,23 @@ def stream_callback_handler(**kwargs):
             Data=json.dumps({"type": "tool", "name": tool_name})
         )
 
-# 2. Agent processes with system prompt
-agent = Agent(
-    tools=[current_time],
-    callback_handler=stream_callback_handler,
-    system_prompt="""
-    - Analyze predictions WITHOUT modifying original statement
-    - Create structured verification criteria
-    - Categorize verifiability (5 categories)
-    - Convert 12-hour to 24-hour time format
-    - Work in user's local timezone
-    """
+# 2. Execute prediction graph (Parser → Categorizer → Verification Builder)
+final_state = execute_prediction_graph(
+    user_prompt=prompt,
+    user_timezone=user_timezone,
+    current_datetime_utc=formatted_datetime_utc,
+    current_datetime_local=formatted_datetime_local,
+    callback_handler=stream_callback_handler
 )
 
 # 3. Send final structured response
-sanitized_response = {
-    "prediction_statement": "...",
-    "verification_date": "2025-01-27T15:00:00Z",
-    "verifiable_category": "api_tool_verifiable",
-    "category_reasoning": "...",
-    "verification_method": {
-        "source": [...],
-        "criteria": [...],
-        "steps": [...]
-    },
+response_data = {
+    "prediction_statement": final_state.get("prediction_statement"),
+    "verification_date": final_state.get("verification_date"),
+    "date_reasoning": final_state.get("date_reasoning"),
+    "verifiable_category": final_state.get("verifiable_category"),
+    "category_reasoning": final_state.get("category_reasoning"),
+    "verification_method": final_state.get("verification_method"),
     "initial_status": "pending"
 }
 ```
@@ -954,12 +962,19 @@ WebSocket API
 │   └── DisconnectFunction
 │       └── handlers/websocket/disconnect.py
 │
-└── makecall / improve_section / improvement_answers
+└── makecall
     └── MakeCallStreamFunction
-        └── handlers/strands_make_call/strands_make_call_stream.py
+        └── handlers/strands_make_call/strands_make_call_graph.py
             │
-            ├── Uses: review_agent.py (VPSS)
-            └── Uses: error_handling.py
+            ├── prediction_graph.py (Graph orchestration)
+            ├── parser_agent.py (Parser Agent)
+            ├── categorizer_agent.py (Categorizer Agent)
+            ├── verification_builder_agent.py (Verification Builder)
+            ├── graph_state.py (State TypedDict)
+            └── utils.py (Utilities)
+            
+            Future (Task 10):
+            └── review_agent.py (VPSS - not yet integrated)
 
 EventBridge
 │

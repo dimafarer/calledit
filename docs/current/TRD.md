@@ -9,7 +9,7 @@
 
 ## 1. Executive Summary
 
-CalledIt is a serverless web application that converts natural language predictions into structured, verifiable formats using AI agents. The system automatically categorizes predictions by verifiability type and provides real-time streaming feedback during processing.
+CalledIt is a serverless web application that converts natural language predictions into structured, verifiable formats using a 3-agent AI graph (Parser → Categorizer → Verification Builder). The system automatically categorizes predictions by verifiability type and provides real-time streaming feedback during processing.
 
 ### 1.1 Project Goals
 - Convert natural language predictions to structured verification formats
@@ -31,9 +31,9 @@ CalledIt is a serverless web application that converts natural language predicti
 
 #### 2.1.1 Prediction Processing
 - **FR-001**: System SHALL accept natural language predictions via web interface
-- **FR-002**: System SHALL process predictions using Strands AI agents
+- **FR-002**: System SHALL process predictions using 3-agent graph (Parser → Categorizer → Verification Builder)
 - **FR-003**: System SHALL categorize predictions into exactly one of 5 verifiability categories:
-  - `agent_verifiable`: Pure reasoning/knowledge
+  - `agent_verifiable`: Pure reasoning/knowledge (verified by AI reasoning)
   - `current_tool_verifiable`: Current time tool only
   - `strands_tool_verifiable`: Strands library tools
   - `api_tool_verifiable`: External API calls required
@@ -104,13 +104,13 @@ CalledIt is a serverless web application that converts natural language predicti
 ### 4.1 System Architecture
 - **Serverless Architecture**: AWS Lambda + API Gateway + DynamoDB
 - **Real-time Communication**: WebSocket API for streaming
-- **AI Processing**: Strands agents with Amazon Bedrock
+- **AI Processing**: 3-agent graph (Parser → Categorizer → Verification Builder) with Amazon Bedrock
 - **Frontend**: React + TypeScript + Vite
 - **Authentication**: AWS Cognito User Pools
 
 ### 4.2 Data Flow
 ```
-User Input → WebSocket API → Lambda (Strands Agent) → Bedrock → Real-time Stream
+User Input → WebSocket API → Lambda (3-Agent Graph) → Bedrock → Real-time Stream
                           ↓
                     REST API → Lambda → DynamoDB → User Interface
 ```
@@ -177,8 +177,8 @@ User Input → WebSocket API → Lambda (Strands Agent) → Bedrock → Real-tim
 ## 6. Integration Requirements
 
 ### 6.1 External Dependencies
-- **Strands Agents Library**: AI orchestration framework
-- **Amazon Bedrock**: AI reasoning models
+- **Strands Framework**: Multi-agent graph orchestration (v1.7.0+)
+- **Amazon Bedrock**: AI reasoning models (Claude)
 - **AWS Services**: Core infrastructure services
 
 ### 6.2 API Integrations

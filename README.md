@@ -26,13 +26,15 @@ Each prediction includes AI-generated reasoning for its categorization, creating
 │   └── calledit-backend/
 │       ├── handlers/            # Lambda function handlers (8 active)
 │       │   ├── auth_token/      # Cognito token exchange
-│       │   ├── strands_make_call/ # Strands agent with streaming + VPSS
-│       │   │   ├── strands_make_call_stream.py  # Main handler
-│       │   │   ├── review_agent.py              # VPSS implementation
-│       │   │   ├── parser_agent.py              # Prediction parsing
-│       │   │   ├── utils.py                     # Shared utilities
-│       │   │   ├── error_handling.py            # Error management
-│       │   │   └── graph_state.py               # State management
+│       │   ├── strands_make_call/ # 3-agent graph with streaming
+│       │   │   ├── strands_make_call_graph.py      # Main handler (ACTIVE)
+│       │   │   ├── prediction_graph.py             # Graph orchestration
+│       │   │   ├── parser_agent.py                 # Parser Agent
+│       │   │   ├── categorizer_agent.py            # Categorizer Agent
+│       │   │   ├── verification_builder_agent.py   # Verification Builder Agent
+│       │   │   ├── graph_state.py                  # Graph state TypedDict
+│       │   │   ├── utils.py                        # Shared utilities
+│       │   │   └── review_agent.py                 # Future: Review Agent (Task 10)
 │       │   ├── websocket/       # WebSocket connection handlers (connect/disconnect)
 │       │   ├── list_predictions/# Retrieve user predictions
 │       │   ├── write_to_db/     # DynamoDB write operations
@@ -170,29 +172,29 @@ npm run dev
 The application uses Strands agents for intelligent prediction processing with automatic categorization:
 
 ```typescript
-// Example streaming prediction flow
+// Example streaming prediction flow with 3-agent graph
 1. User enters: "Bitcoin will hit $100k before 3pm today"
-2. Strands agent processes with tools:
-   - current_time tool for date/time context
-   - Reasoning model for verification method generation
-   - Verifiability categorization analysis
+2. 3-agent graph processes:
+   - Parser Agent: Extracts prediction, parses "3pm" to "15:00", handles timezone
+   - Categorizer Agent: Analyzes verifiability, classifies as "api_tool_verifiable"
+   - Verification Builder Agent: Generates verification method with sources/criteria/steps
 3. Real-time streaming shows:
-   - "Processing your prediction with AI agent..."
-   - "[Using tool: current_time]"
-   - Generated verification method with timezone handling
-   - Category analysis and reasoning
-4. Final structured output with verifiability categorization:
+   - "Processing your prediction with 3-agent graph..."
+   - "[Parser Agent] Extracting prediction..."
+   - "[Categorizer Agent] Analyzing verifiability..."
+   - "[Verification Builder] Creating verification method..."
+4. Final structured output:
 {
   "prediction_statement": "Bitcoin will reach $100,000 before 15:00:00 on 2025-01-27",
   "verification_date": "2025-01-27T15:00:00Z",
+  "date_reasoning": "Converted 3pm to 15:00 24-hour format for precision",
   "verifiable_category": "api_tool_verifiable",
   "category_reasoning": "Verifying Bitcoin's price requires real-time financial data through external APIs",
   "verification_method": {
     "source": ["CoinGecko API", "CoinMarketCap"],
     "criteria": ["BTC/USD price exceeds $100,000 before 15:00 UTC"],
     "steps": ["Check BTC price at 15:00:00 on January 27, 2025"]
-  },
-  "date_reasoning": "Converted 3pm to 15:00 24-hour format for precision"
+  }
 }
 ```
 
@@ -229,6 +231,9 @@ sam logs -n MakeCallStreamFunction --stack-name calledit-backend
 # Verify Strands dependencies in requirements.txt
 # strands-agents>=1.7.0
 # strands-agents-tools>=0.2.6
+
+# Check graph execution
+# The 3-agent graph should execute: Parser → Categorizer → Verification Builder
 ```
 
 3. **Streaming Issues**
@@ -297,8 +302,13 @@ ls -la backend/calledit-backend/handlers/
 The application follows a serverless event-driven architecture with real-time streaming capabilities.
 
 ```ascii
-User -> Cognito Auth -> WebSocket API -> Strands Agent -> Bedrock (Reasoning)
-                    |                      |              |
+User -> Cognito Auth -> WebSocket API -> 3-Agent Graph -> Bedrock (Reasoning)
+                    |                      |                |
+                    |                      Parser Agent     |
+                    |                      Categorizer      |
+                    |                      Verification     |
+                    |                      Builder          |
+                    |                      |                |
                     |                      -> Tools -> Real-time Stream
                     |
                     -> REST API -> Lambda Functions -> DynamoDB
@@ -307,10 +317,10 @@ User -> Cognito Auth -> WebSocket API -> Strands Agent -> Bedrock (Reasoning)
 Key component interactions:
 1. User authenticates through Cognito user pool
 2. **WebSocket connection** established for real-time streaming
-3. **Strands agent** orchestrates between reasoning model and tools
+3. **3-agent graph** orchestrates: Parser → Categorizer → Verification Builder
 4. **Streaming responses** sent back to frontend via WebSocket
 5. Bedrock provides AI reasoning with **InvokeModelWithResponseStream**
-6. Tools (current_time, etc.) provide context to the agent
+6. Tools (current_time, parse_relative_date) provide context to agents
 7. Final predictions stored in DynamoDB via REST API
 8. Frontend receives real-time updates during processing
 
@@ -351,19 +361,22 @@ After handler cleanup (January 2026), the application uses 8 Lambda functions or
    - No provisioned concurrency
 
 7. **MakeCallStreamFunction** - `handlers/strands_make_call/`
-   - **PRIMARY FUNCTION**: Main prediction processing with Strands + VPSS
-   - Handles 3 WebSocket routes: makecall, improve_section, improvement_answers
+   - **PRIMARY FUNCTION**: Main prediction processing with 3-agent graph
+   - **Architecture**: Parser → Categorizer → Verification Builder
+   - Handles WebSocket route: makecall
    - Real-time streaming via WebSocket
    - Timeout: 300 seconds (5 minutes)
    - Memory: 512 MB
    - **Provisioned Concurrency**: 1 instance (alias: live)
    - **Components**:
-     - `strands_make_call_stream.py` - Main handler
-     - `review_agent.py` - VPSS implementation
-     - `parser_agent.py` - Prediction parsing
-     - `utils.py` - Shared utilities
-     - `error_handling.py` - Error management
-     - `graph_state.py` - State management
+     - `strands_make_call_graph.py` - Main handler (ACTIVE)
+     - `prediction_graph.py` - Graph orchestration
+     - `parser_agent.py` - Extracts predictions and parses dates
+     - `categorizer_agent.py` - Classifies verifiability
+     - `verification_builder_agent.py` - Generates verification methods
+     - `graph_state.py` - Graph state TypedDict
+     - `utils.py` - Shared utilities (timezone, JSON extraction)
+     - `review_agent.py` - Future: Review Agent (Task 10)
 
 ### Scheduled Functions (1)
 8. **VerificationFunction** - `handlers/verification/`
@@ -403,9 +416,13 @@ The application uses the following AWS resources:
   - Routes: $connect, $disconnect, makecall, improve_section, improvement_answers
 
 ### AI & Orchestration
-- **Strands Agents**: Orchestrate between reasoning models and tools
+- **3-Agent Graph**: Parser → Categorizer → Verification Builder
+  - **Parser Agent**: Extracts predictions and parses dates with reasoning
+  - **Categorizer Agent**: Classifies verifiability into 5 categories
+  - **Verification Builder Agent**: Generates detailed verification methods
+- **Strands Framework**: Orchestrates multi-agent workflows
 - **Amazon Bedrock**: AI reasoning with streaming support
-- **Custom Tools**: current_time, date parsing utilities
+- **Custom Tools**: current_time, parse_relative_date utilities
 
 ### Authentication
 - **CognitoUserPool**: Manages user authentication
@@ -422,7 +439,7 @@ The application uses the following AWS resources:
 ### Key Features
 - **🎯 Verifiability Categorization**: Automatic classification into 5 categories with AI reasoning
 - **⚡ Real-time Streaming**: WebSocket-based streaming for immediate feedback
-- **🤖 Agent Orchestration**: Strands agents coordinate AI reasoning and tool usage
+- **🤖 3-Agent Graph Architecture**: Parser → Categorizer → Verification Builder
 - **🌍 Timezone Intelligence**: Automatic timezone handling and 12/24-hour conversion
 - **📋 Structured Verification**: AI-generated verification methods with reasoning
 - **🧪 Automated Testing**: 100% success rate testing suite for all categories
@@ -431,7 +448,7 @@ The application uses the following AWS resources:
 - **📢 "Crying" System**: Celebrate successful predictions with notifications and social sharing
 - **📧 Email Notifications**: Get notified when your predictions are verified as TRUE
 - **⚡ Zero Cold Starts**: Provisioned concurrency on 3 critical functions eliminates delays
-- **🔄 VPSS (Verifiable Prediction Structuring System)**: Human-in-the-loop prediction refinement
+- **🔄 VPSS (Future)**: Human-in-the-loop prediction refinement (Task 10)
 - **🤖 Automated Verification**: EventBridge-scheduled verification every 15 minutes
 - **📝 Comprehensive Logging**: S3-based audit trail for all verifications
 
@@ -642,7 +659,27 @@ npm run build
 
 ## Project Status
 
-### Current Version: v1.5.1 - 🔧 PRODUCTION DEPLOYMENT & SECURITY HARDENING (2025-08-23)
+### Current Version: v1.6.0 - 🏗️ 3-AGENT GRAPH ARCHITECTURE (2025-01-19)
+- ✅ **3-Agent Graph Refactor**: Complete migration from monolith to multi-agent architecture
+  - Parser Agent: Extracts predictions and parses dates with reasoning
+  - Categorizer Agent: Classifies verifiability into 5 categories
+  - Verification Builder Agent: Generates detailed verification methods
+  - Graph orchestration using Strands plain Agent pattern
+  - Automatic input propagation between agents
+- ✅ **Code Cleanup**: Removed all legacy monolith code
+  - Deleted: strands_make_call.py, strands_make_call_stream.py
+  - Deleted: custom_node.py, error_handling.py
+  - Clean codebase with only active 3-agent graph code
+- ✅ **Testing Framework**: Fresh start with Strands best practices
+  - 18 integration tests with real agent invocations
+  - No mocks - tests validate actual agent behavior
+  - 100% test success rate
+- ✅ **Documentation**: Comprehensive updates
+  - Updated README.md to reflect 3-agent architecture
+  - Created STRANDS_GRAPH_FLOW.md with complete graph documentation
+  - Cleanup logs and completion reports
+
+### Previous: v1.5.1 - 🔧 PRODUCTION DEPLOYMENT & SECURITY HARDENING (2025-08-23)
 - ✅ **Verifiability Categorization System**: Complete 5-category classification
 - ✅ **Real-time Streaming**: WebSocket-based AI processing
 - ✅ **Automated Testing**: 100% success rate test suite
@@ -670,9 +707,26 @@ npm run build
   - Environment variable configuration management
 
 ### Recent Updates (January 2026)
+- ✅ **3-Agent Graph Architecture**: Complete refactor from monolith to multi-agent
+  - Parser → Categorizer → Verification Builder workflow
+  - Following Strands best practices with plain Agent pattern
+  - Automatic input propagation between agents
+  - See [STRANDS_GRAPH_FLOW.md](docs/current/STRANDS_GRAPH_FLOW.md) for details
+- ✅ **Code Cleanup Round 1**: Removed custom nodes and error handling wrappers
+  - Deleted: custom_node.py, error_handling.py
+  - Simplified to plain Agent pattern per Strands documentation
+- ✅ **Code Cleanup Round 2**: Removed legacy monolith agent code
+  - Deleted: strands_make_call.py, strands_make_call_stream.py
+  - Clean codebase with only active 3-agent graph
+  - See [MONOLITH_CLEANUP_COMPLETE.md](.kiro/specs/strands-graph-refactor/MONOLITH_CLEANUP_COMPLETE.md)
+- ✅ **Testing Framework Rebuild**: Fresh start with real agent invocations
+  - 18 integration tests (no mocks)
+  - Tests validate actual production behavior
+  - 100% success rate
+  - See [TESTING_FRAMEWORK_COMPLETE.md](backend/calledit-backend/tests/TESTING_FRAMEWORK_COMPLETE.md)
 - ✅ **Handler Cleanup**: Removed 5 deprecated handlers (38% reduction)
   - Deleted: hello_world, make_call, prompt_bedrock, prompt_agent, shared
-  - Active: 8 Lambda functions (see [HANDLER_CLEANUP_COMPLETE.md](HANDLER_CLEANUP_COMPLETE.md))
+  - Active: 8 Lambda functions (see [HANDLER_CLEANUP_COMPLETE.md](docs/guides/HANDLER_CLEANUP_COMPLETE.md))
   - Reduced function count from 13 to 8
   - Faster deployments and cleaner codebase
 - ✅ **Documentation Overhaul**: Created comprehensive [APPLICATION_FLOW.md](docs/current/APPLICATION_FLOW.md)
@@ -684,8 +738,10 @@ npm run build
   - Confirmed .gitignore protection
   - Ready for public repository
 
-### ✅ **VERIFIABLE PREDICTION STRUCTURING SYSTEM (VPSS): PRODUCTION READY**
-- 🔍 **Strands Review Agent**: Complete VPSS implementation
+### ✅ **PREVIOUS: Verifiable Prediction Structuring System (VPSS)**
+**Note:** VPSS is a future enhancement (Task 10) not yet integrated into the 3-agent graph.
+
+- 🔍 **Strands Review Agent**: Complete VPSS implementation (standalone)
   - Multiple field updates: prediction_statement improvements update verification_date and verification_method
   - Date conflict resolution: Handles "today" vs "tomorrow" assumption conflicts intelligently
   - JSON response processing: Proper parsing of complex improvement responses
@@ -701,6 +757,8 @@ npm run build
   - Test case: "it will rain" → "NYC tomorrow" → multiple field updates working
   - All components tested: ReviewAgent (10/10), WebSocket routing (3/3), Frontend integration (15/15)
   - Production deployment: All fixes applied and validated
+
+**Integration Status:** Review Agent exists but not yet integrated into 3-agent graph (see Task 10)
 
 ### ✅ **PREVIOUS: Automated Verification System**
 - 🤖 **Strands Verification Agent**: AI-powered prediction verification with 5-category routing
