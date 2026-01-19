@@ -38,6 +38,55 @@ pip install hypothesis
 /home/wsluser/projects/calledit/venv/bin/pip install package-name
 ```
 
+## Dependency Management - MANDATORY
+
+**RULE**: ALL Python dependencies MUST be tracked in requirements.txt files
+
+**Project Structure**:
+- Root `requirements.txt` - Development dependencies (pytest, hypothesis, etc.)
+- Lambda handler `requirements.txt` - Runtime dependencies for each Lambda function
+
+**Adding Dependencies**:
+
+1. **Development Dependencies** (testing, linting, etc.):
+```bash
+# Add to root requirements.txt
+echo "hypothesis>=6.0.0" >> requirements.txt
+
+# Install in venv
+/home/wsluser/projects/calledit/venv/bin/pip install -r requirements.txt
+```
+
+2. **Lambda Runtime Dependencies** (needed in deployed Lambda):
+```bash
+# Add to Lambda handler requirements.txt
+echo "strands-agents>=1.7.0" >> backend/calledit-backend/handlers/strands_make_call/requirements.txt
+
+# Install in venv for local testing
+/home/wsluser/projects/calledit/venv/bin/pip install -r backend/calledit-backend/handlers/strands_make_call/requirements.txt
+```
+
+**Requirements File Locations**:
+- `/home/wsluser/projects/calledit/requirements.txt` - Root (dev dependencies)
+- `backend/calledit-backend/handlers/strands_make_call/requirements.txt` - Strands Lambda
+- `backend/calledit-backend/handlers/auth_token/requirements.txt` - Auth Lambda
+- `backend/calledit-backend/handlers/list_predictions/requirements.txt` - List Lambda
+- `backend/calledit-backend/handlers/write_to_db/requirements.txt` - Write Lambda
+- `backend/calledit-backend/handlers/websocket/requirements.txt` - WebSocket Lambda
+
+**Rules**:
+1. ✅ ALWAYS add dependencies to appropriate requirements.txt FIRST
+2. ✅ THEN install using `pip install -r requirements.txt`
+3. ❌ NEVER use `pip install package-name` without updating requirements.txt
+4. ✅ Pin versions for production dependencies (e.g., `strands-agents==1.7.0`)
+5. ✅ Use minimum versions for dev dependencies (e.g., `hypothesis>=6.0.0`)
+
+**Why This Matters**:
+- Ensures reproducible builds
+- SAM CLI uses Lambda requirements.txt for deployment
+- Other developers can install exact dependencies
+- CI/CD pipelines need requirements.txt
+
 ## Core Principles
 
 ### 1. Agent Design Philosophy
@@ -68,44 +117,63 @@ agent = Agent(
 - ✅ Processes needing conditional logic or feedback loops
 - ✅ Complex multi-step processes with distinct stages
 
-**Graph Structure**:
+**Two Node Patterns**:
+
+1. **Plain Agent Nodes** (for conversational text-based workflows):
+   - Agents return text that flows to next agent
+   - No JSON parsing needed
+   - Simple text-based conversation flow
+
+2. **Custom Nodes** (for structured data workflows):
+   - Agents return JSON that needs parsing
+   - Need to build prompts from accumulated state
+   - Structured data transformation between agents
+
+**Graph Structure with Plain Agents** (conversational or JSON workflows):
 ```python
 from strands.multiagent import GraphBuilder
+from strands import Agent
 
-# Define state schema
-class MyGraphState(TypedDict):
-    input_field: str
-    output_field: str
+# Create agents
+agent1 = Agent(model="claude-3-5-sonnet-20241022", system_prompt="...")
+agent2 = Agent(model="claude-3-5-sonnet-20241022", system_prompt="...")
 
 # Build graph
-builder = GraphBuilder(state_schema=MyGraphState)
-builder.add_node("node1", node_function)
-builder.add_node("node2", node_function)
+builder = GraphBuilder()
+builder.add_node(agent1, "node1")  # Agent first, then ID
+builder.add_node(agent2, "node2")
 builder.add_edge("node1", "node2")
 builder.set_entry_point("node1")
 
-graph = builder.compile()
+graph = builder.build()
+
+# Execute graph
+result = graph("Initial task")
+
+# Parse results from each node
+node1_output = str(result.results["node1"].result)
+node2_output = str(result.results["node2"].result)
+
+# If agents return JSON, parse after execution
+import json
+node1_data = json.loads(node1_output)
+node2_data = json.loads(node2_output)
 ```
 
-**Node Functions**: Each node receives state, invokes agent, updates state
-```python
-def my_node_function(state: MyGraphState) -> MyGraphState:
-    """Node function pattern"""
-    # Build prompt from state
-    prompt = f"Process this: {state['input_field']}"
-    
-    # Invoke agent
-    response = my_agent(prompt)
-    
-    # Parse response (single json.loads call)
-    result = json.loads(str(response))
-    
-    # Update and return state
-    return {
-        **state,
-        "output_field": result["output"]
-    }
-```
+**How Graph Input Propagation Works**:
+- Entry nodes receive the original task as input
+- Dependent nodes receive: original task + results from all completed dependencies
+- The Graph automatically formats this as a combined input
+- No manual state management needed!
+
+**When to Use Custom Nodes** (MultiAgentBase):
+- ✅ Deterministic business logic (validation, calculations, rules)
+- ✅ Data processing pipelines (transformations, filtering)
+- ✅ Hybrid workflows (combine AI with deterministic steps)
+- ❌ NOT for state management between agents (Graph handles this automatically)
+- ❌ NOT for JSON parsing between agents (parse results after graph execution)
+
+**Important**: Strands Graph requires nodes to be Agent objects or MultiAgentBase subclasses. Plain functions are NOT supported as graph nodes.
 
 ### 3. JSON Parsing Best Practices
 
@@ -331,6 +399,8 @@ async for event in agent.stream_async(prompt):
 6. ❌ **Monolithic agents**: Single agent doing multiple unrelated tasks
 7. ❌ **Callback re-raising**: Letting callback errors crash agent execution
 8. ❌ **Manual state management**: Not using graph state properly
+9. ❌ **Plain functions as graph nodes**: Graph requires Agent or MultiAgentBase objects
+10. ❌ **Wrong node pattern**: Using plain agents when you need structured data flow (use custom nodes)
 
 ## Resources
 

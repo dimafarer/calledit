@@ -2,7 +2,11 @@
 
 ## Overview
 
-This design refactors the CalledIt prediction verification system from a monolithic single-agent architecture to a Strands Graph-based multi-agent workflow. The current implementation uses a single agent with a 200+ line system prompt, complex manual JSON parsing with regex fallbacks, and custom error handling wrappers. The refactored system will use four specialized agents orchestrated through a sequential graph workflow, following Strands best practices.
+This design refactors the CalledIt prediction verification system from a monolithic single-agent architecture to a Strands Graph-based multi-agent workflow. The current implementation uses a single agent with a 200+ line system prompt, complex manual JSON parsing with regex fallbacks, and custom error handling wrappers. The refactored system uses three specialized agents orchestrated through a sequential graph workflow, following Strands best practices.
+
+**Current Implementation Status**: 3-agent graph (Parser → Categorizer → Verification Builder) deployed and working in production.
+
+**Future Enhancement**: Review Agent and VPSS feedback loop will be added as a 4th agent after the 3-agent system is validated.
 
 ### Current Architecture Issues
 
@@ -22,7 +26,40 @@ This design refactors the CalledIt prediction verification system from a monolit
 
 ## Architecture
 
+### Current Implementation (Production)
+
+**3-Agent Sequential Graph**: Parser → Categorizer → Verification Builder
+
+**Status**: Deployed to production on 2025-01-18 and working correctly
+
+**Key Implementation Details**:
+- Uses plain Agent nodes (correct Strands pattern per official documentation)
+- Graph automatically propagates outputs between agents
+- JSON parsing happens after graph execution using `extract_json_from_text()` helper
+- No custom state management needed - Graph handles input propagation
+- Comprehensive callback handler with all lifecycle events
+- WebSocket streaming for real-time updates
+
+**Production Validation**:
+- All three agents executing successfully
+- Parser: Extracting predictions and parsing dates with reasoning
+- Categorizer: Correctly classifying as appropriate categories with solid reasoning
+- Verification Builder: Generating detailed verification methods with multiple sources, criteria, and steps
+- No fallbacks being triggered - all JSON parsing successful
+
 ### High-Level Graph Structure
+
+**Current Implementation (3-Agent Graph)**:
+
+```mermaid
+graph LR
+    Start[User Input] --> Parser[Parser Agent]
+    Parser --> Categorizer[Categorizer Agent]
+    Categorizer --> Builder[Verification Builder Agent]
+    Builder --> End[Response to Frontend]
+```
+
+**Future Enhancement (4-Agent Graph with VPSS)**:
 
 ```mermaid
 graph LR
@@ -33,6 +70,8 @@ graph LR
     Review --> End[Response to Frontend]
     Review -.->|VPSS Feedback| Parser
 ```
+
+Note: The Review Agent and VPSS feedback loop are planned future enhancements.
 
 ### Sequential Workflow Pattern
 
@@ -192,9 +231,11 @@ Return JSON:
 
 **Output**: Verification method structure
 
-### 4. Review Agent
+### 4. Review Agent (Future Enhancement)
 
 **Responsibility**: Identify improvable sections and support VPSS feedback
+
+**Status**: Planned for future implementation after 3-agent graph is validated in production
 
 **System Prompt** (~30 lines):
 ```python
@@ -230,161 +271,148 @@ For section regeneration with user input:
 
 **Output**: Reviewable sections with questions
 
+**Integration Plan**:
+- Add as 4th node in graph after verification_builder
+- Implement VPSS feedback loop for iterative improvement
+- Add graph cycles for regeneration workflow
+
 ### Graph Implementation
 
-**GraphBuilder Pattern**:
+**Plain Agent Pattern with JSON Extraction**:
+
+Based on official Strands Graph documentation, our implementation uses **plain Agent nodes** where the Graph automatically propagates outputs between agents. This is the correct pattern for JSON workflows.
+
+**Key Insights from Official Documentation**:
+1. **The Graph automatically propagates outputs** - Entry nodes receive the original task, dependent nodes receive the original task + results from all completed dependencies
+2. **No custom state management needed** - The Graph's `_build_node_input()` method handles input formatting
+3. **Parse JSON after graph execution** - Access results via `result.results[node_id].result`
+4. **`invocation_state` is for shared context only** - Database connections, user IDs, etc. (not for passing data between agents)
+
+**When to Use Plain Agent Nodes**:
+- ✅ Agents return JSON that needs to be passed to next agents
+- ✅ Sequential workflow where outputs flow to next stage
+- ✅ Want Graph to handle input propagation automatically
+- ❌ Need deterministic business logic (use MultiAgentBase custom nodes)
+
+**Graph Structure with Plain Agents**:
 
 ```python
 from strands import Agent
-from strands.graph import GraphBuilder
-
-# Define graph state
-class PredictionGraphState(TypedDict):
-    user_prompt: str
-    user_timezone: str
-    current_datetime_utc: str
-    current_datetime_local: str
-    prediction_statement: str
-    verification_date: str
-    date_reasoning: str
-    verifiable_category: str
-    category_reasoning: str
-    verification_method: dict
-    reviewable_sections: list
-    initial_status: str
-    error: Optional[str]
+from strands.multiagent import GraphBuilder
+import json
 
 # Create specialized agents
 parser_agent = Agent(
-    name="parser_agent",
-    model="claude-3-5-sonnet-20241022",
+    model="anthropic.claude-3-5-sonnet-20241022-v2:0",
     tools=[parse_relative_date, current_time],
     system_prompt=PARSER_PROMPT
 )
 
 categorizer_agent = Agent(
-    name="categorizer_agent",
-    model="claude-3-5-sonnet-20241022",
+    model="anthropic.claude-3-5-sonnet-20241022-v2:0",
     system_prompt=CATEGORIZER_PROMPT
 )
 
 verification_builder_agent = Agent(
-    name="verification_builder_agent",
-    model="claude-3-5-sonnet-20241022",
+    model="anthropic.claude-3-5-sonnet-20241022-v2:0",
     system_prompt=VERIFICATION_BUILDER_PROMPT
 )
 
-review_agent = Agent(
-    name="review_agent",
-    model="claude-3-5-sonnet-20241022",
-    system_prompt=REVIEW_PROMPT
-)
+# Build graph with plain agents
+builder = GraphBuilder()
 
-# Build graph
-graph_builder = GraphBuilder(state_schema=PredictionGraphState)
+# Add agents as nodes (agent first, then node ID)
+builder.add_node(parser_agent, "parser")
+builder.add_node(categorizer_agent, "categorizer")
+builder.add_node(verification_builder_agent, "verification_builder")
 
-# Add nodes
-graph_builder.add_node("parser", parser_node_function)
-graph_builder.add_node("categorizer", categorizer_node_function)
-graph_builder.add_node("verification_builder", verification_builder_node_function)
-graph_builder.add_node("review", review_node_function)
-
-# Add edges
-graph_builder.add_edge("parser", "categorizer")
-graph_builder.add_edge("categorizer", "verification_builder")
-graph_builder.add_edge("verification_builder", "review")
+# Add edges (define sequential flow)
+builder.add_edge("parser", "categorizer")
+builder.add_edge("categorizer", "verification_builder")
 
 # Set entry point
-graph_builder.set_entry_point("parser")
+builder.set_entry_point("parser")
 
-# Compile graph
-prediction_graph = graph_builder.compile()
+# Build graph
+prediction_graph = builder.build()
+
+# Execute graph with initial prompt
+initial_prompt = f"""PREDICTION: {user_prompt}
+CURRENT DATE: {current_datetime_local}
+TIMEZONE: {user_timezone}
+
+Extract the prediction and parse the verification date."""
+
+result = prediction_graph(initial_prompt, callback_handler=callback_handler)
+
+# Parse JSON results after execution
+parser_output = str(result.results["parser"].result)
+parser_data = json.loads(extract_json_from_text(parser_output))
+
+categorizer_output = str(result.results["categorizer"].result)
+categorizer_data = json.loads(extract_json_from_text(categorizer_output))
+
+verification_output = str(result.results["verification_builder"].result)
+verification_data = json.loads(extract_json_from_text(verification_output))
 ```
 
-**Node Functions**:
+**JSON Extraction Helper**:
 
-Each node function receives state, invokes its agent, and updates state:
+Since agents may wrap JSON in markdown code blocks or include extra text, we use a helper function:
 
 ```python
-def parser_node_function(state: PredictionGraphState) -> PredictionGraphState:
-    """Parser node: Extract prediction and parse time"""
-    prompt = f"""
-    PREDICTION: {state['user_prompt']}
-    CURRENT DATE: {state['current_datetime_local']}
-    TIMEZONE: {state['user_timezone']}
-    
-    Extract the prediction and parse the verification date.
+def extract_json_from_text(text: str) -> str:
     """
+    Extract JSON from text that might be wrapped in markdown or have extra text.
     
-    response = parser_agent(prompt)
-    result = json.loads(str(response))
-    
-    return {
-        **state,
-        "prediction_statement": result["prediction_statement"],
-        "verification_date": result["verification_date"],
-        "date_reasoning": result["date_reasoning"]
-    }
-
-def categorizer_node_function(state: PredictionGraphState) -> PredictionGraphState:
-    """Categorizer node: Determine verifiability category"""
-    prompt = f"""
-    PREDICTION: {state['prediction_statement']}
-    VERIFICATION DATE: {state['verification_date']}
-    
-    Categorize this prediction's verifiability.
+    Tries multiple strategies:
+    1. Direct JSON parse (if text is already clean JSON)
+    2. Extract from ```json ... ``` markdown blocks
+    3. Extract from ``` ... ``` code blocks
+    4. Find JSON object/array in text
     """
+    import re
     
-    response = categorizer_agent(prompt)
-    result = json.loads(str(response))
+    text = text.strip()
     
-    return {
-        **state,
-        "verifiable_category": result["verifiable_category"],
-        "category_reasoning": result["category_reasoning"]
-    }
-
-def verification_builder_node_function(state: PredictionGraphState) -> PredictionGraphState:
-    """Verification Builder node: Construct verification method"""
-    prompt = f"""
-    PREDICTION: {state['prediction_statement']}
-    CATEGORY: {state['verifiable_category']}
-    VERIFICATION DATE: {state['verification_date']}
+    # Strategy 1: Direct parse
+    if text.startswith('{') or text.startswith('['):
+        return text
     
-    Build a detailed verification method.
-    """
+    # Strategy 2: Extract from ```json ... ```
+    json_block_match = re.search(r'```json\s*\n(.*?)\n```', text, re.DOTALL)
+    if json_block_match:
+        return json_block_match.group(1).strip()
     
-    response = verification_builder_agent(prompt)
-    result = json.loads(str(response))
+    # Strategy 3: Extract from ``` ... ```
+    code_block_match = re.search(r'```\s*\n(.*?)\n```', text, re.DOTALL)
+    if code_block_match:
+        potential_json = code_block_match.group(1).strip()
+        if potential_json.startswith('{') or potential_json.startswith('['):
+            return potential_json
     
-    return {
-        **state,
-        "verification_method": result["verification_method"]
-    }
-
-def review_node_function(state: PredictionGraphState) -> PredictionGraphState:
-    """Review node: Identify improvable sections"""
-    prompt = f"""
-    PREDICTION RESPONSE:
-    {json.dumps({
-        "prediction_statement": state["prediction_statement"],
-        "verification_date": state["verification_date"],
-        "verifiable_category": state["verifiable_category"],
-        "verification_method": state["verification_method"]
-    }, indent=2)}
+    # Strategy 4: Find JSON object
+    json_obj_match = re.search(r'\{.*\}', text, re.DOTALL)
+    if json_obj_match:
+        return json_obj_match.group(0)
     
-    Identify sections that could be improved with more user information.
-    """
+    # Strategy 5: Find JSON array
+    json_arr_match = re.search(r'\[.*\]', text, re.DOTALL)
+    if json_arr_match:
+        return json_arr_match.group(0)
     
-    response = review_agent(prompt)
-    result = json.loads(str(response))
-    
-    return {
-        **state,
-        "reviewable_sections": result.get("reviewable_sections", []),
-        "initial_status": "pending"
-    }
+    return text
 ```
+
+**Why Plain Agents Instead of Custom Nodes**:
+
+After consulting official Strands documentation, we discovered:
+- **Custom nodes (MultiAgentBase) are for deterministic business logic** - validation, calculations, rules
+- **Plain Agent nodes are for AI workflows** - including JSON workflows
+- **The Graph handles input propagation automatically** - no manual state management needed
+- **Parse results after execution** - simpler and more reliable than parsing during execution
+
+Our use case (JSON workflow with AI agents) is exactly what plain Agent nodes are designed for.
 
 ### Callback Handler Implementation
 
@@ -497,7 +525,11 @@ class ReviewableSection:
     reasoning: str                      # Why improvable
 ```
 
-### Graph State Model
+### Graph State Model (Future Enhancement)
+
+**Note**: The current 3-agent implementation does not use a formal graph state TypedDict. The Graph automatically propagates outputs between agents as text, and we parse JSON after execution.
+
+For future enhancements with the Review Agent, a formal state model may be beneficial:
 
 ```python
 class PredictionGraphState(TypedDict):
@@ -519,7 +551,7 @@ class PredictionGraphState(TypedDict):
     # Verification Builder outputs
     verification_method: dict
     
-    # Review outputs
+    # Review outputs (future)
     reviewable_sections: list
     
     # Metadata
@@ -757,6 +789,28 @@ except Exception as e:
    - Action: Log and continue (never crash agent)
 
 ## Testing Strategy
+
+### Lessons Learned from Implementation
+
+**Critical Insight**: Always consult official Strands documentation before implementing patterns. The implementation went through multiple iterations before discovering the correct approach:
+
+1. **Initial Approach**: Attempted custom nodes with manual state management
+2. **Problem**: Multiple API mismatches and complexity
+3. **Solution**: Consulted official Strands Graph documentation
+4. **Discovery**: Plain Agent nodes are the correct pattern for JSON workflows
+5. **Result**: Simpler, cleaner implementation that works correctly
+
+**Key Takeaways**:
+- The Graph automatically propagates outputs - no manual state management needed
+- Custom nodes (MultiAgentBase) are for deterministic business logic, not AI workflows
+- Parse JSON after graph execution, not during
+- `invocation_state` is for shared context (DB connections, user IDs), not for passing data
+- Trust Strands to handle the complexity - don't reinvent the wheel
+
+**Documentation References**:
+- Graph User Guide: https://strandsagents.com/latest/documentation/docs/user-guide/concepts/multi-agent/graph/
+- Graph API Reference: https://strandsagents.com/latest/documentation/docs/api-reference/python/multiagent/graph/
+- Input Propagation: https://strandsagents.com/latest/documentation/docs/user-guide/concepts/multi-agent/graph/#input-propagation
 
 ### Dual Testing Approach
 

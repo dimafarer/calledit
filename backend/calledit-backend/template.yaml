@@ -310,7 +310,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: handlers/strands_make_call/
-      Handler: strands_make_call_stream.lambda_handler
+      Handler: strands_make_call_graph.lambda_handler  # Updated to use new 3-agent graph handler
       Runtime: python3.12
       Timeout: 300  # 5 minutes
       MemorySize: 512

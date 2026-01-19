@@ -40,16 +40,27 @@ def parse_relative_date(date_string: str, timezone: str = "UTC") -> str:
         >>> parse_relative_date("3:00pm today", "America/New_York")
         "2025-01-16T20:00:00Z"  # 3pm EST = 8pm UTC
     """
+    # Validate timezone first
+    validated_timezone = timezone
     try:
         tz = pytz.timezone(timezone)
     except pytz.exceptions.UnknownTimeZoneError:
         logger.warning(f"Unknown timezone '{timezone}', falling back to UTC")
+        validated_timezone = "UTC"
         tz = pytz.UTC
     
-    # Parse with timezone awareness
+    # Get current time in the validated timezone for relative base
+    now_in_tz = datetime.now(tz)
+    
+    # Parse with timezone awareness and relative base
     parsed_date = dateparser.parse(
         date_string, 
-        settings={'TIMEZONE': timezone, 'RETURN_AS_TIMEZONE_AWARE': True}
+        settings={
+            'TIMEZONE': validated_timezone,
+            'RETURN_AS_TIMEZONE_AWARE': True,
+            'RELATIVE_BASE': now_in_tz.replace(tzinfo=None),
+            'PREFER_DATES_FROM': 'future'
+        }
     )
     
     if parsed_date:
@@ -59,7 +70,7 @@ def parse_relative_date(date_string: str, timezone: str = "UTC") -> str:
     else:
         # Default to 30 days in the future if parsing fails
         logger.warning(f"Could not parse '{date_string}', defaulting to 30 days from now")
-        default_date = datetime.now(tz) + timedelta(days=30)
+        default_date = now_in_tz + timedelta(days=30)
         return default_date.astimezone(pytz.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
@@ -93,22 +104,23 @@ def create_parser_agent() -> Agent:
     Create the Parser Agent with explicit configuration.
     
     Following Strands best practices:
-    - Explicit agent name for debugging
-    - Explicit model selection
+    - Explicit model selection (Bedrock model ID)
     - Focused system prompt
     - Appropriate tools (current_time, parse_relative_date)
+    
+    Note: Strands Agent API does not accept 'name' parameter.
+    Use model parameter with full Bedrock model ID.
     
     Returns:
         Configured Parser Agent
     """
     agent = Agent(
-        name="parser_agent",
-        model="claude-3-5-sonnet-20241022",
+        model="anthropic.claude-3-5-sonnet-20241022-v2:0",
         tools=[current_time, parse_relative_date],
         system_prompt=PARSER_SYSTEM_PROMPT
     )
     
-    logger.info("Parser Agent created with explicit configuration")
+    logger.info("Parser Agent created with explicit model configuration")
     return agent
 
 

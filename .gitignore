@@ -53,6 +53,9 @@ venv/
 .python-version
 venvci/
 
+# Hypothesis (property-based testing)
+.hypothesis/
+
 # AWS credentials and configuration
 .aws/
 .aws-sam/
