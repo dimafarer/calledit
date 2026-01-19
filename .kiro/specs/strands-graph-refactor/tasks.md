@@ -380,6 +380,14 @@ The following tasks are planned for future implementation after the 3-agent grap
     - Verify custom_node imports are removed
     - _Requirements: 6.1, 6.2, 6.3_
     - **COMPLETED**: All production files verified clean of legacy references
+  
+  - [x] 16.5 Delete legacy monolith agent files (2025-01-19)
+    - Remove strands_make_call.py (original monolith agent)
+    - Remove strands_make_call_stream.py (monolith with streaming)
+    - Verify no imports reference these files
+    - Run all 18 integration tests to verify no regressions
+    - **COMPLETED**: Both files deleted, all tests passing
+    - **DOCUMENTATION**: See MONOLITH_CLEANUP_COMPLETE.md
 
 - [x] 17. Verify backward compatibility
   - **COMPATIBILITY ANALYSIS COMPLETE**: See `BACKWARD_COMPATIBILITY_ANALYSIS.md`
