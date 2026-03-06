@@ -11,8 +11,15 @@ Following Strands best practices:
 - No tools needed (pure reasoning)
 """
 
+# NOTE: categorizer_node_function() was removed in v2 cleanup (Spec 1).
+# It was leftover from a custom-node architecture where each agent had a
+# node function that manually managed graph state. The graph now uses
+# create_categorizer_agent() with the plain Agent pattern instead, where
+# Strands Graph handles input propagation between nodes automatically.
+# The `json` import was also removed — it was only used by the node function.
+# See: .kiro/specs/v2-cleanup-foundation/design.md, Component 1
+
 import logging
-import json
 from strands import Agent
 
 logger = logging.getLogger(__name__)
@@ -27,6 +34,14 @@ VALID_CATEGORIES = {
     "human_verifiable_only"
 }
 
+
+# PROMPT HARDENING NOTE: The "Return ONLY the raw JSON object" instruction is
+# critical. Without it, Claude models often wrap JSON in ```json ``` markdown
+# blocks, which breaks direct json.loads() parsing. The explicit negative
+# instructions ("Do not wrap", "Do not include") work better than implicit
+# positive ones ("Return JSON:"). This was the root cause of the 120-line
+# extract_json_from_text() regex helper — fixed at the source now.
+# See: .kiro/specs/v2-cleanup-foundation/design.md, Component 3, Step 1
 
 # Categorizer Agent System Prompt (focused, ~30 lines)
 CATEGORIZER_SYSTEM_PROMPT = """You are a verifiability categorizer. Classify predictions into exactly one category:
@@ -48,7 +63,8 @@ CATEGORIZER_SYSTEM_PROMPT = """You are a verifiability categorizer. Classify pre
 
 IMPORTANT: Choose the MOST SPECIFIC category. If it can be verified with simpler tools, use that category.
 
-Return JSON:
+Return ONLY the raw JSON object. Do not wrap in markdown code blocks. Do not include any text before or after the JSON.
+
 {
     "verifiable_category": "one of 5 categories above",
     "category_reasoning": "clear explanation of why you chose this category"
@@ -68,8 +84,13 @@ def create_categorizer_agent() -> Agent:
     Returns:
         Configured Categorizer Agent
     """
+    # Model: Claude Sonnet 4 (upgraded from 3.5 Sonnet v2 in Spec 1)
+    # Why Sonnet 4: Better instruction following (critical for clean JSON output),
+    # same Sonnet tier cost/latency, current Strands SDK default.
+    # Why us. prefix: Cross-region inference — works in all US regions.
+    # See: .kiro/specs/v2-cleanup-foundation/design.md, Component 3, Step 0
     agent = Agent(
-        model="anthropic.claude-3-5-sonnet-20241022-v2:0",
+        model="us.anthropic.claude-sonnet-4-20250514-v1:0",
         system_prompt=CATEGORIZER_SYSTEM_PROMPT
     )
     
@@ -77,75 +98,3 @@ def create_categorizer_agent() -> Agent:
     return agent
 
 
-def categorizer_node_function(state: dict) -> dict:
-    """
-    Categorizer node function for the prediction verification graph.
-    
-    This function follows the Strands graph node pattern:
-    1. Receive state from previous node (Parser)
-    2. Build prompt from state
-    3. Invoke agent
-    4. Parse response (single json.loads call)
-    5. Validate category
-    6. Update and return state
-    
-    Args:
-        state: Graph state containing prediction_statement, verification_date
-        
-    Returns:
-        Updated state with verifiable_category, category_reasoning
-        
-    Raises:
-        Exception: If agent invocation or JSON parsing fails
-    """
-    # Build prompt from state
-    prompt = f"""PREDICTION: {state['prediction_statement']}
-VERIFICATION DATE: {state['verification_date']}
-
-Categorize this prediction's verifiability.
-"""
-    
-    # Create and invoke agent
-    categorizer_agent = create_categorizer_agent()
-    
-    try:
-        response = categorizer_agent(prompt)
-        
-        # Parse response (single json.loads call - Strands best practice)
-        result = json.loads(str(response))
-        
-        # Validate category is in valid set
-        category = result.get("verifiable_category", "human_verifiable_only")
-        if category not in VALID_CATEGORIES:
-            logger.warning(f"Invalid category '{category}', defaulting to human_verifiable_only")
-            category = "human_verifiable_only"
-            result["category_reasoning"] = f"Invalid category returned, defaulted to human_verifiable_only. Original: {result.get('category_reasoning', 'N/A')}"
-        
-        logger.info(f"Categorizer Agent classified as: {category}")
-        logger.debug(f"Category reasoning: {result.get('category_reasoning', 'N/A')}")
-        
-        # Update and return state
-        return {
-            **state,
-            "verifiable_category": category,
-            "category_reasoning": result.get("category_reasoning", "Category determined by agent")
-        }
-        
-    except json.JSONDecodeError as e:
-        logger.error(f"JSON parsing failed: {str(e)}")
-        # Simple fallback - Strands best practice
-        return {
-            **state,
-            "verifiable_category": "human_verifiable_only",
-            "category_reasoning": "Fallback: Could not parse agent response",
-            "error": f"Categorizer JSON decode error: {str(e)}"
-        }
-    except Exception as e:
-        logger.error(f"Categorizer Agent failed: {str(e)}", exc_info=True)
-        # Simple fallback
-        return {
-            **state,
-            "verifiable_category": "human_verifiable_only",
-            "category_reasoning": "Fallback: Agent invocation failed",
-            "error": f"Categorizer Agent error: {str(e)}"
-        }

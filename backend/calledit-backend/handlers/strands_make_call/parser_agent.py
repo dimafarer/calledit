@@ -11,6 +11,14 @@ Following Strands best practices:
 - Uses tools for date parsing
 """
 
+# NOTE: parser_node_function() was removed in v2 cleanup (Spec 1).
+# It was leftover from a custom-node architecture where each agent had a
+# node function that manually managed graph state (receive state → build
+# prompt → invoke agent → parse JSON → update state). The graph now uses
+# create_parser_agent() with the plain Agent pattern instead, where Strands
+# Graph handles input propagation between nodes automatically.
+# See: .kiro/specs/v2-cleanup-foundation/design.md, Component 1
+
 import logging
 from datetime import datetime, timedelta
 import dateparser
@@ -74,6 +82,14 @@ def parse_relative_date(date_string: str, timezone: str = "UTC") -> str:
         return default_date.astimezone(pytz.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+# PROMPT HARDENING NOTE: The "Return ONLY the raw JSON object" instruction is
+# critical. Without it, Claude models often wrap JSON in ```json ``` markdown
+# blocks, which breaks direct json.loads() parsing. The explicit negative
+# instructions ("Do not wrap", "Do not include") work better than implicit
+# positive ones ("Return JSON:"). This was the root cause of the 120-line
+# extract_json_from_text() regex helper — fixed at the source now.
+# See: .kiro/specs/v2-cleanup-foundation/design.md, Component 3, Step 1
+
 # Parser Agent System Prompt (focused, ~25 lines)
 PARSER_SYSTEM_PROMPT = """You are a prediction parser. Your task:
 1. Extract the user's EXACT prediction statement (no modifications)
@@ -90,7 +106,8 @@ TIME CONVERSIONS:
 
 IMPORTANT: Preserve the user's exact prediction text. Do not rephrase or add details.
 
-Return JSON:
+Return ONLY the raw JSON object. Do not wrap in markdown code blocks. Do not include any text before or after the JSON.
+
 {
     "prediction_statement": "exact user text",
     "verification_date": "YYYY-MM-DD HH:MM:SS",
@@ -114,8 +131,13 @@ def create_parser_agent() -> Agent:
     Returns:
         Configured Parser Agent
     """
+    # Model: Claude Sonnet 4 (upgraded from 3.5 Sonnet v2 in Spec 1)
+    # Why Sonnet 4: Better instruction following (critical for clean JSON output),
+    # same Sonnet tier cost/latency, current Strands SDK default.
+    # Why us. prefix: Cross-region inference — works in all US regions.
+    # See: .kiro/specs/v2-cleanup-foundation/design.md, Component 3, Step 0
     agent = Agent(
-        model="anthropic.claude-3-5-sonnet-20241022-v2:0",
+        model="us.anthropic.claude-sonnet-4-20250514-v1:0",
         tools=[current_time, parse_relative_date],
         system_prompt=PARSER_SYSTEM_PROMPT
     )
@@ -125,73 +147,3 @@ def create_parser_agent() -> Agent:
 
 
 
-def parser_node_function(state: dict) -> dict:
-    """
-    Parser node function for the prediction verification graph.
-    
-    This function follows the Strands graph node pattern:
-    1. Receive state from previous node (or initial state)
-    2. Build prompt from state
-    3. Invoke agent
-    4. Parse response (single json.loads call)
-    5. Update and return state
-    
-    Args:
-        state: Graph state containing user_prompt, user_timezone, current_datetime_local
-        
-    Returns:
-        Updated state with prediction_statement, verification_date, date_reasoning
-        
-    Raises:
-        Exception: If agent invocation or JSON parsing fails
-    """
-    import json
-    
-    # Build prompt from state
-    prompt = f"""PREDICTION: {state['user_prompt']}
-CURRENT DATE: {state['current_datetime_local']}
-TIMEZONE: {state['user_timezone']}
-
-Extract the prediction and parse the verification date.
-"""
-    
-    # Create and invoke agent
-    parser_agent = create_parser_agent()
-    
-    try:
-        response = parser_agent(prompt)
-        
-        # Parse response (single json.loads call - Strands best practice)
-        result = json.loads(str(response))
-        
-        logger.info(f"Parser Agent successfully processed prediction")
-        logger.debug(f"Parsed result: {json.dumps(result, indent=2)}")
-        
-        # Update and return state
-        return {
-            **state,
-            "prediction_statement": result["prediction_statement"],
-            "verification_date": result["verification_date"],
-            "date_reasoning": result["date_reasoning"]
-        }
-        
-    except json.JSONDecodeError as e:
-        logger.error(f"JSON parsing failed: {str(e)}")
-        # Simple fallback - Strands best practice
-        return {
-            **state,
-            "prediction_statement": state['user_prompt'],
-            "verification_date": state['current_datetime_local'],
-            "date_reasoning": "Fallback: Could not parse agent response",
-            "error": f"Parser JSON decode error: {str(e)}"
-        }
-    except Exception as e:
-        logger.error(f"Parser Agent failed: {str(e)}", exc_info=True)
-        # Simple fallback
-        return {
-            **state,
-            "prediction_statement": state['user_prompt'],
-            "verification_date": state['current_datetime_local'],
-            "date_reasoning": "Fallback: Agent invocation failed",
-            "error": f"Parser Agent error: {str(e)}"
-        }

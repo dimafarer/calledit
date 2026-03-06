@@ -1,235 +1,141 @@
-import sys
-import os
+"""
+Review Agent for Prediction Verification System
+
+This agent performs meta-analysis on a completed prediction response, identifying
+sections that could be improved with more user information.
+
+WHAT CHANGED (v2 Cleanup, Spec 1):
+The ReviewAgent was previously a class with three methods:
+  - review_prediction() — core review capability (kept, now via direct agent invocation)
+  - generate_improvement_questions() — HITL method (removed, replaced by graph re-trigger in Spec 2)
+  - regenerate_section() — HITL method (removed, replaced by graph re-trigger in Spec 2)
+
+It also imported from a deleted module:
+  - from error_handling import safe_agent_call, with_agent_fallback
+  That module (error_handling.py) was deleted in the January 2026 cleanup, so the
+  import would crash on load. The safe_agent_call wrapper is replaced by a simple
+  try/except in the Lambda handler — per Strands best practices, no custom wrapper
+  functions needed.
+
+WHY FACTORY FUNCTION OVER CLASS:
+  - Consistency: The other 3 agents (parser, categorizer, verification_builder) all
+    use create_*_agent() factory functions. Having ReviewAgent as a class breaks the
+    pattern and adds cognitive load when reading the codebase.
+  - Simplicity: The class had one useful method (review_prediction). A class with one
+    method is just a function with extra steps. The factory function returns a Strands
+    Agent that you invoke directly — no .review_prediction() indirection.
+  - Spec 2 readiness: Moving ReviewAgent into the graph as a node is Spec 2's job.
+    Factory functions are what GraphBuilder.add_node() expects. Making it a factory
+    now means Spec 2 can add it trivially.
+
+HOW THIS MATCHES THE OTHER AGENTS:
+  - create_parser_agent() in parser_agent.py
+  - create_categorizer_agent() in categorizer_agent.py
+  - create_verification_builder_agent() in verification_builder_agent.py
+  All follow the same pattern: module-level SYSTEM_PROMPT constant + factory function
+  that returns a configured Agent. This file now follows that same pattern.
+
+Following Strands best practices:
+- Single responsibility (review/meta-analysis only)
+- Focused system prompt
+- Explicit model selection
+- Factory function pattern for agent creation
+"""
+
+import json
 import logging
 from strands import Agent
-import json
-
-from error_handling import safe_agent_call, with_agent_fallback
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-class ReviewAgent:
-    """
-    Strands agent that implements the Verifiable Prediction Structuring System (VPSS).
-    Transforms natural language predictions into structured JSON with all fields needed for verification.
-    """
-    
-    def __init__(self, callback_handler=None):
-        self.callback_handler = callback_handler
-        self.agent = Agent(
-            callback_handler=callback_handler,
-            system_prompt="""You are a prediction review expert. Your task is to:
-            1. Analyze a completed prediction response
-            2. Identify sections that could be improved with more user information
-            3. Generate specific questions that would help improve each section
-            4. Determine if improvements could change verifiability category
-            
-            For each reviewable section, consider:
-            - Could more specificity improve verification accuracy?
-            - Would additional context change the verifiability category?
-            - What specific user information would be most helpful?
-            
-            OUTPUT FORMAT:
-            Always return a JSON object with:
-            {
-                "reviewable_sections": [
-                    {
-                        "section": "field_name",
-                        "improvable": true/false,
-                        "questions": ["specific question 1", "specific question 2"],
-                        "reasoning": "why this section could be improved"
-                    }
-                ]
-            }
-            """
-        )
-    
-    def review_prediction(self, prediction_response):
-        """
-        Review a prediction response and identify improvable sections.
-        Part of VPSS - ensures all fields are complete for automated verification.
-        """
-        review_prompt = f"""
-        PREDICTION RESPONSE TO REVIEW:
-        {json.dumps(prediction_response, indent=2)}
-        
-        Analyze each section and determine what could be improved with more user information.
-        Focus on sections where additional context could:
-        1. Make verification more precise
-        2. Change verifiability category (e.g., human → tool verifiable)
-        3. Improve verification method accuracy
-        
-        RETURN ONLY VALID JSON - NO OTHER TEXT:
-        """
-        
-        # Fallback response for review failures
-        fallback_response = {
-            "reviewable_sections": [],
-            "overall_assessment": "Unable to review due to system error",
-            "improvement_potential": "low"
+
+# PROMPT HARDENING NOTE: The "Return ONLY the raw JSON object" instruction is
+# critical. Without it, Claude models often wrap JSON in ```json ``` markdown
+# blocks, which breaks direct json.loads() parsing. The explicit negative
+# instructions ("Do not wrap", "Do not include") work better than implicit
+# positive ones ("Return JSON:"). This was the root cause of the 120-line
+# extract_json_from_text() regex helper — fixed at the source now.
+# See: .kiro/specs/v2-cleanup-foundation/design.md, Component 3, Step 1
+
+# Review Agent System Prompt — focused on meta-analysis of prediction responses.
+#
+# The prompt instructs the agent to analyze a completed prediction and identify
+# sections where additional user information could improve the result. This is
+# the same core capability that ReviewAgent.review_prediction() provided, but
+# now expressed as a system prompt for direct agent invocation.
+#
+# The explicit JSON output instructions ("Return ONLY the raw JSON object...")
+# are a prompt hardening technique. Claude models tend to wrap JSON in markdown
+# code blocks (```json ... ```) when the prompt just says "Return JSON:". The
+# explicit negative instructions prevent this. Full prompt hardening happens in
+# task 5.2, but we include the instruction here since this is a fresh file.
+REVIEW_SYSTEM_PROMPT = """You are a prediction review expert. Your task is to perform meta-analysis on a completed prediction response.
+
+ANALYSIS STEPS:
+1. Analyze each section of the prediction response
+2. Identify sections that could be improved with more user information
+3. For each section, determine if additional context could:
+   - Make verification more precise
+   - Change the verifiability category (e.g., human-only → tool-verifiable)
+   - Improve verification method accuracy
+4. Generate specific, actionable questions for improvable sections
+
+EVALUATION CRITERIA:
+- Could more specificity improve verification accuracy?
+- Would additional context change the verifiability category?
+- What specific user information would be most helpful?
+
+Return ONLY the raw JSON object. Do not wrap in markdown code blocks. Do not include any text before or after the JSON.
+
+{
+    "reviewable_sections": [
+        {
+            "section": "field_name",
+            "improvable": true,
+            "questions": ["specific question 1", "specific question 2"],
+            "reasoning": "why this section could be improved"
         }
-        
-        try:
-            # Use safe agent call with fallback
-            response = safe_agent_call(self.agent, review_prompt, fallback_response)
-            
-            # Handle both dict and string responses
-            if isinstance(response, dict):
-                return response
-                
-            response_str = str(response)
-            
-            try:
-                # First try direct JSON parsing
-                return json.loads(response_str)
-            except json.JSONDecodeError:
-                # Try to extract JSON from markdown code blocks or mixed content
-                import re
-                
-                # Look for JSON in code blocks
-                json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', response_str)
-                if json_match:
-                    try:
-                        return json.loads(json_match.group(1))
-                    except json.JSONDecodeError:
-                        pass
-                
-                # Look for JSON object anywhere in the response
-                json_pattern = r'\{[\s\S]*"reviewable_sections"[\s\S]*\}'
-                json_match = re.search(json_pattern, response_str)
-                if json_match:
-                    try:
-                        return json.loads(json_match.group(0))
-                    except json.JSONDecodeError:
-                        pass
-                
-                print(f"Failed to parse review response: {response_str[:500]}...")
-                # Fallback if JSON parsing fails
-                return {"reviewable_sections": []}
-                
-        except Exception as e:
-            print(f"Review agent error: {str(e)}")
-            return fallback_response
-    
-    def generate_improvement_questions(self, section_name, current_value):
-        """
-        Generate specific questions for a section that needs improvement.
-        Part of VPSS - guides users to provide information needed for verification.
-        """
-        questions_prompt = f"""
-        SECTION: {section_name}
-        CURRENT VALUE: {current_value}
-        
-        Generate 2-3 specific questions that would help improve this section.
-        Questions should be:
-        - Specific and actionable
-        - Focused on information that would improve verification
-        - Clear for users to understand and answer
-        
-        Return as JSON: {{"questions": ["question1", "question2", "question3"]}}
-        """
-        
-        response = self.agent(questions_prompt)
-        
-        try:
-            result = json.loads(str(response))
-            return result.get("questions", [])
-        except json.JSONDecodeError:
-            return [f"How can we make the {section_name} more specific?"]
-    
-    def regenerate_section(self, section_name, original_value, user_input, full_context):
-        """
-        Regenerate a specific section with user input.
-        For prediction_statement changes, also updates related fields.
-        """
-        if section_name == "prediction_statement":
-            # When prediction statement changes, regenerate related fields too
-            regeneration_prompt = f"""
-            ORIGINAL PREDICTION: {original_value}
-            USER CLARIFICATIONS: {user_input}
-            CONTEXT: {json.dumps(full_context, indent=2)}
-            
-            The user has clarified their prediction. If they specified a different timeframe (like "tomorrow" when original assumed "today"), use their timeframe. Create improved prediction with their exact details.
-            
-            RETURN JSON:
-            {{
-                "prediction_statement": "improved prediction with user's location and timeframe",
-                "verification_date": "2025-08-05T23:59:59Z if user said tomorrow",
-                "verification_method": {{
-                    "source": ["location-specific weather APIs"],
-                    "criteria": ["rain at specified location and time"],
-                    "steps": ["check weather for user's location and timeframe"]
-                }}
-            }}
-            """
-            
-            response = self.agent(regeneration_prompt)
-            response_str = str(response).strip()
-            
-            try:
-                # Try to parse as JSON for multiple field updates
-                import re
-                json_match = re.search(r'\{[\s\S]*\}', response_str)
-                if json_match:
-                    parsed = json.loads(json_match.group(0))
-                    # Filter out reviewable_sections if present - we want actual updates
-                    if 'reviewable_sections' in parsed:
-                        del parsed['reviewable_sections']
-                    return parsed
-            except json.JSONDecodeError:
-                pass
-            
-            # Fallback to single field update
-            return response_str
-        elif section_name == "verification_method":
-            # Handle verification_method specifically to return proper object structure
-            regeneration_prompt = f"""
-            VERIFICATION METHOD TO IMPROVE: {original_value}
-            USER INPUT: {user_input}
-            FULL CONTEXT: {json.dumps(full_context, indent=2)}
-            
-            Improve the verification method incorporating the user's additional information.
-            
-            RETURN ONLY VALID JSON:
-            {{
-                "source": ["improved sources based on user input"],
-                "criteria": ["improved criteria based on user input"],
-                "steps": ["improved steps based on user input"]
-            }}
-            """
-            
-            response = self.agent(regeneration_prompt)
-            response_str = str(response).strip()
-            
-            try:
-                # Try to parse as JSON object
-                import re
-                json_match = re.search(r'\{[\s\S]*\}', response_str)
-                if json_match:
-                    return json.loads(json_match.group(0))
-            except json.JSONDecodeError:
-                pass
-            
-            # Fallback to original structure if parsing fails
-            return {
-                "source": [response_str],
-                "criteria": ["Updated based on user input"],
-                "steps": ["Updated verification steps"]
-            }
-        else:
-            # For other sections, use original single-field logic
-            regeneration_prompt = f"""
-            SECTION TO IMPROVE: {section_name}
-            ORIGINAL VALUE: {original_value}
-            USER INPUT: {user_input}
-            FULL CONTEXT: {json.dumps(full_context, indent=2)}
-            
-            Regenerate the {section_name} incorporating the user's additional information.
-            Maintain consistency with other sections and ensure the improvement is meaningful.
-            
-            Return only the improved value for this section.
-            """
-            
-            response = self.agent(regeneration_prompt)
-            return str(response).strip()
+    ]
+}
+"""
+
+
+def create_review_agent(callback_handler=None):
+    """
+    Create the Review Agent with explicit configuration.
+
+    WHY callback_handler IS A PARAMETER:
+    The Lambda handler needs to pass a per-invocation streaming callback so that
+    review progress is streamed back to the WebSocket client. Each Lambda invocation
+    creates a new callback tied to a specific connection_id, so we can't use a
+    module-level agent singleton — we need a fresh agent per invocation with the
+    right callback wired in.
+
+    This matches how the other 3 agents handle callbacks: the graph's
+    execute_prediction_graph() creates agents with callback_handler passed through.
+
+    NOTE: Moving this agent into the graph as a node is Spec 2's job. This spec
+    just makes it follow the same factory function pattern so Spec 2 can add it
+    to GraphBuilder.add_node() trivially.
+
+    Args:
+        callback_handler: Optional Strands callback handler for streaming events.
+                         Pass None for non-streaming usage (e.g., testing).
+
+    Returns:
+        Configured Review Agent (strands.Agent instance)
+    """
+    # Model: Claude Sonnet 4 (upgraded from 3.5 Sonnet v2 in Spec 1)
+    # Why Sonnet 4: Better instruction following (critical for clean JSON output),
+    # same Sonnet tier cost/latency, current Strands SDK default.
+    # Why us. prefix: Cross-region inference — works in all US regions.
+    # See: .kiro/specs/v2-cleanup-foundation/design.md, Component 3, Step 0
+    agent = Agent(
+        model="us.anthropic.claude-sonnet-4-20250514-v1:0",
+        system_prompt=REVIEW_SYSTEM_PROMPT,
+        callback_handler=callback_handler
+    )
+
+    logger.info("Review Agent created with explicit model configuration")
+    return agent

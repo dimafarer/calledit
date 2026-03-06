@@ -184,31 +184,79 @@ def lambda_handler(event, context):
             callback_handler=callback_handler
         )
         
-        # Convert verification_date from local to UTC if needed
+        # Convert verification_date from local to UTC if needed.
+        # This is metadata processing — the graph returns a raw local datetime
+        # string from the Parser agent, and we convert it to UTC here because
+        # the wire format sends UTC to the frontend.
         verification_date_utc = final_state.get("verification_date", "")
         if verification_date_utc and not verification_date_utc.endswith("Z"):
-            # Convert local time to UTC
             converted = convert_local_to_utc(verification_date_utc, user_timezone)
             if converted:
                 verification_date_utc = converted
         
-        # Build response in expected format (backward compatible)
+        # ---------------------------------------------------------------
+        # RESPONSE ASSEMBLY — Single location for building the WebSocket
+        # response. This is the ONLY place that:
+        # 1. Applies fallback defaults for missing agent outputs
+        # 2. Adds metadata fields (prediction_date, timezone, etc.)
+        # 3. Builds the call_response message
+        #
+        # execute_prediction_graph() returns ONLY raw agent outputs:
+        # prediction_statement, verification_date, date_reasoning,
+        # verifiable_category, category_reasoning, verification_method
+        # (plus optionally "error" if graph execution failed)
+        #
+        # WHY SINGLE LOCATION: Previously, fallbacks and metadata were
+        # split across execute_prediction_graph() and lambda_handler().
+        # Debugging response format issues required tracing through both
+        # files. Now there's exactly one place to look.
+        #
+        # WHY `or` INSTEAD OF .get(key, default):
+        # Using `or` handles BOTH missing keys AND empty string values.
+        # The agents might return "" for a field on error, and .get()
+        # with a default only catches missing keys — not empty strings.
+        # Example: final_state.get("prediction_statement", prompt)
+        #   → returns "" if key exists but value is empty
+        # Example: final_state.get("prediction_statement") or prompt
+        #   → returns prompt if key is missing OR value is empty/falsy
+        #
+        # Field sources:
+        #   Agent outputs (with fallback defaults):
+        #   - prediction_statement: Parser agent (fallback: original user prompt)
+        #   - verification_date:    Parser agent → converted to UTC above
+        #                           (fallback: current UTC time)
+        #   - date_reasoning:       Parser agent (fallback: descriptive message)
+        #   - verifiable_category:  Categorizer agent (fallback: "human_verifiable_only")
+        #   - category_reasoning:   Categorizer agent (fallback: descriptive message)
+        #   - verification_method:  Verification Builder agent (fallback: manual method)
+        #
+        #   Metadata (added here, NOT by execute_prediction_graph):
+        #   - prediction_date:      Current UTC time (when prediction was made)
+        #   - timezone:             Always "UTC" (wire format convention)
+        #   - user_timezone:        From WebSocket request body
+        #   - local_prediction_date: Current time in user's local timezone
+        #   - initial_status:       Always "pending" (new predictions start pending)
+        # ---------------------------------------------------------------
+
+        # Build response with fallback defaults for any missing agent outputs
         response_data = {
-            "prediction_statement": final_state.get("prediction_statement", prompt),
-            "verification_date": verification_date_utc,
+            # Agent outputs (with fallback defaults)
+            "prediction_statement": final_state.get("prediction_statement") or prompt,
+            "verification_date": verification_date_utc or formatted_datetime_utc,
+            "date_reasoning": final_state.get("date_reasoning") or "No reasoning provided",
+            "verifiable_category": final_state.get("verifiable_category") or "human_verifiable_only",
+            "category_reasoning": final_state.get("category_reasoning") or "No reasoning provided",
+            "verification_method": final_state.get("verification_method") or {
+                "source": ["Manual verification"],
+                "criteria": ["Human judgment required"],
+                "steps": ["Manual review needed"]
+            },
+            # Metadata (added by Lambda handler, not by execute_prediction_graph)
             "prediction_date": formatted_datetime_utc,
             "timezone": "UTC",
             "user_timezone": user_timezone,
             "local_prediction_date": formatted_datetime_local,
-            "verifiable_category": final_state.get("verifiable_category", "human_verifiable_only"),
-            "category_reasoning": final_state.get("category_reasoning", "No reasoning provided"),
-            "verification_method": final_state.get("verification_method", {
-                "source": ["Manual verification"],
-                "criteria": ["Human judgment required"],
-                "steps": ["Manual review needed"]
-            }),
             "initial_status": "pending",
-            "date_reasoning": final_state.get("date_reasoning", "No reasoning provided")
         }
         
         # Check for errors in graph execution
