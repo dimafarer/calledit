@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface ImprovementModalProps {
   isOpen: boolean;
@@ -19,6 +19,11 @@ const ImprovementModal: React.FC<ImprovementModalProps> = ({
 }) => {
   const [answers, setAnswers] = useState<string[]>(new Array(questions.length).fill(''));
 
+  // Reset answers when questions change (new round, different section)
+  useEffect(() => {
+    setAnswers(new Array(questions.length).fill(''));
+  }, [questions.length, isOpen]);
+
   if (!isOpen) return null;
 
   const handleAnswerChange = (index: number, value: string) => {
@@ -29,7 +34,7 @@ const ImprovementModal: React.FC<ImprovementModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const validAnswers = answers.filter(answer => answer.trim() !== '');
+    const validAnswers = answers.filter(answer => (answer || '').trim() !== '');
     if (validAnswers.length > 0) {
       onSubmit(answers);
       setAnswers(new Array(questions.length).fill(''));
