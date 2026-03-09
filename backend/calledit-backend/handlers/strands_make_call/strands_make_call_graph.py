@@ -42,6 +42,12 @@ from prediction_graph import (
 )
 from utils import get_current_datetime_in_timezones, convert_local_to_utc
 
+# SnapStart runtime hooks — must be imported at module level so the
+# @register_before_snapshot and @register_after_restore decorators
+# register during INIT (before the snapshot is taken). The hooks handle
+# graph validation on restore and logging for observability.
+import snapstart_hooks  # noqa: F401 — imported for side effects (hook registration)
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 

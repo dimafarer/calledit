@@ -20,6 +20,9 @@ logger = logging.getLogger(__name__)
 # Initialize AWS clients
 sns_client = boto3.client('sns')
 
+# SnapStart runtime hooks — refreshes sns_client after snapshot restore
+import snapstart_hooks  # noqa: F401
+
 # Environment variables
 SNS_TOPIC_ARN = os.environ.get('SNS_TOPIC_ARN', '')
 
