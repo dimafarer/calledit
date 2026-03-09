@@ -101,27 +101,25 @@ Return ONLY the raw JSON object. Do not wrap in markdown code blocks. Do not inc
 """
 
 
-def create_review_agent(callback_handler=None):
+# NOTE: callback_handler parameter removed in v2 (Spec 2).
+# In v1, ReviewAgent was invoked standalone and needed its own callback for
+# WebSocket streaming. In v2, ReviewAgent is a graph node — the graph's
+# stream_async handles event delivery. No per-agent callback needed.
+#
+# WHY NO REFINEMENT MODE FOR ReviewAgent:
+# ReviewAgent's job is to analyze the CURRENT pipeline output and identify
+# improvable sections. It doesn't have "previous output" to refine — it
+# always analyzes fresh. Each round produces a new set of reviewable sections
+# based on the current pipeline output.
+def create_review_agent() -> Agent:
     """
     Create the Review Agent with explicit configuration.
 
-    WHY callback_handler IS A PARAMETER:
-    The Lambda handler needs to pass a per-invocation streaming callback so that
-    review progress is streamed back to the WebSocket client. Each Lambda invocation
-    creates a new callback tied to a specific connection_id, so we can't use a
-    module-level agent singleton — we need a fresh agent per invocation with the
-    right callback wired in.
-
-    This matches how the other 3 agents handle callbacks: the graph's
-    execute_prediction_graph() creates agents with callback_handler passed through.
-
-    NOTE: Moving this agent into the graph as a node is Spec 2's job. This spec
-    just makes it follow the same factory function pattern so Spec 2 can add it
-    to GraphBuilder.add_node() trivially.
-
-    Args:
-        callback_handler: Optional Strands callback handler for streaming events.
-                         Pass None for non-streaming usage (e.g., testing).
+    Following Strands best practices:
+    - Explicit model selection (Bedrock model ID)
+    - Focused system prompt
+    - No tools (pure reasoning task)
+    - Factory function pattern for graph node creation
 
     Returns:
         Configured Review Agent (strands.Agent instance)
@@ -133,8 +131,7 @@ def create_review_agent(callback_handler=None):
     # See: .kiro/specs/v2-cleanup-foundation/design.md, Component 3, Step 0
     agent = Agent(
         model="us.anthropic.claude-sonnet-4-20250514-v1:0",
-        system_prompt=REVIEW_SYSTEM_PROMPT,
-        callback_handler=callback_handler
+        system_prompt=REVIEW_SYSTEM_PROMPT
     )
 
     logger.info("Review Agent created with explicit model configuration")

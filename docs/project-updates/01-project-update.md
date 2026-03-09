@@ -185,3 +185,108 @@ All 13 tasks executed successfully. Key milestones:
 - Stale SAM routes removed (`improve_section`, `improvement_answers`)
 
 Remaining: final `sam build && sam deploy` to push tasks 8, 10, 12 changes. Then Spec 1 is done and Spec 2 can begin.
+
+### Decision 7: Simplified graph topology — single edge, no conditional edges
+
+During Spec 2 design review, the user asked: "if we are working around Strands' default edge behavior, is there a more Strands way to do what we want?"
+
+After reading the full Strands Graph source code via the Kiro Power, we realized the conditional edge approach was overengineered. The pipeline is sequential (Parser → Categorizer → VB), so when VB completes, all three pipeline agents have already completed by definition. ReviewAgent only needs a single edge from `verification_builder` — no `all_dependencies_complete` conditional check needed.
+
+The "any one dependency" concern from the Strands docs only applies when you have multiple independent branches feeding into one node (e.g., three parallel workers → one aggregator). Our sequential pipeline doesn't have that problem.
+
+Updated Spec 2 Requirement 1 AC #3 and the design doc's graph construction code. The graph is now 4 simple edges, no conditions:
+- `parser → categorizer`
+- `categorizer → verification_builder`
+- `verification_builder → review`
+
+This is the idiomatic Strands "Sequential Pipeline with Parallel Branch" pattern.
+
+### Decision 8: Frontend-as-session is a feature, not a compromise
+
+During Spec 2 design discussion, we clarified how round state flows through the system:
+
+- The Strands graph handles the current pass (agents run, context propagates, results come back). Graph state is ephemeral — lives and dies with the Lambda invocation.
+- The frontend holds session state (round number, accumulated clarifications, latest agent outputs). On each `clarify` action, the frontend sends `current_state` back to the backend. The Lambda is stateless.
+- DynamoDB is the permanent record — only written when the user submits. Stores the final prediction, not the refinement history.
+
+The user correctly identified that frontend-as-session is actually a feature for this use case, not a scaling compromise:
+
+1. The data is the user's own prediction text being refined — nothing sensitive about it sitting in React state
+2. Realistically 1-2 clarification rounds max (user types prediction, sees structured output, maybe clarifies timezone or location, submits)
+3. A few KB of state at most — well within WebSocket message limits even at 10 rounds
+4. The user can see their full refinement history right in the UI
+5. Backend stays simple and stateless — no session table to manage or expire
+6. Any Lambda instance can handle any round (no sticky sessions needed)
+
+This contrasts with shopping cart / private data patterns where server-side session storage is needed for security. For a "human text → structured data" pipeline, the data is the user's input being progressively refined — frontend caching is the natural home for it.
+
+This is a deliberate architectural choice, not a shortcut. It would hold at production scale for this use case.
+
+## Spec 2 Execution Status — March 9, 2026
+
+Backend implementation complete. Frontend partially migrated but broken. Session ending due to context window limits.
+
+### What Was Completed
+- PredictionGraphState extended with v2 round tracking fields
+- All 4 agent prompts updated with refinement mode
+- prediction_graph.py rewritten: 4-node graph, stream_async, split parsing
+- Lambda handler rewritten: async execution, action routing, two-push delivery, state enrichment
+- ClarifyRoute added to SAM template
+- callService.ts updated for v2 protocol (prediction_ready, review_ready, sendClarification)
+- Backend deployed and confirmed working (prediction_ready + review_ready arrive correctly)
+
+### What's Broken — Frontend Issues
+
+The backend v2 changes work correctly (confirmed via console logs), but the frontend has issues:
+
+**Issue 1: No streaming text during agent processing**
+The backend sends `multiagent_node_stream` events containing agent text chunks, but the Lambda handler's `execute_and_deliver()` function forwards them as `{type: "text", content: ...}` via `send_ws()`. However, the `send_ws` helper uses `**extra` kwargs which become top-level fields — so the message is `{type: "text", content: "..."}` but the frontend's text handler expects `data.content` (nested under a `data` key). The `send_ws` function puts extra kwargs at the top level, not nested under `data`. This mismatch means the text handler receives `undefined` for `data.content`.
+
+Additionally, `stream_async` on the Graph may not forward individual agent text/tool events as `multiagent_node_stream` — it may only yield node-level events (start, stop, result). The Strands docs show `multiagent_node_stream` contains an `event` dict with the inner agent event, but it's unclear if text generation events are included or just tool events. This needs investigation.
+
+**Issue 2: Review sections display but improvement UI is disabled**
+We commented out the `ImprovementModal` component and removed `handleAnswers`. The v2 approach is free-text clarification via `sendClarification()`, but no UI exists for this yet. The review sections arrive (3 sections confirmed in console), but the user can't act on them.
+
+**Issue 3: Dead v1 code in frontend**
+- `reviewWebSocket.ts` — references old `review_complete` message type, not imported anywhere active
+- `predictionService.ts` — uses old v1 patterns, not used by active components
+- `ImprovementModal.tsx` — commented out, dead code
+- `useImprovementHistory.ts` hook — no longer imported
+- Various unused imports cleaned up but more may remain
+
+### What the Next Agent Should Do
+
+Create and execute a frontend cleanup spec (`.kiro/specs/v3-frontend-v2-protocol/`) that:
+
+1. **Fix streaming text**: Investigate whether `stream_async` on Graph forwards agent text events as `multiagent_node_stream`. If yes, fix the `send_ws` call format so text arrives as `{type: "text", data: {content: "..."}}` matching the frontend handler. If no, consider an alternative approach (e.g., agent-level callback handlers that send text directly, or accepting that v2 doesn't stream individual text chunks and only shows status messages).
+
+2. **Build clarification UI**: Replace the disabled ImprovementModal with a simple text input that calls `callService.sendClarification(userInput, currentState)`. The review sections should display as read-only context (showing what could be improved), and the user types a free-text clarification. This is simpler than the v1 per-section Q&A approach.
+
+3. **Clean up dead v1 code**: Delete `reviewWebSocket.ts`, `predictionService.ts`, `ImprovementModal.tsx`, `useImprovementHistory.ts`, and any other dead imports/references.
+
+4. **Verify LogCallButton works**: The `prediction_ready` data shape may differ from what `LogCallButton` expects (it wraps data in `{results: [parsedResponse]}`). Verify the field names match what the `/log-call` API endpoint expects.
+
+5. **Test end-to-end**: Make a prediction, see streaming text (if fixed), see structured result, see review sections, submit a clarification, see updated result, log the call.
+
+### Key Files for Next Agent
+
+Backend (working, don't change unless streaming fix requires it):
+- `backend/calledit-backend/handlers/strands_make_call/strands_make_call_graph.py` — Lambda handler with send_ws helper
+- `backend/calledit-backend/handlers/strands_make_call/prediction_graph.py` — Graph with stream_async
+
+Frontend (needs fixes):
+- `frontend/src/services/callService.ts` — v2 message handlers (partially working)
+- `frontend/src/services/websocket.ts` — WebSocket message routing (working)
+- `frontend/src/components/StreamingCall.tsx` — Main component (partially working)
+- `frontend/src/components/ReviewableSection.tsx` — Review display (working but no action)
+- `frontend/src/components/ImprovementModal.tsx` — Disabled, to be replaced with clarification UI
+- `frontend/src/hooks/useReviewState.ts` — Review state management (has v1 artifacts)
+- `frontend/src/services/reviewWebSocket.ts` — Dead v1 code
+- `frontend/src/services/predictionService.ts` — Dead v1 code
+
+### Git Status
+All backend changes need to be committed. Frontend changes need to be committed. Recommend committing current state before the frontend spec work begins.
+
+### Clarification on Streaming Text Issue
+
+The frontend streaming code (callService.ts text handler, StreamingCall.tsx onTextChunk, AnimatedText component) worked perfectly in v1 and is unchanged. The issue is purely backend — the v2 `stream_async` event forwarding doesn't send text chunks in the format the frontend expects. The fix is backend-only: either fix the `multiagent_node_stream` event extraction in `execute_and_deliver()`, or use per-agent callback handlers (like v1 did) to send text directly to the WebSocket. The frontend streaming display code should NOT be changed.

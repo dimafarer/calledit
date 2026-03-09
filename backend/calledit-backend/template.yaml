@@ -217,7 +217,21 @@ Resources:
   # These routes handled the HITL improvement loop (improve_section, improvement_answers actions)
   # which is replaced by full graph re-trigger in Spec 2. The corresponding Lambda permissions
   # (ImproveSectionFunctionPermission, ImprovementAnswersFunctionPermission) were also removed.
-  # The new ClarifyRoute will be added in Spec 2.
+
+  # v2: ClarifyRoute — maps the "clarify" WebSocket action to the same MakeCallStreamFunction.
+  # No new Lambda needed — the handler routes internally based on the action field.
+  # The clarify action triggers a full graph re-run with enriched state (round 2+).
+  ClarifyRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketApi
+      RouteKey: clarify
+      AuthorizationType: NONE
+      OperationName: ClarifyRoute
+      Target: !Join
+        - '/'
+        - - 'integrations'
+          - !Ref MakeCallStreamIntegration
 
   ConnectIntegration:
     Type: AWS::ApiGatewayV2::Integration
@@ -248,6 +262,7 @@ Resources:
       - ConnectRoute
       - DisconnectRoute
       - MakeCallStreamRoute
+      - ClarifyRoute
     Properties:
       ApiId: !Ref WebSocketApi
 

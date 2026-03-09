@@ -43,6 +43,23 @@ VALID_CATEGORIES = {
 # extract_json_from_text() regex helper — fixed at the source now.
 # See: .kiro/specs/v2-cleanup-foundation/design.md, Component 3, Step 1
 
+# REFINEMENT MODE NOTE: The refinement block at the end of this prompt is always
+# present but only activates when the user prompt includes previous output and
+# clarifications (round > 1). In round 1, agents ignore it because no previous
+# output is provided. This is a "static prompt with conditional activation" pattern.
+#
+# WHY NOT DYNAMIC PROMPT CONSTRUCTION:
+# Strands agents are created once as module-level singletons (for graph reuse
+# across warm Lambda invocations). Dynamic prompt construction would require
+# creating new agents per invocation, losing the singleton benefit. The refinement
+# block is ~4 lines and doesn't bloat the prompt for round 1.
+#
+# HOW PREVIOUS OUTPUT REACHES AGENTS:
+# Via the user prompt (initial_prompt), not the system prompt. The Lambda handler
+# builds the prompt differently for round 1 vs round 2+:
+# - Round 1: "PREDICTION: {prompt}\nCURRENT DATE: ...\nTIMEZONE: ..."
+# - Round 2+: Same + "\n\nPREVIOUS OUTPUT:\n{json}\n\nUSER CLARIFICATIONS:\n- ..."
+
 # Categorizer Agent System Prompt (focused, ~30 lines)
 CATEGORIZER_SYSTEM_PROMPT = """You are a verifiability categorizer. Classify predictions into exactly one category:
 
@@ -69,6 +86,12 @@ Return ONLY the raw JSON object. Do not wrap in markdown code blocks. Do not inc
     "verifiable_category": "one of 5 categories above",
     "category_reasoning": "clear explanation of why you chose this category"
 }
+
+REFINEMENT MODE (when previous output is provided):
+You are refining a prediction. Your previous output is provided below.
+Review it in light of any new user clarifications — confirm it if it stands,
+update it if the new information makes a more precise version possible.
+Always return the complete JSON output, whether confirmed or updated.
 """
 
 

@@ -41,13 +41,13 @@ This spec is a case study in two key Strands patterns:
 
 **Why this requirement exists:** In v1 (even after Spec 1 cleanup), ReviewAgent is invoked standalone after the graph completes. Bringing it into the graph means it participates in the same execution context and can leverage Strands' automatic context propagation. The parallel branch pattern lets us deliver pipeline results immediately while review runs in the background.
 
-**Critical Strands Graph behavior (from official docs):** "When multiple nodes have edges to a target node, the target executes as soon as **any one** dependency completes." This means if we naively add edges from all three pipeline agents to ReviewAgent, it would fire as soon as Parser completes — before Categorizer and Verification Builder have run. We MUST use conditional edges with an `all_dependencies_complete` check so ReviewAgent waits for all three pipeline agents to finish. This is documented in the Strands Graph docs under "Waiting for All Dependencies."
+**Critical Strands Graph behavior (from official docs):** "When multiple nodes have edges to a target node, the target executes as soon as **any one** dependency completes." However, this concern does NOT apply to our topology. Our pipeline is sequential (Parser → Categorizer → VB), so when VB completes, all three pipeline agents have already completed by definition. ReviewAgent only needs a single edge from `verification_builder` — no conditional edges required. This is the standard "Sequential Pipeline with Parallel Branch" pattern from the Strands docs.
 
 #### Acceptance Criteria
 
 1. THE Unified_Graph SHALL contain exactly four agent nodes: Parser, Categorizer, Verification_Builder, and ReviewAgent.
 2. THE Pipeline_Branch SHALL execute agents in sequential order: Parser, then Categorizer, then Verification_Builder.
-3. THE ReviewAgent node SHALL use conditional edges with an `all_dependencies_complete` check to ensure it only executes after ALL three pipeline agents (Parser, Categorizer, Verification_Builder) have completed — not after any single one completes.
+3. THE ReviewAgent node SHALL have a single edge from Verification_Builder. Because the pipeline is sequential, VB completing guarantees all three pipeline agents are done — no conditional edges needed.
 4. THE Unified_Graph SHALL be compiled once as a module-level singleton and reused across warm Lambda invocations.
 5. THE Unified_Graph SHALL use Strands GraphBuilder's automatic context propagation so that each sequential agent receives the original task plus all prior agents' outputs.
 

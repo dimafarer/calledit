@@ -2,12 +2,10 @@ import React, { useState, useRef } from 'react';
 import LogCallButton from './LogCallButton';
 import AnimatedText from './AnimatedText';
 import ReviewableSection from './ReviewableSection';
-import ImprovementModal from './ImprovementModal';
 import { APIResponse } from '../types';
 import { useReviewState } from '../hooks/useReviewState';
 import { useErrorHandler } from '../hooks/useErrorHandler';
 import { useWebSocketConnection } from '../hooks/useWebSocketConnection';
-import { useImprovementHistory } from '../hooks/useImprovementHistory';
 
 interface StreamingCallProps {
   webSocketUrl: string;
@@ -81,13 +79,10 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentTool, setCurrentTool] = useState<string | null>(null);
   // Use custom hooks for state management
-  const { reviewState, updateReviewSections, startImprovement, setImprovementInProgress, clearReviewState, cancelImprovement, setReviewStatus } = useReviewState();
-  const { error: errorState, hasError, setWebSocketError, setImprovementError, clearError } = useErrorHandler();
+  const { reviewState, updateReviewSections, startImprovement, setImprovementInProgress, clearReviewState, setReviewStatus } = useReviewState();
+  const { error: errorState, hasError, setWebSocketError, clearError } = useErrorHandler();
   // Use WebSocket connection hook
   const { callService, handleConnectionError, reconnectCount } = useWebSocketConnection({ url: webSocketUrl });
-  
-  // Use improvement history hook
-  const { history, addHistoryEntry, updateHistoryEntry, clearHistory } = useImprovementHistory();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,86 +145,13 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
           setIsProcessing(false);
           setCurrentTool(null);
         },
-        // Review status handler
-        (status) => {
-          setReviewStatus(status);
-        },
         // Review complete handler
         (reviewData) => {
           console.log('Raw review data:', reviewData);
           const sections = reviewData.reviewable_sections || [];
           updateReviewSections(sections);
           setImprovementInProgress(false);
-          // Clear review status when review is complete
           setReviewStatus('');
-        },
-        // Improved response handler
-        (improvedData) => {
-          console.log('Received improved response:', improvedData);
-          console.log('Current call state:', call);
-          
-          if (improvedData && improvedData.section && callRef.current) {
-            const updatedCall = { ...callRef.current };
-            
-            // Handle multiple field updates (for prediction_statement)
-            if (improvedData.multiple_updates) {
-              console.log('Processing multiple field updates:', improvedData.multiple_updates);
-              
-              // Update all fields provided in multiple_updates
-              Object.keys(improvedData.multiple_updates).forEach(field => {
-                if (field === 'verification_method' && typeof improvedData.multiple_updates[field] === 'object') {
-                  updatedCall.verification_method = improvedData.multiple_updates[field];
-                } else {
-                  updatedCall[field] = improvedData.multiple_updates[field];
-                }
-              });
-              
-              // Update improvement history with the main field
-              if (history.length > 0) {
-                const lastEntry = history[history.length - 1];
-                const mainValue = improvedData.multiple_updates.prediction_statement || 
-                                improvedData.multiple_updates[improvedData.section] || 
-                                'Multiple fields updated';
-                updateHistoryEntry(lastEntry.timestamp, mainValue);
-              }
-            } 
-            // Handle single field update
-            else if (improvedData.improved_value) {
-              console.log('Processing single field update:', improvedData.section, improvedData.improved_value);
-              
-              if (improvedData.section === 'verification_method') {
-                updatedCall.verification_method = {
-                  source: [improvedData.improved_value],
-                  criteria: callRef.current.verification_method?.criteria || ['Updated verification criteria'],
-                  steps: callRef.current.verification_method?.steps || ['Updated verification steps']
-                };
-              } else {
-                updatedCall[improvedData.section] = improvedData.improved_value;
-              }
-              
-              // Update improvement history
-              if (history.length > 0) {
-                const lastEntry = history[history.length - 1];
-                updateHistoryEntry(lastEntry.timestamp, improvedData.improved_value);
-              }
-            }
-            
-            console.log('Setting updated call:', updatedCall);
-            setCall(updatedCall);
-            callRef.current = updatedCall;
-            
-            // Format response for LogCallButton compatibility
-            const apiResponse: APIResponse = {
-              results: [updatedCall]
-            };
-            setResponse(apiResponse);
-          } else {
-            console.log('❌ Cannot update - missing data or call state is null');
-          }
-          
-          setImprovementInProgress(false);
-          updateReviewSections([]);
-          // Don't set new status - let setImprovementInProgress(false) clear it
         }
       );
     } catch (err) {
@@ -252,7 +174,6 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
     setCurrentTool(null);
     clearReviewState();
     clearError();
-    clearHistory();
   };
 
   // Handle improvement request
@@ -268,57 +189,7 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
     }
   };
 
-  // Handle improvement answers submission
-  const handleAnswers = (answers: string[]) => {
-    if (!callService || !reviewState.improvingSection) {
-      setImprovementError('WebSocket connection or section not available');
-      return;
-    }
-    
-    // Show indicator immediately when user submits
-    setReviewStatus('🔄 Improving response with your input...');
-    
-    try {
-      // Add to improvement history
-      addHistoryEntry({
-        section: reviewState.improvingSection,
-        questions: reviewState.currentQuestions,
-        answers: answers,
-        originalContent: call?.prediction_statement || ''
-      });
-      
-      setImprovementInProgress(true);
-      
-      // Set improvement in progress flag
-      (callService as any).setImprovementInProgress(true);
-      
-      // Send improvement request via WebSocket
-      const websocketService = (callService as any).websocket;
-      if (websocketService) {
-        websocketService.send('improvement_answers', {
-          section: reviewState.improvingSection,
-          answers: answers,
-          original_value: call?.[reviewState.improvingSection] || '',
-          full_context: call
-        });
-        
-        console.log('Sent improvement answers:', {
-          section: reviewState.improvingSection,
-          answers: answers
-        });
-      } else {
-        throw new Error('WebSocket service not available');
-      }
-    } catch (err) {
-      setImprovementError((err as Error).message);
-      setImprovementInProgress(false);
-    }
-  };
-
-  // Handle modal cancel
-  const handleModalCancel = () => {
-    cancelImprovement();
-  };
+  // v2: handleAnswers removed — the v1 HITL improvement_answers flow is replaced
 
   // Error handler for LogCallButton
   const handleLogCallError = (error: string | null | ((prev: string | null) => string | null)) => {
@@ -636,14 +507,17 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
         </div>
       )}
       
-      <ImprovementModal
+      {/* v2: ImprovementModal temporarily disabled — the v1 per-section improvement
+          flow is replaced by the clarify action (full graph re-trigger). A clarification
+          UI will be added in a future update. For now, review sections are display-only. */}
+      {/* <ImprovementModal
         isOpen={reviewState.showImprovementModal}
         section={reviewState.improvingSection || ''}
         questions={reviewState.currentQuestions}
         reasoning={reviewState.reviewableSections.find(s => s.section === reviewState.improvingSection)?.reasoning}
-        onSubmit={handleAnswers}
+        onSubmit={() => {}}
         onCancel={handleModalCancel}
-      />
+      /> */}
       
       {/* Floating review indicator */}
       {reviewState.reviewStatus && !reviewState.reviewableSections.length && (
