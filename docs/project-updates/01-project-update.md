@@ -245,28 +245,28 @@ The backend sends `multiagent_node_stream` events containing agent text chunks, 
 Additionally, `stream_async` on the Graph may not forward individual agent text/tool events as `multiagent_node_stream` — it may only yield node-level events (start, stop, result). The Strands docs show `multiagent_node_stream` contains an `event` dict with the inner agent event, but it's unclear if text generation events are included or just tool events. This needs investigation.
 
 **Issue 2: Review sections display but improvement UI is disabled**
-We commented out the `ImprovementModal` component and removed `handleAnswers`. The v2 approach is free-text clarification via `sendClarification()`, but no UI exists for this yet. The review sections arrive (3 sections confirmed in console), but the user can't act on them.
+We commented out the `ImprovementModal` component during cleanup. It needs to be re-enabled and wired to `sendClarification()` instead of the deleted `improvement_answers` route. The review sections arrive (3 sections confirmed in console), but the user can't act on them until the modal is re-enabled.
 
 **Issue 3: Dead v1 code in frontend**
 - `reviewWebSocket.ts` — references old `review_complete` message type, not imported anywhere active
 - `predictionService.ts` — uses old v1 patterns, not used by active components
-- `ImprovementModal.tsx` — commented out, dead code
 - `useImprovementHistory.ts` hook — no longer imported
-- Various unused imports cleaned up but more may remain
+- `StreamingPrediction.tsx` — legacy component not rendered in App.tsx
+- NOTE: `ImprovementModal.tsx` is NOT dead code — it's being re-enabled for v2
 
 ### What the Next Agent Should Do
 
-Create and execute a frontend cleanup spec (`.kiro/specs/v3-frontend-v2-protocol/`) that:
+Execute the frontend spec at `.kiro/specs/v3-frontend-v2-protocol/requirements.md` (5 requirements). Key points:
 
-1. **Fix streaming text**: Investigate whether `stream_async` on Graph forwards agent text events as `multiagent_node_stream`. If yes, fix the `send_ws` call format so text arrives as `{type: "text", data: {content: "..."}}` matching the frontend handler. If no, consider an alternative approach (e.g., agent-level callback handlers that send text directly, or accepting that v2 doesn't stream individual text chunks and only shows status messages).
+1. **Fix streaming text (Req 1, backend-only)**: The frontend streaming code is correct and unchanged from v1. The issue is in the Lambda handler's `execute_and_deliver()` — investigate whether `stream_async` forwards agent text events as `multiagent_node_stream`. If yes, fix the event forwarding format. If no, use per-agent callback handlers (like v1 did) to send text directly to the WebSocket. Do NOT change frontend streaming code.
 
-2. **Build clarification UI**: Replace the disabled ImprovementModal with a simple text input that calls `callService.sendClarification(userInput, currentState)`. The review sections should display as read-only context (showing what could be improved), and the user types a free-text clarification. This is simpler than the v1 per-section Q&A approach.
+2. **Re-enable ImprovementModal for v2 clarification flow (Req 2)**: The v1 popup UI (modal with ReviewAgent's questions + text inputs) is the correct UX. Un-comment `ImprovementModal.tsx`, re-wire `onSubmit` to call `sendClarification()` instead of the deleted `improvement_answers` route. Re-enable `ReviewableSection` click handling and `useReviewState` hook.
 
-3. **Clean up dead v1 code**: Delete `reviewWebSocket.ts`, `predictionService.ts`, `ImprovementModal.tsx`, `useImprovementHistory.ts`, and any other dead imports/references.
+3. **Delete dead v1 code (Req 3)**: Delete `reviewWebSocket.ts`, `predictionService.ts`, `useImprovementHistory.ts`, `StreamingPrediction.tsx`. Do NOT delete `ImprovementModal.tsx` — it's being reused.
 
-4. **Verify LogCallButton works**: The `prediction_ready` data shape may differ from what `LogCallButton` expects (it wraps data in `{results: [parsedResponse]}`). Verify the field names match what the `/log-call` API endpoint expects.
+4. **Verify LogCallButton (Req 4)**: Confirm `prediction_ready` data shape matches what `/log-call` API expects.
 
-5. **Test end-to-end**: Make a prediction, see streaming text (if fixed), see structured result, see review sections, submit a clarification, see updated result, log the call.
+5. **End-to-end test (Req 5)**: Make prediction → see streaming text → see result → see review questions → answer questions → see refined result → log call.
 
 ### Key Files for Next Agent
 
@@ -290,3 +290,11 @@ All backend changes need to be committed. Frontend changes need to be committed.
 ### Clarification on Streaming Text Issue
 
 The frontend streaming code (callService.ts text handler, StreamingCall.tsx onTextChunk, AnimatedText component) worked perfectly in v1 and is unchanged. The issue is purely backend — the v2 `stream_async` event forwarding doesn't send text chunks in the format the frontend expects. The fix is backend-only: either fix the `multiagent_node_stream` event extraction in `execute_and_deliver()`, or use per-agent callback handlers (like v1 did) to send text directly to the WebSocket. The frontend streaming display code should NOT be changed.
+
+### Final Corrections Before Handoff (end of session)
+
+**ImprovementModal is NOT dead code — reuse it.** Earlier in this narrative I said to delete ImprovementModal.tsx and replace it with a "simple text input." That was wrong. The v1 popup UI (modal with ReviewAgent's questions + text inputs for answers) is the correct UX for v2. The only change is wiring: `onSubmit` calls `sendClarification()` instead of sending `improvement_answers` to the deleted route. The component, ReviewableSection, and useReviewState hook should all be re-enabled, not deleted.
+
+**The streaming text issue is backend-only.** The frontend streaming code (callService.ts text handler, StreamingCall.tsx onTextChunk, AnimatedText) worked perfectly in v1 and is unchanged. The fix is in the Lambda handler's `execute_and_deliver()` — either fix `multiagent_node_stream` event forwarding or use per-agent callbacks like v1 did. Do NOT change frontend streaming code.
+
+**Spec 3 requirements updated to reflect both corrections.** The next agent should read `.kiro/specs/v3-frontend-v2-protocol/requirements.md` which now correctly says: reuse ImprovementModal (Req 2), streaming fix is backend-only (Req 1), and ImprovementModal is excluded from the dead code deletion list (Req 3).
