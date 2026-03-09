@@ -4,6 +4,17 @@
 **Context:** Planning session for CalledIt v2 unified graph architecture
 **Audience:** Future self for project narrative; next agent for context pickup
 
+### Referenced Kiro Specs
+- `.kiro/specs/v2-cleanup-foundation/` — Spec 1: v2 Cleanup & Foundation (COMPLETE)
+- `.kiro/specs/v2-unified-graph-refinement/` — Spec 2: v2 Unified Graph with Stateful Refinement (backend COMPLETE, frontend partial)
+- `.kiro/specs/unified-graph-refinement/` — Original combined spec (ARCHIVED)
+- `.kiro/specs/v3-frontend-v2-protocol/` — Spec 3: Frontend v2 Protocol Alignment (requirements created at end of this session)
+
+### Referenced Git Commits
+- `af39ca9` — Spec 1: v2 cleanup foundation - model upgrade, prompt hardening, dead code removal
+- `efd089a` — Spec 2: v2 unified graph backend complete, frontend partially migrated
+- `bea2d56` — Spec 2 complete (backend), Spec 3 created (frontend fixes)
+
 ---
 
 ## What Happened

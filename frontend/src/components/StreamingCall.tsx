@@ -2,10 +2,12 @@ import React, { useState, useRef } from 'react';
 import LogCallButton from './LogCallButton';
 import AnimatedText from './AnimatedText';
 import ReviewableSection from './ReviewableSection';
+import ImprovementModal from './ImprovementModal';
 import { APIResponse } from '../types';
 import { useReviewState } from '../hooks/useReviewState';
 import { useErrorHandler } from '../hooks/useErrorHandler';
 import { useWebSocketConnection } from '../hooks/useWebSocketConnection';
+import { formatClarification } from '../utils/formatClarification';
 
 interface StreamingCallProps {
   webSocketUrl: string;
@@ -79,7 +81,7 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentTool, setCurrentTool] = useState<string | null>(null);
   // Use custom hooks for state management
-  const { reviewState, updateReviewSections, startImprovement, setImprovementInProgress, clearReviewState, setReviewStatus } = useReviewState();
+  const { reviewState, updateReviewSections, startImprovement, setImprovementInProgress, clearReviewState, cancelImprovement, setReviewStatus } = useReviewState();
   const { error: errorState, hasError, setWebSocketError, clearError } = useErrorHandler();
   // Use WebSocket connection hook
   const { callService, handleConnectionError, reconnectCount } = useWebSocketConnection({ url: webSocketUrl });
@@ -176,20 +178,79 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
     clearError();
   };
 
-  // Handle improvement request
+  // Handle improvement request — finds all matching sections (exact or sub-section)
+  // and aggregates their questions into a single modal.
+  // e.g., clicking "verification_method" collects questions from
+  // verification_method.source, verification_method.criteria, verification_method.steps
   const handleImprove = (section: string) => {
     if (!callService) {
       setWebSocketError('WebSocket connection not available');
       return;
     }
     
-    const sectionData = reviewState.reviewableSections.find(s => s.section === section);
-    if (sectionData) {
-      startImprovement(section, sectionData.questions);
+    // Find all sections that match (exact or sub-section with dot notation)
+    const matchingSections = reviewState.reviewableSections.filter(
+      s => s.section === section || s.section.startsWith(section + '.')
+    );
+    
+    if (matchingSections.length > 0) {
+      // Aggregate all questions from matching sections
+      const allQuestions = matchingSections.flatMap(s => s.questions);
+      startImprovement(section, allQuestions);
     }
   };
 
-  // v2: handleAnswers removed — the v1 HITL improvement_answers flow is replaced
+  // v2: Clarification handler — formats answers and sends via sendClarification.
+  // This replaces the v1 HITL improvement_answers flow. Instead of per-section
+  // regeneration, the full graph re-runs with the user's answers as context.
+  const handleClarificationSubmit = async (answers: string[]) => {
+    if (!callService) {
+      setWebSocketError('WebSocket connection not available');
+      return;
+    }
+
+    // Capture section data BEFORE closing the modal — cancelImprovement()
+    // clears improvingSection to null, so we must read it first.
+    // (section name available for future logging/analytics if needed)
+    
+    // Use the questions that were passed to startImprovement() and stored
+    // in currentQuestions — these are already the aggregated questions from
+    // all matching sub-sections (set by handleImprove).
+    const questions = reviewState.currentQuestions;
+
+    // Format as human-readable Q&A — agents read natural language, not JSON.
+    const clarification = formatClarification(questions, answers);
+
+    // Build currentState from the current call data. The backend extracts
+    // prev_*_output fields from this to build the enriched prompt.
+    // round and user_clarifications are already in call from prediction_ready.
+    const currentState = {
+      ...call,
+      user_prompt: prompt,
+    };
+
+    // Close modal, show processing state, clear old streaming text.
+    // Keep call visible — user can still submit the current prediction.
+    cancelImprovement();
+    setImprovementInProgress(true);
+    setIsProcessing(true);
+    setStreamingText('');
+
+    try {
+      console.log('📤 Sending clarification:', { clarification: clarification.substring(0, 100), round: currentState.round });
+      await callService.sendClarification(clarification, currentState);
+      console.log('📤 Clarification sent successfully');
+    } catch (err) {
+      console.error('❌ Clarification send failed:', err);
+      setWebSocketError((err as Error).message);
+      setImprovementInProgress(false);
+      setIsProcessing(false);
+    }
+  };
+
+  const handleModalCancel = () => {
+    cancelImprovement();
+  };
 
   // Error handler for LogCallButton
   const handleLogCallError = (error: string | null | ((prev: string | null) => string | null)) => {
@@ -346,13 +407,13 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
           <div className="structured-response">
             <div className="response-field">
               <h3>Call Statement:</h3>
-              {reviewState.reviewableSections.find(s => s.section === 'prediction_statement') ? (
+              {reviewState.reviewableSections.find(s => s.section === 'prediction_statement' || s.section.startsWith('prediction_statement.')) ? (
                 <ReviewableSection
                   section="prediction_statement"
                   content={call.prediction_statement}
                   isReviewable={true}
-                  questions={reviewState.reviewableSections.find(s => s.section === 'prediction_statement')?.questions || []}
-                  reasoning={reviewState.reviewableSections.find(s => s.section === 'prediction_statement')?.reasoning}
+                  questions={reviewState.reviewableSections.filter(s => s.section === 'prediction_statement' || s.section.startsWith('prediction_statement.')).flatMap(s => s.questions)}
+                  reasoning={reviewState.reviewableSections.find(s => s.section === 'prediction_statement' || s.section.startsWith('prediction_statement.'))?.reasoning}
                   onImprove={handleImprove}
                 />
               ) : (
@@ -370,13 +431,13 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
             {call.verifiable_category && (
               <div className="response-field">
                 <h3>Verifiability:</h3>
-                {reviewState.reviewableSections.find(s => s.section === 'verifiable_category') ? (
+                {reviewState.reviewableSections.find(s => s.section === 'verifiable_category' || s.section.startsWith('verifiable_category.')) ? (
                   <ReviewableSection
                     section="verifiable_category"
                     content={call.verifiable_category}
                     isReviewable={true}
-                    questions={reviewState.reviewableSections.find(s => s.section === 'verifiable_category')?.questions || []}
-                    reasoning={reviewState.reviewableSections.find(s => s.section === 'verifiable_category')?.reasoning}
+                    questions={reviewState.reviewableSections.filter(s => s.section === 'verifiable_category' || s.section.startsWith('verifiable_category.')).flatMap(s => s.questions)}
+                    reasoning={reviewState.reviewableSections.find(s => s.section === 'verifiable_category' || s.section.startsWith('verifiable_category.'))?.reasoning}
                     onImprove={handleImprove}
                   />
                 ) : (
@@ -400,13 +461,13 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
               <h3>Verification Method:</h3>
               {call.verification_method && (
                 <div className="verification-method">
-                  {reviewState.reviewableSections.find(s => s.section === 'verification_method') && (
+                  {reviewState.reviewableSections.find(s => s.section === 'verification_method' || s.section.startsWith('verification_method.')) && (
                     <ReviewableSection
                       section="verification_method"
                       content="Click to improve verification method"
                       isReviewable={true}
-                      questions={reviewState.reviewableSections.find(s => s.section === 'verification_method')?.questions || []}
-                      reasoning={reviewState.reviewableSections.find(s => s.section === 'verification_method')?.reasoning}
+                      questions={reviewState.reviewableSections.filter(s => s.section === 'verification_method' || s.section.startsWith('verification_method.')).flatMap(s => s.questions)}
+                      reasoning={reviewState.reviewableSections.find(s => s.section === 'verification_method' || s.section.startsWith('verification_method.'))?.reasoning}
                       onImprove={handleImprove}
                     />
                   )}
@@ -507,17 +568,18 @@ const StreamingCall: React.FC<StreamingCallProps> = ({ webSocketUrl, onNavigateT
         </div>
       )}
       
-      {/* v2: ImprovementModal temporarily disabled — the v1 per-section improvement
-          flow is replaced by the clarify action (full graph re-trigger). A clarification
-          UI will be added in a future update. For now, review sections are display-only. */}
-      {/* <ImprovementModal
+      {/* v2: ImprovementModal re-enabled for the clarify action.
+          When the user answers ReviewAgent's questions and submits, we format
+          the Q&A as a clarification string and send it via sendClarification().
+          The backend re-runs the full graph with enriched state (round 2+). */}
+      <ImprovementModal
         isOpen={reviewState.showImprovementModal}
         section={reviewState.improvingSection || ''}
         questions={reviewState.currentQuestions}
         reasoning={reviewState.reviewableSections.find(s => s.section === reviewState.improvingSection)?.reasoning}
-        onSubmit={() => {}}
+        onSubmit={handleClarificationSubmit}
         onCancel={handleModalCancel}
-      /> */}
+      />
       
       {/* Floating review indicator */}
       {reviewState.reviewStatus && !reviewState.reviewableSections.length && (

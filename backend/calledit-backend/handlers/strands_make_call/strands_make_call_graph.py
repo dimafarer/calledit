@@ -512,11 +512,27 @@ async def execute_and_deliver(state, connection_id, api_gateway_client):
     # when specific nodes complete (VB → prediction_ready, Review → review_ready).
     accumulated = AccumulatedResults()
 
+    # --- DEBUG COUNTERS for streaming diagnosis (Task 1.1) ---
+    # These counters track every event type from stream_async to diagnose
+    # whether text events arrive at all, and if so, whether they're forwarded.
+    event_counts = {}
+    text_chunks_sent = 0
+    tool_events_sent = 0
+
     try:
         async for event_data in execute_prediction_graph_async(
             initial_prompt, invocation_state
         ):
             event_type = event_data.get("type", "")
+
+            # --- DEBUG: Log every event type and its keys (Task 1.1) ---
+            event_counts[event_type] = event_counts.get(event_type, 0) + 1
+            if event_counts[event_type] <= 3:
+                # Log first 3 of each type to avoid flooding CloudWatch
+                logger.info(
+                    f"[STREAM_DEBUG] event_type={event_type}, "
+                    f"keys={list(event_data.keys())}"
+                )
 
             # ----- AGENT STREAMING EVENTS -----
             # multiagent_node_stream forwards individual agent events (text
@@ -525,14 +541,27 @@ async def execute_and_deliver(state, connection_id, api_gateway_client):
             # real-time agent reasoning — the "thinking" stream the user sees.
             if event_type == "multiagent_node_stream":
                 inner_event = event_data.get("event", {})
+
+                # --- DEBUG: Log inner event structure (Task 1.1) ---
+                inner_keys = list(inner_event.keys()) if isinstance(inner_event, dict) else [f"type={type(inner_event).__name__}"]
+                has_data = "data" in inner_event if isinstance(inner_event, dict) else False
+                if event_counts[event_type] <= 5:
+                    logger.info(
+                        f"[STREAM_DEBUG] node_stream inner_keys={inner_keys}, "
+                        f"has_data={has_data}, "
+                        f"node_id={event_data.get('node_id', 'unknown')}"
+                    )
+
                 # Text generation — stream to frontend as "text" type
-                if "data" in inner_event:
+                if has_data:
+                    text_chunks_sent += 1
                     send_ws(
                         api_gateway_client, connection_id,
                         "text", content=inner_event["data"]
                     )
                 # Tool usage — stream to frontend as "tool" type
                 elif "current_tool_use" in inner_event and inner_event["current_tool_use"].get("name"):
+                    tool_events_sent += 1
                     send_ws(
                         api_gateway_client, connection_id,
                         "tool", name=inner_event["current_tool_use"]["name"]
@@ -607,6 +636,13 @@ async def execute_and_deliver(state, connection_id, api_gateway_client):
                     "complete", status="ready"
                 )
                 logger.info("Graph execution complete — sent complete message")
+
+        # --- DEBUG: Summary of all events received (Task 1.1) ---
+        logger.info(
+            f"[STREAM_DEBUG] Event summary: {json.dumps(event_counts)}, "
+            f"text_chunks_sent={text_chunks_sent}, "
+            f"tool_events_sent={tool_events_sent}"
+        )
 
     except Exception as e:
         # Graph execution failed — notify client and re-raise.
