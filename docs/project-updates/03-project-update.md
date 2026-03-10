@@ -8,11 +8,15 @@
 - `.kiro/specs/lambda-cold-start-optimization/` — Spec 4: Lambda Cold Start Optimization
   - `requirements.md` — COMPLETE (7 requirements)
   - `design.md` — COMPLETE (phased deployment, 4 correctness properties)
-  - `tasks.md` — COMPLETE (8 tasks, execution started)
+  - `tasks.md` — COMPLETE (8 tasks, EXECUTED)
+- `.kiro/specs/prompt-eval-framework/` — Spec 5: Prompt Evaluation Framework
+  - `requirements.md` — COMPLETE (8 requirements)
+  - `design.md` — NOT YET CREATED
+  - `tasks.md` — NOT YET CREATED
 
 ### Referenced Git Commits
 - Previous: Spec 3 frontend commits (see Update 02)
-- This session: uncommitted — cold start spec + docs + MCP config
+- This session: pending commit — Spec 3 execution, Spec 4 execution, Spec 5 requirements, Strands Graph guide, MCP config
 
 ### Prerequisite Reading
 - `docs/project-updates/01-project-update.md` — Specs 1 and 2 narrative
@@ -160,3 +164,74 @@ With SnapStart restoring in 444ms (vs 2,441ms baseline), Provisioned Concurrency
 ### MCP Server Usage
 
 Used the AWS Observability power (`awslabs.cloudwatch-mcp-server`) to query CloudWatch Logs directly for restore duration metrics. This was more reliable than CLI commands (TTY issues) and provided the exact `restoreDurationMs` values from platform REPORT logs.
+
+---
+
+## Prompt Evaluation Strategy Discussion — March 9, 2026
+
+### The Problem
+
+During testing, "Tomorrow will be a beautiful day" was correctly categorized as `human_verifiable_only` in round 1. After the user clarified "70+ degrees, sunny, New York," the categorizer should have upgraded to `api_tool_verifiable` — but it didn't. It clung to "beautiful is subjective" reasoning and ignored the clarification.
+
+This revealed two issues:
+1. The ReviewAgent over-assumed weather without confirming ("beautiful" could mean anything)
+2. The categorizer under-utilized user clarifications — the whole point of the clarification loop is to convert subjective claims into measurable criteria
+
+### Decision 13: Prompt Evaluation Strategy
+
+We need a systematic way to iterate on prompts without going in circles. After discussing strategies, we chose:
+
+**Primary: Golden Dataset + Automated Eval**
+- Build ~25 test predictions with expected outcomes
+- Run each prompt change against the full set, score automatically
+- Catches regressions, provides objective "are we improving?" signal
+- Confidence: 8/10
+
+**Secondary: LLM-as-Judge** for nuanced reasoning quality
+- Confidence: 6/10 (supplement, not primary)
+
+**Investigated but deferred: Strands Evals SDK**
+- Unknown maturity, worth exploring later
+- Confidence: 5/10
+
+### Decision 14: Layered Test Pyramid for Predictions
+
+The user proposed a layered approach to building test predictions:
+
+**Layer 1 — Base Predictions (fully specified):**
+Predictions that need zero clarification. These are the ground truth — the "perfect input" that the system should handle cleanly. If the system can't get these right, the prompts are fundamentally broken.
+
+Example: "Tomorrow the high temperature in Central Park, New York will reach at least 70°F"
+→ Expected: `api_tool_verifiable`, no clarification needed
+
+**Layer 2 — Fuzzy Predictions (degraded versions of base):**
+Same predictions with information removed. These test the clarification loop — the system should ask the right questions and, after getting answers, converge to the same structured output as the base prediction.
+
+Example: "Tomorrow will be a beautiful day"
+→ Expected round 1: `human_verifiable_only` (correct — it IS subjective without context)
+→ Expected: ReviewAgent asks about location, what "beautiful" means
+→ After clarification "70+ degrees, sunny, New York": should converge to `api_tool_verifiable`
+
+**Why this works:**
+- Base predictions validate core capability (structured conversion)
+- Fuzzy versions validate the clarification loop (progressive refinement)
+- Convergence is measurable: does fuzzy + clarification → base output?
+- Question quality is gradable: did the system ask the right things?
+
+### Next Steps
+
+A new spec will be created for the prompt evaluation framework. The next agent should:
+1. Read this update for the strategy discussion
+2. Read `.kiro/specs/prompt-eval-framework/requirements.md` (to be created)
+3. Build the eval harness, golden dataset, and scoring system
+4. Then iterate on the categorizer and review agent prompts with the eval framework in place
+
+### Decision 15: Clarification Improves Precision, Not Just Verifiability
+
+During requirements review, the user identified an edge case: predictions that will always be `human_verifiable_only` (e.g., "Tom will wear that shirt") still benefit from clarification. The system should ask "which Tom?", "which shirt?", "what day?" to make the prediction as specific as possible for the human who will eventually verify it.
+
+This means the golden dataset needs test cases where:
+- Base: "John will wear the stained blue Tom Ford polyester shirt tomorrow" → `human_verifiable_only` with rich detail
+- Fuzzy: "Tom will wear that shirt" → still `human_verifiable_only` after clarification, but converges to the detailed base version
+
+Convergence isn't just about upgrading the category — it's about improving precision within the same category. A note was added to the Spec 5 requirements to make this explicit.
