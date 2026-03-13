@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
-// const API_BASE = import.meta.env.VITE_APIGATEWAY || 'https://zvdf8sswt3.execute-api.us-west-2.amazonaws.com/Prod';
-const WS_URL = import.meta.env.VITE_WEBSOCKET_URL || 'wss://0yv5r2auh5.execute-api.us-west-2.amazonaws.com/prod';
+// const API_BASE = import.meta.env.VITE_APIGATEWAY || 'https://XXXXXXXXXXX.execute-api.us-west-2.amazonaws.com/Prod';
+const WS_URL = import.meta.env.VITE_WEBSOCKET_URL || 'wss://XXXXXXXXXXX.execute-api.us-west-2.amazonaws.com/prod';
 
 describe('CalledIt Integration Tests', () => {
   // Increase timeout for WebSocket tests

@@ -239,7 +239,7 @@ def print_test_results(results: Dict[str, bool]):
 async def main():
     """Main test runner."""
     # Default WebSocket URL - can be overridden via command line
-    default_url = "wss://0yv5r2auh5.execute-api.us-west-2.amazonaws.com/prod"
+    default_url = "wss://XXXXXXXXXXX.execute-api.us-west-2.amazonaws.com/prod"
     
     websocket_url = sys.argv[1] if len(sys.argv) > 1 else default_url
     

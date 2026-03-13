@@ -110,7 +110,7 @@ def test_review_detailed(websocket_url):
         return False
 
 def main():
-    websocket_url = "wss://0yv5r2auh5.execute-api.us-west-2.amazonaws.com/prod"
+    websocket_url = "wss://XXXXXXXXXXX.execute-api.us-west-2.amazonaws.com/prod"
     
     if len(sys.argv) > 1:
         websocket_url = sys.argv[1]

@@ -202,7 +202,7 @@ Created test script to verify WebSocket functionality:
 ```javascript
 const WebSocket = require('ws');
 
-const ws = new WebSocket('wss://0yv5r2auh5.execute-api.us-west-2.amazonaws.com/prod');
+const ws = new WebSocket('wss://XXXXXXXXXXX.execute-api.us-west-2.amazonaws.com/prod');
 
 ws.on('open', function open() {
   const testMessage = {
@@ -290,7 +290,7 @@ Added new navigation option for streaming predictions:
 
 Updated frontend/.env:
 ```
-VITE_WEBSOCKET_URL=wss://0yv5r2auh5.execute-api.us-west-2.amazonaws.com/prod
+VITE_WEBSOCKET_URL=wss://XXXXXXXXXXX.execute-api.us-west-2.amazonaws.com/prod
 ```
 
 ## Key Implementation Decisions

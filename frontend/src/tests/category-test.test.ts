@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-const WS_URL = import.meta.env.VITE_WEBSOCKET_URL || 'wss://0yv5r2auh5.execute-api.us-west-2.amazonaws.com/prod';
+const WS_URL = import.meta.env.VITE_WEBSOCKET_URL || 'wss://XXXXXXXXXXX.execute-api.us-west-2.amazonaws.com/prod';
 
 describe('Verifiability Category Test', () => {
   it('should categorize a simple prediction', async () => {

@@ -7,7 +7,7 @@ def test_basic_connection():
     print("🔗 Testing basic WebSocket connection...")
     
     try:
-        ws = websocket.create_connection("wss://0yv5r2auh5.execute-api.us-west-2.amazonaws.com/prod", timeout=10)
+        ws = websocket.create_connection("wss://XXXXXXXXXXX.execute-api.us-west-2.amazonaws.com/prod", timeout=10)
         print("✅ Connected successfully")
         
         # Send simple makecall

@@ -116,3 +116,4 @@ config.py
 ehthumbs.db
 Thumbs.db
 git config --global user.name "dima farer"
+qchats/
