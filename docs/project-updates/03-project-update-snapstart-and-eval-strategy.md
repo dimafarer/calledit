@@ -13,6 +13,10 @@
   - `requirements.md` — COMPLETE (8 requirements)
   - `design.md` — NOT YET CREATED
   - `tasks.md` — NOT YET CREATED
+- `.kiro/specs/websocket-snapstart/` — Spec 6: WebSocket SnapStart Completion
+  - `requirements.md` — COMPLETE (6 requirements)
+  - `design.md` — NOT YET CREATED (small change, may skip to tasks)
+  - `tasks.md` — NOT YET CREATED
 
 ### Referenced Git Commits
 - Previous: Spec 3 frontend commits (see Update 02)
@@ -235,3 +239,15 @@ This means the golden dataset needs test cases where:
 - Fuzzy: "Tom will wear that shirt" → still `human_verifiable_only` after clarification, but converges to the detailed base version
 
 Convergence isn't just about upgrading the category — it's about improving precision within the same category. A note was added to the Spec 5 requirements to make this explicit.
+
+### Decision 16: Add SnapStart to WebSocket Lifecycle Functions
+
+After reviewing the DontSpin project's SnapStart implementation (which successfully uses SnapStart with WebSocket functions), we decided to add SnapStart to ConnectFunction and DisconnectFunction for stack consistency. These were excluded from Spec 4 due to risk concerns, but the alias integration pattern is now proven on MakeCallStreamFunction.
+
+The cold start benefit is minimal (~50-100ms — these functions import only `json`), but consistency across the stack is valuable and the risk is now low. Reference doc moved to `docs/reference/dontspin-snapstart-implementation.md`.
+
+Spec 6 created at `.kiro/specs/websocket-snapstart/` with 6 requirements. The next agent should execute this before starting the prompt eval framework (Spec 5).
+
+### Execution Order for Next Agent
+1. Execute Spec 6 (websocket-snapstart) — small, quick, SAM template only
+2. Then start Spec 5 (prompt-eval-framework) — design → tasks → execute
