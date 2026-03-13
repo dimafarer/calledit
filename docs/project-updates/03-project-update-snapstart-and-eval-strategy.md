@@ -251,3 +251,80 @@ Spec 6 created at `.kiro/specs/websocket-snapstart/` with 6 requirements. The ne
 ### Execution Order for Next Agent
 1. Execute Spec 6 (websocket-snapstart) — small, quick, SAM template only
 2. Then start Spec 5 (prompt-eval-framework) — design → tasks → execute
+
+
+---
+
+## Spec 6 Execution: WebSocket SnapStart Completion — March 13, 2026
+
+### Summary
+
+Added SnapStart to ConnectFunction and DisconnectFunction, completing SnapStart coverage across all 8 Lambda functions in the stack. All changes were SAM template only — no handler code modifications needed.
+
+### What Changed
+
+| Resource | Change |
+|----------|--------|
+| ConnectFunction | Added `AutoPublishAlias: live` + `SnapStart: { ApplyOn: PublishedVersions }` |
+| DisconnectFunction | Added `AutoPublishAlias: live` + `SnapStart: { ApplyOn: PublishedVersions }` |
+| ConnectIntegration | IntegrationUri updated to `${ConnectFunction.Arn}:live/invocations` |
+| DisconnectIntegration | IntegrationUri updated to `${DisconnectFunction.Arn}:live/invocations` |
+| ConnectFunctionAliasPermission | NEW — grants apigateway invoke on `:live` alias, scoped to `$connect` |
+| DisconnectFunctionAliasPermission | NEW — grants apigateway invoke on `:live` alias, scoped to `$disconnect` |
+
+### Bug Found: Alias DependsOn Race Condition
+
+First deploy failed with `Cannot find alias arn: ...DisconnectFunction...:live`. CloudFormation tried to create the alias permission before the alias existed. SAM's `AutoPublishAlias` creates the alias as a separate resource (`{FunctionName}Aliaslive`), but resources referencing the alias don't automatically depend on it.
+
+Fix: Added `DependsOn: {FunctionName}Aliaslive` to all resources that reference alias ARNs:
+- `ConnectIntegration` → `DependsOn: ConnectFunctionAliaslive`
+- `DisconnectIntegration` → `DependsOn: DisconnectFunctionAliaslive`
+- `ConnectFunctionAliasPermission` → `DependsOn: ConnectFunctionAliaslive`
+- `DisconnectFunctionAliasPermission` → `DependsOn: DisconnectFunctionAliaslive`
+- `MakeCallStreamIntegration` → `DependsOn: MakeCallStreamFunctionAliaslive` (pre-existing, fixed for fresh deploys)
+- `MakeCallStreamFunctionAliasPermission` → `DependsOn: MakeCallStreamFunctionAliaslive` (pre-existing, fixed for fresh deploys)
+
+The MakeCallStreamFunction resources didn't hit this on the original deploy because the alias already existed from a prior deployment. On a fresh account deploy, they would have failed the same way.
+
+### Decision 17: DependsOn Required for All Alias References
+
+Any SAM template resource that references a `:live` alias ARN (in IntegrationUri, FunctionName, etc.) MUST have `DependsOn: {FunctionName}Aliaslive` to prevent race conditions on first deploy. This applies to both new and existing alias-referencing resources.
+
+### Tests
+
+Created `testing/active/test_websocket_snapstart.py` — 14 tests covering 6 correctness properties:
+- Property 1: SnapStart + AutoPublishAlias on both functions
+- Property 2: Integration URIs use alias ARNs
+- Property 3: Alias permissions exist with correct route scoping
+- Property 4: Original unqualified permissions preserved
+- Property 5: Handler behavior unchanged (200 + correct JSON body)
+- Property 6: IAM policies retained
+
+Note: Tests use a custom `CFNLoader` (extends `yaml.SafeLoader`) to handle CloudFormation intrinsic functions (`!Sub`, `!Ref`, `!GetAtt`, `!Join`, etc.) that `yaml.safe_load` can't parse.
+
+### Files Created/Modified
+
+- `backend/calledit-backend/template.yaml` — SnapStart on Connect/Disconnect, alias URIs, alias permissions, DependsOn fixes
+- `testing/active/test_websocket_snapstart.py` — NEW: 14 template validation + handler unit tests
+- `.kiro/specs/websocket-snapstart/design.md` — NEW: design document
+- `.kiro/specs/websocket-snapstart/tasks.md` — NEW: task list (all complete)
+
+### SnapStart Coverage — Final State
+
+All Lambda functions now have SnapStart enabled:
+
+| Function | SnapStart | Restore Hook | Alias Integration |
+|----------|-----------|--------------|-------------------|
+| MakeCallStreamFunction | ✅ | Yes (graph validation) | ✅ `:live` |
+| ConnectFunction | ✅ | No (imports only `json`) | ✅ `:live` |
+| DisconnectFunction | ✅ | No (imports only `json`) | ✅ `:live` |
+| LogCall | ✅ | No | N/A (API GW REST) |
+| ListPredictions | ✅ | No | N/A (API GW REST) |
+| AuthTokenFunction | ✅ | No | N/A (API GW REST) |
+| VerificationFunction | ✅ | No | N/A (EventBridge) |
+| NotificationManagementFunction | ✅ | Yes (sns_client refresh) | N/A (API GW REST) |
+
+### What the Next Agent Should Do
+
+1. Read this update for full context
+2. Start Spec 5 (prompt-eval-framework) — design → tasks → execute
