@@ -17,39 +17,27 @@ interface StreamingCallProps {
 // Helper function to display verifiability categories with icons and colors
 const getVerifiabilityDisplay = (category: string) => {
   const categoryMap: Record<string, { icon: string; label: string; color: string; bgColor: string }> = {
-    'agent_verifiable': {
-      icon: '🧠',
-      label: 'Agent Verifiable',
+    'auto_verifiable': {
+      icon: '🤖',
+      label: 'Auto Verifiable',
       color: '#155724',
       bgColor: '#d4edda'
     },
-    'current_tool_verifiable': {
-      icon: '⏰',
-      label: 'Time-Tool Verifiable',
-      color: '#004085',
-      bgColor: '#cce7ff'
-    },
-    'strands_tool_verifiable': {
+    'automatable': {
       icon: '🔧',
-      label: 'Strands-Tool Verifiable',
-      color: '#721c24',
-      bgColor: '#f8d7da'
-    },
-    'api_tool_verifiable': {
-      icon: '🌐',
-      label: 'API Verifiable',
+      label: 'Automatable',
       color: '#856404',
       bgColor: '#fff3cd'
     },
-    'human_verifiable_only': {
+    'human_only': {
       icon: '👤',
-      label: 'Human Verifiable Only',
+      label: 'Human Only',
       color: '#6f42c1',
       bgColor: '#e2d9f3'
     }
   };
   
-  const config = categoryMap[category] || categoryMap['human_verifiable_only'];
+  const config = categoryMap[category] || categoryMap['human_only'];
   
   return (
     <span style={{

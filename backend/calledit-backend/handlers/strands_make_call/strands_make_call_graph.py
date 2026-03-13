@@ -384,7 +384,7 @@ def build_prediction_ready(pipeline_data, state):
         ),
         "verifiable_category": (
             pipeline_data.get("verifiable_category")
-            or "human_verifiable_only"
+            or "human_only"
         ),
         "category_reasoning": (
             pipeline_data.get("category_reasoning")

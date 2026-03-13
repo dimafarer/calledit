@@ -101,13 +101,26 @@ def create_prediction_graph():
     Returns:
         Compiled graph ready for execution via __call__ or stream_async
     """
+    # Read tool registry and build manifest for categorizer tool awareness.
+    # This runs at module level (cached by SnapStart). The categorizer uses
+    # the manifest to distinguish auto_verifiable (matching tool exists) from
+    # automatable (tool could exist but doesn't). If the registry read fails,
+    # the categorizer falls back to pure reasoning mode (empty manifest).
+    try:
+        from tool_registry import read_active_tools, build_tool_manifest
+        tools = read_active_tools()
+        tool_manifest = build_tool_manifest(tools)
+    except Exception as e:
+        logger.error(f"Failed to read tool registry, falling back to pure reasoning: {e}")
+        tool_manifest = ""
+
     # Create all 4 agents using factory functions.
     # Each factory returns a configured strands.Agent instance with:
     # - Explicit model selection (Claude Sonnet 4 via Bedrock)
     # - Focused system prompt (single responsibility)
     # - Tools where needed (Parser has parse_relative_date + current_time)
     parser = create_parser_agent()
-    categorizer = create_categorizer_agent()
+    categorizer = create_categorizer_agent(tool_manifest)
     vb = create_verification_builder_agent()
     review = create_review_agent()
 
@@ -262,7 +275,7 @@ def parse_pipeline_results(result) -> Dict[str, Any]:
 
     # -------------------------------------------------------------------------
     # Parse categorizer output
-    # Fallback defaults: "human_verifiable_only" is the safest category
+    # Fallback defaults: "human_only" is the safest category
     # (requires human judgment), with a descriptive reasoning message.
     # -------------------------------------------------------------------------
     cat_text = parse_node_result(result, "categorizer")
@@ -271,13 +284,13 @@ def parse_pipeline_results(result) -> Dict[str, Any]:
         try:
             # Direct json.loads() — same pattern as parser above.
             cat_data = json.loads(cat_text)
-            parsed_data["verifiable_category"] = cat_data.get("verifiable_category", "human_verifiable_only")
+            parsed_data["verifiable_category"] = cat_data.get("verifiable_category", "human_only")
             parsed_data["category_reasoning"] = cat_data.get("category_reasoning", "")
             logger.info("Categorizer JSON parsed successfully")
         except json.JSONDecodeError:
             # ERROR level — unexpected after prompt hardening.
             logger.error(f"Categorizer returned non-JSON output: {cat_text[:500]}")
-            parsed_data["verifiable_category"] = "human_verifiable_only"
+            parsed_data["verifiable_category"] = "human_only"
             parsed_data["category_reasoning"] = "Fallback: Could not parse categorizer response"
 
     # -------------------------------------------------------------------------
@@ -517,7 +530,7 @@ Extract the prediction and parse the verification date."""
             "prediction_statement": user_prompt,
             "verification_date": "",
             "date_reasoning": "Error during processing",
-            "verifiable_category": "human_verifiable_only",
+            "verifiable_category": "human_only",
             "category_reasoning": "Error during processing",
             "verification_method": {
                 "source": ["Manual verification"],
