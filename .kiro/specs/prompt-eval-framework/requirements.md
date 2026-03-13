@@ -17,10 +17,10 @@ A prompt evaluation framework for the CalledIt prediction verification system. T
 - **Score**: A numeric value (0.0 to 1.0) representing how well an agent output matches the expected output
 - **Category_Match**: A deterministic binary score (0 or 1) comparing actual verifiable_category to expected verifiable_category
 - **Convergence**: The property that a fuzzy prediction, after clarification, produces outputs equivalent to its base prediction
-- **Verifiability_Category**: One of: agent_verifiable, current_tool_verifiable, strands_tool_verifiable, api_tool_verifiable, human_verifiable_only
+- **Verifiability_Category**: One of: auto_verifiable, automatable, human_only
 
 **Important Note — Clarification Is Not Just About Upgrading Verifiability:**
-Some predictions will remain `human_verifiable_only` even after clarification (e.g., "Tom will wear that shirt"). The clarification loop still adds value by making the prediction more precise and descriptive for the human who will eventually verify it. A fuzzy `human_verifiable_only` prediction should converge to a more detailed `human_verifiable_only` base prediction — not upgrade to a different category. The golden dataset must include test cases where clarification improves precision without changing the category.
+Some predictions will remain `human_only` even after clarification (e.g., "Tom will wear that shirt"). The clarification loop still adds value by making the prediction more precise and descriptive for the human who will eventually verify it. A fuzzy `human_only` prediction should converge to a more detailed `human_only` base prediction — not upgrade to a different category. The golden dataset must include test cases where clarification improves precision without changing the category.
 
 ## Requirements
 
@@ -33,7 +33,7 @@ Some predictions will remain `human_verifiable_only` even after clarification (e
 1. THE Golden_Dataset SHALL store test cases in a JSON file within the repository
 2. WHEN a base prediction test case is defined, THE Golden_Dataset SHALL include the prediction text, expected verifiable_category, expected verification_method structure, and a flag indicating no clarification is needed
 3. WHEN a fuzzy prediction test case is defined, THE Golden_Dataset SHALL include the fuzzy prediction text, a reference to the corresponding base prediction, simulated clarification answers, and expected post-clarification outputs
-4. THE Golden_Dataset SHALL contain at least 15 base predictions covering all five verifiability categories (agent_verifiable, current_tool_verifiable, strands_tool_verifiable, api_tool_verifiable, human_verifiable_only)
+4. THE Golden_Dataset SHALL contain at least 15 base predictions covering all three verifiability categories (auto_verifiable, automatable, human_only)
 5. WHEN a fuzzy prediction test case is defined, THE Golden_Dataset SHALL include expected clarification question topics that the ReviewAgent should ask about
 6. THE Golden_Dataset SHALL include a schema version field to support future format changes
 

@@ -1,5 +1,6 @@
 """
 Prediction Verification Graph — v2 Unified 4-Agent Architecture
+# GRAPH_VERSION: 1 — bump to force new SnapStart snapshot after tool registry changes
 
 This module implements the unified 4-agent graph for prediction verification:
 Parser → Categorizer → Verification Builder → Review (parallel branch)

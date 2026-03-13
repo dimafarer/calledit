@@ -41,23 +41,32 @@ This revealed two issues:
 Predictions that need zero clarification. Ground truth for the system.
 
 Example: "Tomorrow the high temperature in Central Park, New York will reach at least 70°F"
-→ Expected: `agent_verifiable` (with web search tool), no clarification needed
+→ Expected: `auto_verifiable` (with web search tool), no clarification needed
 
 **Layer 2 — Fuzzy Predictions (degraded versions of base):**
 Same predictions with information removed. Tests the clarification loop.
 
 Example: "Tomorrow will be a beautiful day"
-→ Expected round 1: `human_verifiable_only`
+→ Expected round 1: `human_only`
 → After clarification: should converge to base prediction's category
 
 ## Decision 15: Clarification Improves Precision, Not Just Verifiability
 
-Predictions that stay `human_verifiable_only` still benefit from clarification. "Tom will wear that shirt" → ask "which Tom?", "which shirt?", "what day?" to maximize precision for the human verifier.
+Predictions that stay `human_only` still benefit from clarification. "Tom will wear that shirt" → ask "which Tom?", "which shirt?", "what day?" to maximize precision for the human verifier.
 
 ## Execution Order
 
 1. ~~Execute Spec 6 (websocket-snapstart)~~ — DONE (see Update 03)
-2. Execute Spec 7 (category simplification + tool registry) — see Update 04
+2. ~~Execute Spec 7 (category simplification + tool registry)~~ — DONE (see Update 04)
 3. Then build eval framework (this spec) against the simplified 3-category system
 
-**NOTE:** The golden dataset categories referenced in Spec 5 requirements will need updating to use the new 3-category system (`agent_verifiable`, `tool_verifiable`, `human_verifiable_only`) from Spec 7. The Spec 5 requirements were written with the old 5-category system.
+**NOTE:** The Spec 5 requirements were written with the old 5-category system. The next agent MUST update the requirements to use the new 3-category names before creating the design:
+- `agent_verifiable` → `auto_verifiable`
+- `current_tool_verifiable` → `auto_verifiable`
+- `strands_tool_verifiable` → `automatable` (unless tool is registered)
+- `api_tool_verifiable` → `automatable` (unless tool is registered)
+- `human_verifiable_only` → `human_only`
+
+The golden dataset should use only 3 categories: `auto_verifiable`, `automatable`, `human_only`.
+
+The `Verifiability_Category` glossary entry in the requirements needs updating from the old 5 values to the new 3.
