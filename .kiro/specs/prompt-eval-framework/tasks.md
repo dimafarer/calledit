@@ -210,7 +210,7 @@ Phased implementation of a prompt evaluation and observability system for the Ca
 - [x] 7. Checkpoint — Verify golden dataset and evaluators
   - Ensure all tests pass, ask the user if questions arise.
 
-- [-] 8. Phase 3 (continued) — On-demand evaluation runner and online evaluation
+- [x] 8. Phase 3 (continued) — On-demand evaluation runner and online evaluation
   - [x] 8.1 Create on-demand evaluation runner (`eval_runner.py`)
     - Create `backend/calledit-backend/handlers/strands_make_call/eval_runner.py`
     - Implement `run_on_demand_evaluation(dataset_path, filter_name, filter_category, filter_layer, filter_difficulty, dry_run)` 
@@ -238,7 +238,7 @@ Phased implementation of a prompt evaluation and observability system for the Ca
     - Create `tests/eval/test_dry_run.py`
     - For any dataset and filter, verify listed test cases match filter and count = (base × 1) + (fuzzy × 2)
 
-  - [ ] 8.5 Implement online evaluation sampling function
+  - [x] 8.5 Implement online evaluation sampling function
     - Add sampling logic to `otel_instrumentation.py` or a new `online_eval.py` module
     - Implement `should_sample_session(session_id, rate)` — deterministic sampling based on session ID hash
     - Default rate: 10% (0.1), configurable
@@ -252,11 +252,11 @@ Phased implementation of a prompt evaluation and observability system for the Ca
     - Create `tests/eval/test_sampling.py`
     - For any rate in [0.0, 1.0] and deterministic seed, verify sampled proportion is within ±5% of configured rate over a large set
 
-- [ ] 9. Checkpoint — Verify evaluation runner and online eval
+- [x] 9. Checkpoint — Verify evaluation runner and online eval
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 10. Phase 4 — Score tracking and regression detection
-  - [ ] 10.1 Create score history module (`score_history.py`)
+- [x] 10. Phase 4 — Score tracking and regression detection
+  - [x] 10.1 Create score history module (`score_history.py`)
     - Create `backend/calledit-backend/handlers/strands_make_call/score_history.py`
     - Implement `append_score(report, manifest, path)` — append evaluation scores with prompt version manifest to JSON history file
     - Atomic write: write to temp file, then rename
@@ -279,7 +279,7 @@ Phased implementation of a prompt evaluation and observability system for the Ca
     - In `tests/eval/test_score_history.py`
     - For any two reports with manifests, verify: metrics marked improved/regressed/unchanged correctly; changed prompt identifiers detected; regression includes changed prompt and delta
 
-  - [ ] 10.4 Wire score history into eval runner
+  - [x] 10.4 Wire score history into eval runner
     - Modify `eval_runner.py` to call `append_score()` after each on-demand evaluation completes
     - Add `--compare` CLI flag to display comparison with previous evaluation
     - _Requirements: 8.1, 8.2_

@@ -1,0 +1,64 @@
+{
+  "timestamp": "2026-03-14T04:06:01Z",
+  "prompt_version_manifest": {},
+  "per_test_case_scores": [
+    {
+      "test_case_id": "base-001",
+      "layer": "base",
+      "difficulty": "easy",
+      "expected_category": "auto_verifiable",
+      "evaluator_scores": {
+        "CategoryMatch": {
+          "score": 1.0,
+          "evaluator": "CategoryMatch",
+          "span_id": "",
+          "actual": "auto_verifiable",
+          "expected": "auto_verifiable"
+        },
+        "JSONValidity_parser": {
+          "score": 1.0,
+          "evaluator": "JSONValidity",
+          "span_id": "",
+          "error": null
+        },
+        "JSONValidity_categorizer": {
+          "score": 1.0,
+          "evaluator": "JSONValidity",
+          "span_id": "",
+          "error": null
+        },
+        "JSONValidity_vb": {
+          "score": 1.0,
+          "evaluator": "JSONValidity",
+          "span_id": "",
+          "error": null
+        },
+        "ClarificationQuality": {
+          "score": 1.0,
+          "evaluator": "ClarificationQuality",
+          "span_id": ""
+        }
+      },
+      "error": null,
+      "duration_s": 20.99
+    }
+  ],
+  "per_agent_aggregates": {
+    "parser": {
+      "json_validity_avg": 1.0
+    },
+    "categorizer": {
+      "json_validity_avg": 1.0
+    },
+    "vb": {
+      "json_validity_avg": 1.0
+    }
+  },
+  "per_category_accuracy": {
+    "auto_verifiable": 1.0
+  },
+  "overall_pass_rate": 1.0,
+  "total_tests": 1,
+  "passed": 1,
+  "failed": 0
+}

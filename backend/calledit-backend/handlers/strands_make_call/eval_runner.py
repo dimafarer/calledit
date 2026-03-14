@@ -197,7 +197,6 @@ def run_on_demand_evaluation(
 
     # Build base prediction lookup for fuzzy convergence scoring
     base_lookup = {bp.id: bp for bp in dataset.base_predictions}
-    manifest = get_prompt_version_manifest()
     test_results = []
 
     for tc in test_cases:
@@ -267,6 +266,8 @@ def run_on_demand_evaluation(
         print(f"  [{len(test_results)}/{len(test_cases)}] {tc.id}: "
               f"{'PASS' if not test_results[-1].get('error') else 'FAIL'}")
 
+    # Read manifest AFTER test cases run (populated during agent creation)
+    manifest = get_prompt_version_manifest()
     return _aggregate_report(test_results, manifest)
 
 
@@ -313,6 +314,7 @@ if __name__ == "__main__":
     parser.add_argument("--difficulty", choices=["easy", "medium", "hard"])
     parser.add_argument("--dry-run", action="store_true", help="List cases without executing")
     parser.add_argument("--judge", action="store_true", help="Enable Tier 2 LLM-as-judge")
+    parser.add_argument("--compare", action="store_true", help="Compare with previous eval run")
     args = parser.parse_args()
 
     report = run_on_demand_evaluation(
@@ -326,12 +328,37 @@ if __name__ == "__main__":
     )
     print_report(report)
 
-    # Save report
+    # Save report and score history
     if not report.get("dry_run"):
+        import os
+        from score_history import append_score, compare_latest
+
         ts = report["timestamp"].replace(":", "-")
         report_path = f"eval/reports/eval-{ts}.json"
-        import os
         os.makedirs("eval/reports", exist_ok=True)
         with open(report_path, "w") as f:
             json.dump(report, f, indent=2)
         print(f"\nReport saved to {report_path}")
+
+        # Append to score history
+        append_score(report)
+        print("Score appended to eval/score_history.json")
+
+        # Compare with previous run if requested
+        if args.compare:
+            comparison = compare_latest()
+            if comparison:
+                print(f"\n=== COMPARISON vs {comparison['previous_timestamp']} ===")
+                opr = comparison["overall_pass_rate"]
+                status_icon = {"improved": "↑", "regressed": "↓", "unchanged": "="}
+                print(f"Overall pass rate: {opr['previous']:.0%} → {opr['current']:.0%} "
+                      f"{status_icon[opr['status']]} ({opr['delta']:+.1%})")
+                for cat, delta in comparison.get("category_deltas", {}).items():
+                    print(f"  {cat}: {delta['previous']:.0%} → {delta['current']:.0%} "
+                          f"{status_icon[delta['status']]}")
+                if comparison.get("changed_prompts"):
+                    print(f"\nChanged prompts: {json.dumps(comparison['changed_prompts'])}")
+                if comparison.get("has_regression"):
+                    print(f"\n⚠️  REGRESSION DETECTED in {len(comparison['regressions'])} metric(s)")
+            else:
+                print("\nNo previous evaluation to compare against.")
