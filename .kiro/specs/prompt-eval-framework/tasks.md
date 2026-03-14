@@ -93,8 +93,8 @@ Phased implementation of a prompt evaluation and observability system for the Ca
 - [x] 5. Checkpoint — Verify Prompt Management migration
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Phase 3 — Golden dataset and custom evaluators
-  - [ ] 6.1 Create golden dataset schema and loader (`golden_dataset.py`)
+- [-] 6. Phase 3 — Golden dataset and custom evaluators
+  - [x] 6.1 Create golden dataset schema and loader (`golden_dataset.py`)
     - Create `backend/calledit-backend/handlers/strands_make_call/golden_dataset.py`
     - Implement `ExpectedAgentOutputs`, `BasePrediction`, `FuzzyPrediction`, `GoldenDataset` dataclasses
     - Implement `load_golden_dataset(path)` — load JSON, validate schema_version, validate all required fields, cross-reference fuzzy→base IDs
@@ -114,7 +114,7 @@ Phased implementation of a prompt evaluation and observability system for the Ca
     - In `tests/eval/test_golden_dataset.py`
     - For any test case, verify all required fields are present and correctly typed; fuzzy predictions reference existing base predictions
 
-  - [ ] 6.4 Create the golden dataset JSON file
+  - [x] 6.4 Create the golden dataset JSON file
     - Create `eval/golden_dataset.json` with `schema_version: "1.0"`
     - Include at least 15 base predictions covering all 3 categories (≥3 per category: auto_verifiable, automatable, human_only)
     - Include at least 3 fuzzy predictions where clarification improves precision without changing category
@@ -128,7 +128,7 @@ Phased implementation of a prompt evaluation and observability system for the Ca
     - Create `tests/eval/test_filtering.py`
     - For any dataset and filter criteria, verify every result matches all criteria and every matching case appears in result
 
-  - [ ] 6.6 Create CategoryMatch evaluator (`evaluators/category_match.py`)
+  - [x] 6.6 Create CategoryMatch evaluator (`evaluators/category_match.py`)
     - Create `backend/calledit-backend/handlers/strands_make_call/evaluators/__init__.py`
     - Create `backend/calledit-backend/handlers/strands_make_call/evaluators/category_match.py`
     - Implement `evaluate_category_match(span_output, expected)` — deterministic binary score (1.0 match, 0.0 mismatch)
@@ -141,7 +141,7 @@ Phased implementation of a prompt evaluation and observability system for the Ca
     - Create `tests/eval/test_evaluators.py`
     - For any pair of category strings from {auto_verifiable, automatable, human_only}, verify score is 1.0 when equal, 0.0 otherwise; result contains required fields
 
-  - [ ] 6.8 Create JSONValidity evaluator (`evaluators/json_validity.py`)
+  - [x] 6.8 Create JSONValidity evaluator (`evaluators/json_validity.py`)
     - Create `backend/calledit-backend/handlers/strands_make_call/evaluators/json_validity.py`
     - Implement `evaluate_json_validity(span_output, agent_name)` — structural score (0.0–1.0)
     - Parser: requires prediction_statement (str), verification_date (str), date_reasoning (str)
@@ -157,7 +157,7 @@ Phased implementation of a prompt evaluation and observability system for the Ca
     - In `tests/eval/test_evaluators.py`
     - For any agent name and dict of fields (possibly missing/wrong-typed), verify score equals ratio of correct fields to expected; non-parseable input → 0.0 with error
 
-  - [ ] 6.10 Create Convergence evaluator (`evaluators/convergence.py`)
+  - [x] 6.10 Create Convergence evaluator (`evaluators/convergence.py`)
     - Create `backend/calledit-backend/handlers/strands_make_call/evaluators/convergence.py`
     - Implement `evaluate_convergence(round2_outputs, base_expected)` — weighted score (0.0–1.0)
     - Weights: category match 0.5, prediction statement similarity 0.2, verification method overlap 0.2, date accuracy 0.1
@@ -171,7 +171,7 @@ Phased implementation of a prompt evaluation and observability system for the Ca
     - In `tests/eval/test_evaluators.py`
     - For any pair of output dicts, verify score is in [0.0, 1.0]; identical inputs → 1.0; result contains required fields
 
-  - [ ] 6.12 Create ClarificationQuality evaluator (`evaluators/clarification_quality.py`)
+  - [x] 6.12 Create ClarificationQuality evaluator (`evaluators/clarification_quality.py`)
     - Create `backend/calledit-backend/handlers/strands_make_call/evaluators/clarification_quality.py`
     - Implement `evaluate_clarification_quality(review_output, expected_topics)` — keyword coverage score (0.0–1.0)
     - Score = proportion of expected keywords appearing (case-insensitive) in at least one question
@@ -185,7 +185,7 @@ Phased implementation of a prompt evaluation and observability system for the Ca
     - In `tests/eval/test_evaluators.py`
     - For any list of questions and expected keywords, verify score equals proportion of keywords found; all found → 1.0; none found → 0.0
 
-  - [ ] 6.14 Create ReasoningQuality evaluator (`evaluators/reasoning_quality.py`)
+  - [x] 6.14 Create ReasoningQuality evaluator (`evaluators/reasoning_quality.py`)
     - Create `backend/calledit-backend/handlers/strands_make_call/evaluators/reasoning_quality.py`
     - Implement `evaluate_reasoning_quality(span_output, agent_name, prediction_text, evaluation_rubric, judge_model)` — LLM-as-Judge scoring
     - Build judge prompt that includes: the prediction text, the agent output, the agent name, and optional evaluation_rubric from golden dataset
@@ -201,17 +201,17 @@ Phased implementation of a prompt evaluation and observability system for the Ca
     - In `tests/eval/test_evaluators.py`
     - For any agent span output, prediction text, and optional rubric, verify result contains score (0.0-1.0), evaluator name, span_id, non-empty judge_reasoning, and judge_model different from agent model
 
-  - [ ] 6.16 Add evaluation_rubric field to golden dataset schema
+  - [x] 6.16 Add evaluation_rubric field to golden dataset schema
     - Update `golden_dataset.py` BasePrediction and FuzzyPrediction dataclasses to include optional `evaluation_rubric: Optional[str]`
     - Update `load_golden_dataset()` to parse the rubric field (optional, defaults to None)
     - Add rubric entries to at least 5 golden dataset test cases (e.g., "categorizer reasoning should reference astronomical knowledge" for sunrise prediction)
     - _Requirements: 9.4_
 
-- [ ] 7. Checkpoint — Verify golden dataset and evaluators
+- [x] 7. Checkpoint — Verify golden dataset and evaluators
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 8. Phase 3 (continued) — On-demand evaluation runner and online evaluation
-  - [ ] 8.1 Create on-demand evaluation runner (`eval_runner.py`)
+- [-] 8. Phase 3 (continued) — On-demand evaluation runner and online evaluation
+  - [x] 8.1 Create on-demand evaluation runner (`eval_runner.py`)
     - Create `backend/calledit-backend/handlers/strands_make_call/eval_runner.py`
     - Implement `run_on_demand_evaluation(dataset_path, filter_name, filter_category, filter_layer, filter_difficulty, dry_run)` 
     - Load golden dataset, execute each test case through OTEL-instrumented test graph
@@ -227,7 +227,7 @@ Phased implementation of a prompt evaluation and observability system for the Ca
     - Create `tests/eval/test_report_aggregation.py`
     - For any list of per-test-case score dicts, verify per-agent averages equal arithmetic mean, per-category accuracy equals mean CategoryMatch for that category, overall pass rate equals proportion where all scores > 0.5
 
-  - [ ] 8.3 Implement dry-run mode for on-demand evaluation
+  - [x] 8.3 Implement dry-run mode for on-demand evaluation
     - In `eval_runner.py`, when `dry_run=True`: list test cases that would execute and estimated invocation count without making API calls
     - Estimated count = (base predictions × 1) + (fuzzy predictions × 2)
     - _Requirements: 8.6_
