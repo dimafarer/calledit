@@ -2,120 +2,133 @@
 
 ## Introduction
 
-A prompt evaluation framework for the CalledIt prediction verification system. The framework enables iterative improvement of agent prompts (Parser, Categorizer, Verification Builder, ReviewAgent) with measurable progress tracking. It uses a layered test pyramid: Layer 1 tests fully-specified base predictions for correctness, Layer 2 tests fuzzy predictions for clarification quality and convergence after user clarification. The framework invokes the actual Strands agent graph (Bedrock API calls) and scores outputs against a golden dataset.
+A prompt evaluation and observability system for the CalledIt prediction verification system, built on three managed AWS services: Bedrock Prompt Management, CloudWatch GenAI Observability, and AgentCore Evaluations. The system replaces hardcoded Python prompt constants with versioned managed prompts, instruments the 4-agent Strands graph (Parser → Categorizer → Verification Builder → ReviewAgent) with OpenTelemetry for per-agent latency and token tracking, and evaluates agent quality using custom evaluators against a golden dataset with span-level scoring. The architecture enables prompt version → score correlation, regression detection, and continuous production monitoring.
 
 ## Glossary
 
-- **Eval_Framework**: The prompt evaluation tool that runs golden dataset test cases against the prediction graph and produces scored results
-- **Golden_Dataset**: A JSON file containing base predictions and their fuzzy variants with expected outputs, stored in the repository
-- **Base_Prediction**: A fully-specified prediction requiring zero clarification, with known expected outputs for all agents (Layer 1)
-- **Fuzzy_Prediction**: A degraded version of a base prediction with information removed, requiring clarification to converge to the base prediction's output (Layer 2)
-- **Test_Case**: A single entry in the golden dataset containing input, expected outputs, and scoring criteria
-- **Prediction_Graph**: The 4-agent Strands graph (Parser → Categorizer → Verification Builder → ReviewAgent) that processes predictions
-- **Eval_Run**: A single execution of the Eval_Framework against the golden dataset, producing a scored report
-- **Eval_Report**: The output of an Eval_Run containing per-test-case scores and aggregate metrics
-- **Score**: A numeric value (0.0 to 1.0) representing how well an agent output matches the expected output
-- **Category_Match**: A deterministic binary score (0 or 1) comparing actual verifiable_category to expected verifiable_category
-- **Convergence**: The property that a fuzzy prediction, after clarification, produces outputs equivalent to its base prediction
-- **Verifiability_Category**: One of: auto_verifiable, automatable, human_only
+- **Prediction_Graph**: The 4-agent Strands graph (Parser → Categorizer → Verification Builder → ReviewAgent) running on Lambda with SnapStart, using Bedrock Claude Sonnet 4
+- **Managed_Prompt**: A prompt stored in Bedrock Prompt Management with immutable version numbers, variables support, and API-invokable retrieval
+- **Prompt_Version_Manifest**: A record of the specific prompt version numbers (parser:vN, categorizer:vN, vb:vN, review:vN) used during a given evaluation or production invocation
+- **OTEL_Instrumentation**: OpenTelemetry SDK integration that emits per-agent spans, token counts, and latency metrics from the Strands graph execution
+- **GenAI_Dashboard**: A CloudWatch dashboard displaying per-agent latency, token usage, error rates, and end-to-end trace data from OTEL-instrumented graph executions
+- **Custom_Evaluator**: An AgentCore Evaluations evaluator implementing domain-specific scoring logic (CategoryMatch, Convergence, JSONValidity, ClarificationQuality)
+- **On_Demand_Evaluation**: A developer-initiated evaluation run that executes the golden dataset against the Prediction_Graph and scores the resulting OTEL traces using Custom_Evaluators
+- **Online_Evaluation**: Continuous production evaluation that samples 10% of live sessions and scores them using Custom_Evaluators via AgentCore
+- **Golden_Dataset**: A JSON file containing base predictions (Layer 1) and fuzzy predictions (Layer 2) with expected per-agent outputs, difficulty annotations, and tool manifest configurations
+- **Base_Prediction**: A fully-specified prediction requiring zero clarification, with known expected outputs for each agent individually (Layer 1)
+- **Fuzzy_Prediction**: A degraded version of a base prediction with information removed, requiring clarification to converge to the base prediction's per-agent outputs (Layer 2)
+- **Convergence**: The property that a fuzzy prediction, after clarification, produces per-agent outputs equivalent to its corresponding base prediction
+- **Verifiability_Category**: One of three classification values: auto_verifiable (verifiable now with current tools), automatable (could be verified with a plausible tool), human_only (requires subjective human judgment)
+- **Span_Level_Analysis**: AgentCore's ability to evaluate individual agent nodes within a trace independently, isolating per-agent quality from cascading failures
+- **Score_History**: A persistent record of evaluation scores correlated with prompt version manifests, enabling regression detection across prompt iterations
+- **Agent_Factory_Function**: The create_*_agent() functions (create_parser_agent, create_categorizer_agent, create_verification_builder_agent, create_review_agent) that construct Strands Agent instances with system prompts and tools
 
 **Important Note — Clarification Is Not Just About Upgrading Verifiability:**
-Some predictions will remain `human_only` even after clarification (e.g., "Tom will wear that shirt"). The clarification loop still adds value by making the prediction more precise and descriptive for the human who will eventually verify it. A fuzzy `human_only` prediction should converge to a more detailed `human_only` base prediction — not upgrade to a different category. The golden dataset must include test cases where clarification improves precision without changing the category.
+Some predictions remain `human_only` even after clarification (e.g., "Tom will wear that shirt"). The clarification loop still adds value by making the prediction more precise for the human who will eventually verify it. A fuzzy `human_only` prediction should converge to a more detailed `human_only` base prediction — not upgrade to a different category. The golden dataset includes test cases where clarification improves precision without changing the category (Decision 15).
 
 ## Requirements
 
-### Requirement 1: Golden Dataset Definition
+### Requirement 1: OpenTelemetry Instrumentation of the Strands Graph (Phase 1)
 
-**User Story:** As a developer, I want a structured golden dataset of test predictions with expected outputs, so that I can evaluate agent prompt quality against known-good answers.
-
-#### Acceptance Criteria
-
-1. THE Golden_Dataset SHALL store test cases in a JSON file within the repository
-2. WHEN a base prediction test case is defined, THE Golden_Dataset SHALL include the prediction text, expected verifiable_category, expected verification_method structure, and a flag indicating no clarification is needed
-3. WHEN a fuzzy prediction test case is defined, THE Golden_Dataset SHALL include the fuzzy prediction text, a reference to the corresponding base prediction, simulated clarification answers, and expected post-clarification outputs
-4. THE Golden_Dataset SHALL contain at least 15 base predictions covering all three verifiability categories (auto_verifiable, automatable, human_only)
-5. WHEN a fuzzy prediction test case is defined, THE Golden_Dataset SHALL include expected clarification question topics that the ReviewAgent should ask about
-6. THE Golden_Dataset SHALL include a schema version field to support future format changes
-
-### Requirement 2: Layer 1 — Base Prediction Evaluation
-
-**User Story:** As a developer, I want to run fully-specified predictions through the graph and score the outputs, so that I can verify agents produce correct results when given complete information.
+**User Story:** As a developer, I want the 4-agent Strands graph instrumented with OpenTelemetry, so that each agent execution emits spans with latency, token counts, and trace context for downstream observability and evaluation.
 
 #### Acceptance Criteria
 
-1. WHEN a base prediction test case is executed, THE Eval_Framework SHALL invoke the Prediction_Graph with the prediction text and capture the full parsed output
-2. WHEN a base prediction test case is scored, THE Eval_Framework SHALL compute a Category_Match score (1 if actual verifiable_category equals expected, 0 otherwise)
-3. WHEN a base prediction test case is scored, THE Eval_Framework SHALL verify that the Parser output contains valid JSON with prediction_statement, verification_date, and date_reasoning fields
-4. WHEN a base prediction test case is scored, THE Eval_Framework SHALL verify that the Verification Builder output contains a verification_method with source, criteria, and steps as non-empty lists
-5. WHEN a base prediction test case is scored, THE Eval_Framework SHALL compute an overall test case score as a weighted combination of category match, JSON validity, and verification method structure scores
-6. IF the Prediction_Graph returns an error for a base prediction, THEN THE Eval_Framework SHALL record the test case as failed with the error message and assign a score of 0.0
+1. WHEN the Prediction_Graph executes, THE OTEL_Instrumentation SHALL emit one span per agent node (parser, categorizer, verification_builder, review) containing the agent name, start time, end time, and execution status
+2. WHEN a Bedrock model invocation occurs within an agent span, THE OTEL_Instrumentation SHALL record input token count, output token count, and model ID as span attributes
+3. WHEN the Prediction_Graph executes, THE OTEL_Instrumentation SHALL emit a parent trace span encompassing all agent spans with the end-to-end duration
+4. WHEN a Managed_Prompt version is used by an agent, THE OTEL_Instrumentation SHALL record the prompt identifier and version number as span attributes (e.g., `prompt.id=parser`, `prompt.version=3`)
+5. WHEN the Lambda function initializes with SnapStart, THE OTEL_Instrumentation SHALL restore the OTEL collector state correctly after snapshot restore without losing trace context
+6. IF the OTEL collector fails to export spans, THEN THE OTEL_Instrumentation SHALL log the export failure and continue graph execution without blocking the prediction response
 
-### Requirement 3: Layer 2 — Fuzzy Prediction Evaluation
+### Requirement 2: CloudWatch GenAI Observability Dashboards and Alarms (Phase 1)
 
-**User Story:** As a developer, I want to run fuzzy predictions through the clarification loop and score convergence to the base prediction output, so that I can verify the system handles ambiguous input correctly.
-
-#### Acceptance Criteria
-
-1. WHEN a fuzzy prediction test case is executed, THE Eval_Framework SHALL invoke the Prediction_Graph for round 1 with the fuzzy prediction text and capture the output including reviewable_sections
-2. WHEN round 1 output is captured, THE Eval_Framework SHALL extract clarification questions from the reviewable_sections and score whether expected question topics are covered
-3. WHEN round 1 is complete, THE Eval_Framework SHALL construct a round 2 prompt using the round 1 output, the simulated clarification answers from the test case, and invoke the Prediction_Graph again
-4. WHEN round 2 output is captured, THE Eval_Framework SHALL compute a Convergence score by comparing the round 2 verifiable_category to the corresponding base prediction's expected verifiable_category
-5. WHEN a fuzzy prediction test case is scored, THE Eval_Framework SHALL compute an overall score combining: round 1 JSON validity, clarification question quality, and post-clarification convergence
-6. IF the Prediction_Graph returns an error during any round of a fuzzy prediction evaluation, THEN THE Eval_Framework SHALL record the failing round, the error message, and assign a score of 0.0 for remaining rounds
-
-### Requirement 4: Scoring and Reporting
-
-**User Story:** As a developer, I want detailed per-test-case scores and aggregate metrics in a readable report, so that I can identify which agents and which predictions are failing.
+**User Story:** As a developer, I want CloudWatch dashboards showing per-agent latency, token usage, and error rates, so that I can monitor operational health and identify performance bottlenecks in the agent graph.
 
 #### Acceptance Criteria
 
-1. WHEN an Eval_Run completes, THE Eval_Framework SHALL produce an Eval_Report containing: per-test-case scores, per-agent pass/fail status, and aggregate metrics
-2. WHEN an Eval_Report is generated, THE Eval_Framework SHALL include the overall pass rate (percentage of test cases scoring above a configurable threshold)
-3. WHEN an Eval_Report is generated, THE Eval_Framework SHALL include per-category accuracy (percentage of correct Category_Match scores grouped by verifiability category)
-4. WHEN an Eval_Report is generated, THE Eval_Framework SHALL display results in a human-readable format to the terminal with color-coded pass/fail indicators
-5. WHEN an Eval_Report is generated, THE Eval_Framework SHALL save the full report as a JSON file with a timestamp in the filename
-6. THE Eval_Framework SHALL include the wall-clock duration of each test case in the Eval_Report
+1. WHEN OTEL spans are exported, THE GenAI_Dashboard SHALL display per-agent latency metrics (p50, p95, p99) for each of the four agents separately
+2. WHEN OTEL spans are exported, THE GenAI_Dashboard SHALL display per-agent token usage (input tokens, output tokens) as time-series metrics
+3. WHEN OTEL spans are exported, THE GenAI_Dashboard SHALL display end-to-end graph execution latency as a time-series metric
+4. WHEN per-agent p95 latency exceeds a configurable threshold, THE GenAI_Dashboard SHALL trigger a CloudWatch alarm
+5. WHEN per-agent token usage exceeds a configurable threshold per invocation, THE GenAI_Dashboard SHALL trigger a CloudWatch alarm
+6. THE GenAI_Dashboard SHALL provide trace-level drill-down from a latency spike to the individual agent spans within that trace
 
-### Requirement 5: CLI Execution
 
-**User Story:** As a developer, I want to run the full eval suite or individual test cases with a single command, so that I can quickly validate prompt changes.
+### Requirement 3: Bedrock Prompt Management Migration (Phase 2)
 
-#### Acceptance Criteria
-
-1. THE Eval_Framework SHALL provide a CLI entry point that runs all test cases in the Golden_Dataset with a single command
-2. WHEN the CLI is invoked with a test case filter argument, THE Eval_Framework SHALL run only the test cases matching the filter
-3. WHEN the CLI is invoked with a layer filter argument, THE Eval_Framework SHALL run only test cases from the specified layer (base or fuzzy)
-4. THE Eval_Framework SHALL print a summary line at the end of execution showing total tests, passed, failed, and overall score
-5. IF the overall pass rate falls below the configurable threshold, THEN THE Eval_Framework SHALL exit with a non-zero exit code
-
-### Requirement 6: Score Tracking Over Time
-
-**User Story:** As a developer, I want to compare eval scores across prompt iterations, so that I can verify prompt changes improve overall quality without regressions.
+**User Story:** As a developer, I want the four agent system prompts migrated from hardcoded Python constants to Bedrock Prompt Management, so that prompts are versioned with immutable version numbers and can be iterated independently of code deployments.
 
 #### Acceptance Criteria
 
-1. WHEN an Eval_Run completes, THE Eval_Framework SHALL append the aggregate scores and timestamp to a local score history file
-2. WHEN the CLI is invoked with a compare flag, THE Eval_Framework SHALL display the current run's scores alongside the previous run's scores with delta indicators (improved/regressed/unchanged)
-3. WHEN a comparison shows any per-category accuracy decreased, THE Eval_Framework SHALL flag the regressed categories in the comparison output
-4. THE Eval_Framework SHALL store the score history in a JSON file within the repository
+1. THE Managed_Prompt service SHALL store four prompts (parser, categorizer, verification_builder, review) each with an initial version (v1) matching the current hardcoded SYSTEM_PROMPT constants
+2. WHEN a Managed_Prompt is created or updated, THE Managed_Prompt service SHALL assign an immutable version number that cannot be modified after creation
+3. WHEN an Agent_Factory_Function initializes an agent, THE Agent_Factory_Function SHALL fetch the prompt text from Bedrock Prompt Management using the prompt identifier and a configurable version number instead of using a hardcoded Python constant
+4. WHEN the Managed_Prompt contains variables (prediction text, datetime, timezone, tool_manifest), THE Agent_Factory_Function SHALL resolve variables at agent creation time using the Bedrock Prompt Management variables API
+5. WHEN the Lambda function cold-starts with SnapStart, THE Agent_Factory_Function SHALL cache the fetched prompt text in the SnapStart snapshot so that warm invocations do not make additional Bedrock Prompt Management API calls
+6. IF the Bedrock Prompt Management API call fails during agent initialization, THEN THE Agent_Factory_Function SHALL fall back to a bundled copy of the prompt and log the failure at ERROR level
 
-### Requirement 7: Non-Determinism Handling
+### Requirement 4: Golden Dataset with Enhanced Schema (Phase 3)
 
-**User Story:** As a developer, I want the scoring system to account for LLM output variability, so that non-deterministic differences do not cause false failures.
-
-#### Acceptance Criteria
-
-1. THE Eval_Framework SHALL use deterministic scoring (exact match) for verifiable_category comparisons
-2. THE Eval_Framework SHALL use structural scoring (field presence and type checks) for JSON validity rather than exact content matching
-3. WHEN scoring clarification question quality, THE Eval_Framework SHALL match on expected topic keywords rather than exact question text
-4. WHEN the CLI is invoked with a repeat-count argument, THE Eval_Framework SHALL run each test case the specified number of times and report the pass rate across repetitions
-
-### Requirement 8: Cost and Performance Guardrails
-
-**User Story:** As a developer, I want visibility into the cost of eval runs and the ability to limit scope, so that I can manage Bedrock API costs.
+**User Story:** As a developer, I want a golden dataset with per-agent expected outputs, difficulty annotations, and tool manifest configurations, so that evaluations can score each agent independently and weight results by difficulty.
 
 #### Acceptance Criteria
 
-1. WHEN an Eval_Run completes, THE Eval_Framework SHALL report the total number of Prediction_Graph invocations made during the run
-2. WHEN the CLI is invoked with a dry-run flag, THE Eval_Framework SHALL list the test cases that would be executed and the estimated number of graph invocations without making any API calls
-3. THE Eval_Framework SHALL log the start and end time of each test case execution to enable cost estimation
+1. THE Golden_Dataset SHALL store test cases in a JSON file within the repository with a schema version field to support future format changes
+2. WHEN a Base_Prediction test case is defined, THE Golden_Dataset SHALL include: prediction text, difficulty annotation (easy, medium, or hard), tool_manifest_config specifying which tools are registered, and expected_per_agent_outputs containing expected output for each of the four agents individually
+3. WHEN a Fuzzy_Prediction test case is defined, THE Golden_Dataset SHALL include: fuzzy prediction text, a reference to the corresponding Base_Prediction, simulated clarification answers, expected clarification question topics, and expected post-clarification per-agent outputs
+4. THE Golden_Dataset SHALL contain at least 15 Base_Predictions covering all three Verifiability_Categories (auto_verifiable, automatable, human_only) with at least 3 test cases per category
+5. THE Golden_Dataset SHALL include at least 3 Fuzzy_Prediction test cases where clarification improves precision without changing the Verifiability_Category (human_only remains human_only after clarification)
+6. WHEN a test case specifies a tool_manifest_config, THE Golden_Dataset SHALL include the tool names and capability descriptions that the Categorizer agent should see during evaluation
+
+### Requirement 5: AgentCore Custom Evaluators (Phase 3)
+
+**User Story:** As a developer, I want four custom evaluators (CategoryMatch, Convergence, JSONValidity, ClarificationQuality) registered in AgentCore Evaluations, so that agent outputs are scored with domain-specific metrics at the span level.
+
+#### Acceptance Criteria
+
+1. WHEN a categorizer span is evaluated, THE CategoryMatchEvaluator SHALL compute a deterministic binary score (1.0 if actual Verifiability_Category equals expected, 0.0 otherwise) by comparing the categorizer span output against the Golden_Dataset expected category
+2. WHEN a parser, categorizer, or verification_builder span is evaluated, THE JSONValidityEvaluator SHALL compute a structural score (0.0 to 1.0) based on field presence and type correctness per agent: parser requires prediction_statement, verification_date, and date_reasoning; categorizer requires verifiable_category and category_reasoning; verification_builder requires verification_method with source, criteria, and steps as non-empty lists
+3. WHEN a full round-1-plus-round-2 trace from a Fuzzy_Prediction is evaluated, THE ConvergenceEvaluator SHALL compute a score (0.0 to 1.0) by comparing the round 2 per-agent outputs against the corresponding Base_Prediction expected per-agent outputs, with Verifiability_Category match weighted highest
+4. WHEN a review span is evaluated, THE ClarificationQualityEvaluator SHALL compute a score (0.0 to 1.0) based on the proportion of expected topic keywords from the Golden_Dataset that appear in the ReviewAgent's generated clarification questions
+5. WHEN any Custom_Evaluator scores a span, THE Custom_Evaluator SHALL record the score, the evaluator name, and the evaluated span ID in the evaluation result for traceability
+6. IF an agent span contains malformed output that cannot be parsed, THEN THE JSONValidityEvaluator SHALL assign a score of 0.0 and record the parse error message in the evaluation result
+
+### Requirement 6: On-Demand Evaluation for Development (Phase 3)
+
+**User Story:** As a developer, I want to run the golden dataset against the Prediction_Graph and score the results using AgentCore custom evaluators, so that I can measure prompt quality during development before deploying changes.
+
+#### Acceptance Criteria
+
+1. WHEN an On_Demand_Evaluation is initiated, THE On_Demand_Evaluation SHALL load test cases from the Golden_Dataset, execute each through the OTEL-instrumented Prediction_Graph, and collect the resulting traces
+2. WHEN a Base_Prediction test case is executed, THE On_Demand_Evaluation SHALL invoke the Prediction_Graph once (round 1) and submit the trace to AgentCore for evaluation with CategoryMatchEvaluator, JSONValidityEvaluator, and ClarificationQualityEvaluator
+3. WHEN a Fuzzy_Prediction test case is executed, THE On_Demand_Evaluation SHALL invoke the Prediction_Graph for round 1, construct a round 2 prompt using simulated clarification answers from the Golden_Dataset, invoke the Prediction_Graph again, and submit both traces to AgentCore for evaluation including the ConvergenceEvaluator
+4. WHEN an On_Demand_Evaluation completes, THE On_Demand_Evaluation SHALL produce a report containing: per-test-case scores from each Custom_Evaluator, per-agent aggregate scores, per-category accuracy, overall pass rate, and the Prompt_Version_Manifest used
+5. WHEN the On_Demand_Evaluation is invoked with a test case filter, THE On_Demand_Evaluation SHALL execute only the test cases matching the filter (by name, category, layer, or difficulty)
+6. IF the Prediction_Graph returns an error for a test case, THEN THE On_Demand_Evaluation SHALL record the test case as failed with the error message and assign a score of 0.0 for all evaluators on that test case
+
+### Requirement 7: Online Evaluation for Production (Phase 3)
+
+**User Story:** As a developer, I want continuous production monitoring that samples and scores live prediction sessions, so that I can detect quality regressions in production without manual eval runs.
+
+#### Acceptance Criteria
+
+1. WHEN a production prediction session completes, THE Online_Evaluation SHALL sample the session for evaluation at a configurable rate (default 10% of sessions)
+2. WHEN a sampled session trace is evaluated, THE Online_Evaluation SHALL apply the CategoryMatchEvaluator and JSONValidityEvaluator to the relevant agent spans within the trace
+3. WHEN Online_Evaluation scores are computed, THE Online_Evaluation SHALL publish the scores as CloudWatch custom metrics with dimensions for agent name, evaluator name, and prompt version
+4. WHEN the rolling average of any Custom_Evaluator score drops below a configurable threshold over a configurable time window, THE Online_Evaluation SHALL trigger a CloudWatch alarm indicating quality regression
+5. THE Online_Evaluation SHALL record the Prompt_Version_Manifest as a trace attribute on every production trace so that evaluation scores can be correlated to specific prompt versions
+6. IF AgentCore Evaluations is unavailable, THEN THE Online_Evaluation SHALL continue serving predictions without evaluation and log the evaluation skip at WARN level
+
+### Requirement 8: Score Tracking and Regression Detection (Phase 4)
+
+**User Story:** As a developer, I want to compare evaluation scores across prompt iterations with prompt version correlation, so that I can verify prompt changes improve quality and detect regressions tied to specific prompt version changes.
+
+#### Acceptance Criteria
+
+1. WHEN an On_Demand_Evaluation completes, THE Score_History SHALL append the per-agent aggregate scores, per-category accuracy, overall pass rate, timestamp, and the Prompt_Version_Manifest to a persistent score history file
+2. WHEN a developer requests a comparison, THE Score_History SHALL display the current evaluation scores alongside the previous evaluation scores with delta indicators (improved, regressed, unchanged) for each metric
+3. WHEN a comparison shows any per-agent score or per-category accuracy decreased compared to the previous evaluation, THE Score_History SHALL identify which prompt version changed between the two evaluations and flag the correlation
+4. WHEN a comparison shows regression, THE Score_History SHALL display which specific agent's prompt version changed and the corresponding score delta for that agent
+5. THE Score_History SHALL store evaluation results in a JSON file within the repository, keyed by timestamp and Prompt_Version_Manifest
+6. WHEN the On_Demand_Evaluation is invoked with a dry-run flag, THE On_Demand_Evaluation SHALL list the test cases that would be executed and the estimated number of Prediction_Graph invocations without making any API calls
