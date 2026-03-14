@@ -154,8 +154,13 @@ Future:   prompt = bedrock_agent.get_prompt(promptIdentifier="parser-v1", prompt
 - Custom evaluator: `ConvergenceEvaluator` — fuzzy-to-base prediction convergence
 - Custom evaluator: `JSONValidityEvaluator` — structural scoring per agent
 - Custom evaluator: `ClarificationQualityEvaluator` — topic keyword matching for ReviewAgent questions
+- Custom evaluator: `ReasoningQualityEvaluator` — LLM-as-Judge scoring of reasoning quality, specificity, and soundness (uses a different judge model to avoid self-evaluation bias)
 - On-demand evaluation for development (run golden dataset, score traces)
 - Online evaluation for production (sample 10% of live traffic, score continuously)
+
+**Two-tier evaluator strategy:**
+- Tier 1 (deterministic): CategoryMatch, JSONValidity, ClarificationQuality, Convergence — fast, cheap, catches structural regressions. Run on every eval.
+- Tier 2 (LLM-as-Judge): ReasoningQuality — slower, costs extra judge invocations, but catches nuanced quality issues (generic boilerplate, unsound reasoning, irrelevant questions). Run on-demand during development, optionally sampled in production.
 
 ### Decision 24: Skip Bedrock Evaluations (Confidence: 6/10 — useful but redundant)
 

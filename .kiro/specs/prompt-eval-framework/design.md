@@ -6,7 +6,11 @@ This design describes a prompt evaluation and observability system for the Calle
 
 1. **OpenTelemetry + CloudWatch GenAI Observability** (Phase 1) — Per-agent spans with latency, token counts, and trace context. Dashboards and alarms for operational health.
 2. **Bedrock Prompt Management** (Phase 2) — Migrate hardcoded `*_SYSTEM_PROMPT` constants to versioned managed prompts with immutable version numbers and variables support.
-3. **AgentCore Evaluations** (Phase 3) — Four custom evaluators (CategoryMatch, Convergence, JSONValidity, ClarificationQuality) scoring OTEL traces at the span level. On-demand evaluation against a golden dataset and online evaluation sampling 10% of production traffic.
+3. **AgentCore Evaluations** (Phase 3) — Five custom evaluators scoring OTEL traces at the span level:
+   - **Deterministic evaluators** (brittle but fast/cheap): CategoryMatch, JSONValidity, ClarificationQuality, Convergence
+   - **LLM-as-Judge evaluator** (experimental, nuanced): ReasoningQualityEvaluator — uses a judge model to score reasoning quality, specificity, and soundness
+   
+   On-demand evaluation against a golden dataset and online evaluation sampling 10% of production traffic.
 4. **Score Tracking** (Phase 4) — Persistent score history correlated with prompt version manifests for regression detection.
 
 The app runtime stays low-cost serverless (Lambda + SAM + DynamoDB). The managed services apply only to the testing, evaluation, and observability layers.
@@ -268,6 +272,7 @@ class BasePrediction:
     difficulty: str  # "easy", "medium", "hard"
     tool_manifest_config: Dict[str, Any]  # {tools: [{name, description, capabilities}]}
     expected_per_agent_outputs: ExpectedAgentOutputs
+    evaluation_rubric: Optional[str]  # LLM-as-Judge grounding rubric (e.g., "reasoning should reference astronomical knowledge")
 
 @dataclass
 class FuzzyPrediction:
@@ -350,7 +355,39 @@ def evaluate_clarification_quality(review_output: dict, expected_topics: list) -
     Returns: {"score": 0.0-1.0, "evaluator": "ClarificationQuality", "span_id": ...}
     """
     ...
+
+# evaluators/reasoning_quality.py
+def evaluate_reasoning_quality(
+    span_output: dict, agent_name: str,
+    prediction_text: str, evaluation_rubric: str = None,
+    judge_model: str = "us.anthropic.claude-sonnet-4-20250514-v1:0"
+) -> dict:
+    """LLM-as-Judge reasoning quality evaluator.
+    
+    Uses a judge model (different from the agents being evaluated) to score:
+    - Categorizer: Is the category_reasoning sound and specific to this prediction?
+    - VB: Are the verification steps actionable and prediction-specific (not boilerplate)?
+    - Review: Do the clarification questions target actual ambiguity (not generic)?
+    
+    The judge receives the prediction text, the agent output, and an optional
+    evaluation_rubric from the golden dataset that grounds scoring in domain
+    expectations.
+    
+    Returns: {"score": 0.0-1.0, "evaluator": "ReasoningQuality", "span_id": str,
+              "judge_reasoning": str, "judge_model": str}
+    """
+    ...
 ```
+
+**Evaluator Layering Strategy:**
+
+The evaluators form two tiers:
+
+1. **Deterministic tier** (CategoryMatch, JSONValidity, ClarificationQuality, Convergence): Fast, cheap, no API calls beyond the graph itself. These catch structural regressions and binary correctness. Run on every evaluation.
+
+2. **LLM-as-Judge tier** (ReasoningQuality): Slower, costs extra (judge model invocations), but catches nuanced quality issues that deterministic scoring misses — generic boilerplate, unsound reasoning, irrelevant questions. Run on-demand during development; optionally sampled in production.
+
+This layering means you get fast feedback from the deterministic tier on every prompt change, and deep quality analysis from the judge tier when you need it.
 
 ### Component 5: On-Demand Evaluation Runner (`eval_runner.py`)
 
@@ -659,6 +696,12 @@ PredictionGraphState = {
 
 **Validates: Requirements 8.6**
 
+### Property 16: ReasoningQuality evaluator returns valid structured results
+
+*For any* agent span output (categorizer, verification_builder, or review), prediction text (non-empty string), and optional evaluation rubric, the ReasoningQualityEvaluator should return a result dict containing: "score" (float between 0.0 and 1.0 inclusive), "evaluator" (equal to "ReasoningQuality"), "span_id" (string), "judge_reasoning" (non-empty string explaining the score), and "judge_model" (string identifying the model used). The judge_model must differ from the agent model being evaluated.
+
+**Validates: Requirements 9.1, 9.2, 9.3, 9.5, 9.6**
+
 ## Error Handling
 
 ### OTEL Export Failures (Phase 1)
@@ -757,3 +800,4 @@ Unit tests (non-PBT) cover:
 | P13: Score history round-trip | test_score_history.py | 8.1 |
 | P14: Score comparison | test_score_history.py | 8.2, 8.3, 8.4 |
 | P15: Dry-run counting | test_dry_run.py | 8.6 |
+| P16: ReasoningQuality results | test_evaluators.py | 9.1, 9.2, 9.3, 9.5, 9.6 |

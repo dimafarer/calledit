@@ -132,3 +132,16 @@ Some predictions remain `human_only` even after clarification (e.g., "Tom will w
 4. WHEN a comparison shows regression, THE Score_History SHALL display which specific agent's prompt version changed and the corresponding score delta for that agent
 5. THE Score_History SHALL store evaluation results in a JSON file within the repository, keyed by timestamp and Prompt_Version_Manifest
 6. WHEN the On_Demand_Evaluation is invoked with a dry-run flag, THE On_Demand_Evaluation SHALL list the test cases that would be executed and the estimated number of Prediction_Graph invocations without making any API calls
+
+### Requirement 9: LLM-as-Judge Reasoning Quality Evaluator (Phase 3)
+
+**User Story:** As a developer, I want an LLM-as-judge evaluator that scores the quality of agent reasoning (not just output correctness), so that I can detect when agents produce correct answers with poor reasoning, generic boilerplate, or unsound logic.
+
+#### Acceptance Criteria
+
+1. WHEN a categorizer span is evaluated, THE ReasoningQualityEvaluator SHALL invoke a judge model to score whether the category_reasoning is sound, specific to the prediction, and references relevant concepts (not generic boilerplate), returning a score from 0.0 to 1.0
+2. WHEN a verification_builder span is evaluated, THE ReasoningQualityEvaluator SHALL invoke a judge model to score whether the verification_method steps are actionable and specific to the prediction (not generic "manual review" boilerplate), returning a score from 0.0 to 1.0
+3. WHEN a review span is evaluated, THE ReasoningQualityEvaluator SHALL invoke a judge model to score whether the clarification questions target the actual ambiguity in the prediction (not generic questions that could apply to any prediction), returning a score from 0.0 to 1.0
+4. WHEN a Golden_Dataset test case includes an evaluation_rubric field, THE ReasoningQualityEvaluator SHALL include the rubric in the judge prompt so that scoring is grounded in domain-specific expectations
+5. THE ReasoningQualityEvaluator SHALL use a different model than the agents being evaluated (to avoid self-evaluation bias), defaulting to a configurable judge model
+6. WHEN the ReasoningQualityEvaluator scores a span, THE result SHALL include the judge model's reasoning explanation alongside the numeric score for human review
