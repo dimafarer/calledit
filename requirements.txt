@@ -24,7 +24,7 @@ matplotlib
 seaborn
 
 #strands
-strands-agents>=1.7.0
+strands-agents[otel]>=1.7.0
 strands-agents-tools>=0.2.6
 
 

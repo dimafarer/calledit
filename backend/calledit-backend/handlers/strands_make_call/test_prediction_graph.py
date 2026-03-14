@@ -58,6 +58,7 @@ from categorizer_agent import create_categorizer_agent
 from verification_builder_agent import create_verification_builder_agent
 from review_agent import create_review_agent
 from utils import get_current_datetime_in_timezones
+from otel_instrumentation import init_otel, graph_trace_span
 
 logger = logging.getLogger(__name__)
 
@@ -254,14 +255,25 @@ def run_test_graph(
     # Create a fresh graph (not a singleton)
     graph = _create_test_graph(tool_manifest)
 
+    # Initialize OTEL and create graph-level trace span
+    # Prompt versions are "hardcoded" until Phase 2 migrates to Bedrock Prompt Mgmt
+    tracer = init_otel()
+    prompt_version_manifest = {
+        "parser": "hardcoded",
+        "categorizer": "hardcoded",
+        "vb": "hardcoded",
+        "review": "hardcoded",
+    }
+
     logger.info(
         f"Test graph executing (round {round_num}): "
         f"{prediction_text[:60]}..."
     )
 
     try:
-        # Synchronous execution — no stream_async, no WebSocket
-        result = graph(prompt)
+        # Wrap execution in OTEL parent span — Strands auto-creates child spans
+        with graph_trace_span(tracer, prompt_version_manifest, round_num, prediction_text):
+            result = graph(prompt)
 
         # Parse all results (pipeline + review)
         pipeline_data = _parse_pipeline_results(result)

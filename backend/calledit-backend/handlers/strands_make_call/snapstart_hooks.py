@@ -114,11 +114,48 @@ def after_restore():
     try:
         logger.info("SnapStart: Restoring from snapshot.")
         validate_graph_after_restore()
-        logger.info("SnapStart: Restore complete. Graph validated.")
+        _restore_otel_state()
+        logger.info("SnapStart: Restore complete. Graph and OTEL validated.")
     except Exception as e:
         # Never propagate — a failing hook must not prevent handler execution.
         # The handler creates api_gateway_client per-invocation anyway.
         logger.error(
             f"SnapStart: after_restore hook error: {e}",
+            exc_info=True
+        )
+
+
+def _restore_otel_state():
+    """
+    Verify and restore OTEL collector state after SnapStart restore.
+
+    The TracerProvider and BatchSpanProcessor are initialized at INIT time
+    and included in the snapshot. After restore, the BatchSpanProcessor's
+    background export thread may be in an inconsistent state. We re-initialize
+    the telemetry if needed.
+
+    If re-initialization fails, OTEL is disabled for this invocation (the
+    graph still runs, just without tracing). This is logged at ERROR level.
+    """
+    try:
+        from otel_instrumentation import init_otel, _telemetry_initialized
+        import otel_instrumentation as otel_module
+
+        if _telemetry_initialized:
+            # Force re-initialization to refresh the exporter state
+            otel_module._telemetry_initialized = False
+            otel_module._tracer = None
+            init_otel()
+            logger.info("SnapStart: OTEL telemetry re-initialized after restore")
+        else:
+            logger.info("SnapStart: OTEL was not initialized before snapshot, skipping")
+
+    except ImportError:
+        # otel_instrumentation not available — OTEL not in use
+        logger.info("SnapStart: OTEL instrumentation module not found, skipping")
+    except Exception as e:
+        # OTEL restore failure is non-fatal — graph runs without tracing
+        logger.error(
+            f"SnapStart: OTEL restore failed, tracing disabled for this invocation: {e}",
             exc_info=True
         )

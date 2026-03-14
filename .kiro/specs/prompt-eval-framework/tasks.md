@@ -22,8 +22,8 @@ Phased implementation of a prompt evaluation and observability system for the Ca
     - Return parsed pipeline + review results as a dict
     - _Requirements: 1.1, 6.1_
 
-- [ ] 2. Phase 1 — OTEL instrumentation and CloudWatch GenAI Observability
-  - [ ] 2.1 Create OTEL instrumentation module (`otel_instrumentation.py`)
+- [-] 2. Phase 1 — OTEL instrumentation and CloudWatch GenAI Observability
+  - [x] 2.1 Create OTEL instrumentation module (`otel_instrumentation.py`)
     - Create `backend/calledit-backend/handlers/strands_make_call/otel_instrumentation.py`
     - Implement `init_otel()` — initialize TracerProvider with CloudWatch exporter, return Tracer
     - Implement `create_graph_span(tracer, prompt_version_manifest)` — create parent span with manifest attributes
@@ -43,20 +43,20 @@ Phased implementation of a prompt evaluation and observability system for the Ca
     - In `tests/strands_make_call/test_otel_attributes.py`
     - For any manifest dict with parser/categorizer/vb/review version strings, verify recording as OTEL attributes and reading back produces identical dict
 
-  - [ ] 2.4 Extend SnapStart `after_restore` hook for OTEL collector state
+  - [x] 2.4 Extend SnapStart `after_restore` hook for OTEL collector state
     - Modify `backend/calledit-backend/handlers/strands_make_call/snapstart_hooks.py`
     - Add OTEL collector state verification in `after_restore()`
     - Re-initialize TracerProvider if state is corrupted after restore
     - Log at ERROR if re-initialization fails, disable OTEL for that invocation
     - _Requirements: 1.5_
 
-  - [ ] 2.5 Integrate OTEL instrumentation into graph execution
+  - [x] 2.5 Integrate OTEL instrumentation into graph execution
     - Modify `prediction_graph.py` to call `init_otel()` at module level
     - Modify `strands_make_call_graph.py` `execute_and_deliver()` to wrap execution in a parent trace span via `create_graph_span()`
     - Ensure Strands native OTEL support emits per-agent child spans automatically
     - _Requirements: 1.1, 1.2, 1.3_
 
-- [ ] 3. Checkpoint — Verify OTEL instrumentation
+- [x] 3. Checkpoint — Verify OTEL instrumentation
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 4. Phase 2 — Bedrock Prompt Management migration
@@ -184,6 +184,28 @@ Phased implementation of a prompt evaluation and observability system for the Ca
     - **Validates: Requirements 5.4, 5.5**
     - In `tests/eval/test_evaluators.py`
     - For any list of questions and expected keywords, verify score equals proportion of keywords found; all found → 1.0; none found → 0.0
+
+  - [ ] 6.14 Create ReasoningQuality evaluator (`evaluators/reasoning_quality.py`)
+    - Create `backend/calledit-backend/handlers/strands_make_call/evaluators/reasoning_quality.py`
+    - Implement `evaluate_reasoning_quality(span_output, agent_name, prediction_text, evaluation_rubric, judge_model)` — LLM-as-Judge scoring
+    - Build judge prompt that includes: the prediction text, the agent output, the agent name, and optional evaluation_rubric from golden dataset
+    - Judge scores reasoning on: soundness, specificity to the prediction (not generic boilerplate), and relevance
+    - Use a configurable judge model (default: Claude Sonnet 4) — must differ from agent model to avoid self-evaluation bias
+    - Return `{"score": 0.0-1.0, "evaluator": "ReasoningQuality", "span_id": str, "judge_reasoning": str, "judge_model": str}`
+    - Wrap judge invocation in try/except — on failure return score 0.0 with error in judge_reasoning
+    - For base predictions: execute round 1, apply CategoryMatch + JSONValidity + ClarificationQuality + ReasoningQuality evaluators
+    - For fuzzy predictions: execute round 1, construct round 2 with simulated clarifications via `build_clarify_state()`, execute round 2, apply ConvergenceEvaluator + ReasoningQuality
+  - [ ]* 6.15 Write property test for ReasoningQuality evaluator result structure
+    - **Property 16: ReasoningQuality evaluator returns valid structured results**
+    - **Validates: Requirements 9.1, 9.2, 9.3, 9.5, 9.6**
+    - In `tests/eval/test_evaluators.py`
+    - For any agent span output, prediction text, and optional rubric, verify result contains score (0.0-1.0), evaluator name, span_id, non-empty judge_reasoning, and judge_model different from agent model
+
+  - [ ] 6.16 Add evaluation_rubric field to golden dataset schema
+    - Update `golden_dataset.py` BasePrediction and FuzzyPrediction dataclasses to include optional `evaluation_rubric: Optional[str]`
+    - Update `load_golden_dataset()` to parse the rubric field (optional, defaults to None)
+    - Add rubric entries to at least 5 golden dataset test cases (e.g., "categorizer reasoning should reference astronomical knowledge" for sunrise prediction)
+    - _Requirements: 9.4_
 
 - [ ] 7. Checkpoint — Verify golden dataset and evaluators
   - Ensure all tests pass, ask the user if questions arise.
