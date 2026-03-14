@@ -6,14 +6,14 @@ Phased implementation of a prompt evaluation and observability system for the Ca
 
 ## Tasks
 
-- [ ] 1. Phase 0 — Git branch setup and standalone test graph
-  - [ ] 1.1 Create `feature/prompt-eval-framework` git branch and add eval dependencies to requirements.txt
+- [x] 1. Phase 0 — Git branch setup and standalone test graph
+  - [x] 1.1 Create `feature/prompt-eval-framework` git branch and add eval dependencies to requirements.txt
     - Create the feature branch from main
     - Add `hypothesis`, `opentelemetry-api`, `opentelemetry-sdk`, `aws-opentelemetry-distro` to root `requirements.txt`
     - Add `opentelemetry-api`, `opentelemetry-sdk`, `aws-opentelemetry-distro` to `backend/calledit-backend/handlers/strands_make_call/requirements.txt`
     - _Requirements: 1.1, 1.3_
 
-  - [ ] 1.2 Create standalone test graph (`test_prediction_graph.py`)
+  - [x] 1.2 Create standalone test graph (`test_prediction_graph.py`)
     - Create `backend/calledit-backend/handlers/strands_make_call/test_prediction_graph.py`
     - Reuse `create_parser_agent()`, `create_categorizer_agent()`, `create_verification_builder_agent()`, `create_review_agent()` factory functions
     - Reuse `build_prompt()` logic from `strands_make_call_graph.py`
