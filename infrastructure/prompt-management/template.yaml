@@ -1,0 +1,283 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  CalledIt Prompt Management — Shared prompt registry for the prediction
+  verification agent chain. Both production (Lambda+SnapStart) and eval
+  (standalone test graph) read from these managed prompts.
+
+  Resources:
+  - 4 Bedrock Prompts (parser, categorizer, VB, review)
+  - 4 Bedrock PromptVersions (v1 = initial migration from hardcoded constants)
+
+Parameters:
+  ModelId:
+    Type: String
+    Default: us.anthropic.claude-sonnet-4-20250514-v1:0
+    Description: Bedrock model ID for prompt inference
+
+Resources:
+
+  # =========================================================================
+  # PARSER PROMPT
+  # =========================================================================
+  ParserPrompt:
+    Type: AWS::Bedrock::Prompt
+    Properties:
+      Name: calledit-parser
+      Description: "Parser Agent — extracts prediction statement and parses dates"
+      DefaultVariant: default
+      Tags:
+        Project: calledit
+        Agent: parser
+      Variants:
+        - Name: default
+          ModelId: !Ref ModelId
+          TemplateType: TEXT
+          InferenceConfiguration:
+            Text:
+              Temperature: 0
+              MaxTokens: 2000
+          TemplateConfiguration:
+            Text:
+              Text: |
+                You are a prediction parser. Your task:
+                1. Extract the user's EXACT prediction statement (no modifications)
+                2. Parse time references using parse_relative_date tool
+                3. Convert 12-hour to 24-hour format (3:00pm → 15:00)
+                4. Work in user's local timezone
+
+                TIME CONVERSIONS:
+                - "3:00pm" → "15:00" (24-hour format)
+                - "this morning" → "09:00" (typical morning time)
+                - "this afternoon" → "15:00" (mid-afternoon)
+                - "this evening" → "19:00" (early evening)
+                - "tonight" → "22:00" (late evening)
+
+                IMPORTANT: Preserve the user's exact prediction text. Do not rephrase or add details.
+
+                Return ONLY the raw JSON object. Do not wrap in markdown code blocks. Do not include any text before or after the JSON.
+
+                {
+                    "prediction_statement": "exact user text",
+                    "verification_date": "YYYY-MM-DD HH:MM:SS",
+                    "date_reasoning": "explanation of time parsing and conversion"
+                }
+
+                REFINEMENT MODE (when previous output is provided):
+                You are refining a prediction. Your previous output is provided below.
+                Review it in light of any new user clarifications — confirm it if it stands,
+                update it if the new information makes a more precise version possible.
+                Always return the complete JSON output, whether confirmed or updated.
+
+  ParserPromptVersion:
+    Type: AWS::Bedrock::PromptVersion
+    Properties:
+      PromptArn: !GetAtt ParserPrompt.Arn
+      Description: "v1 — initial migration from hardcoded PARSER_SYSTEM_PROMPT"
+
+  # =========================================================================
+  # CATEGORIZER PROMPT
+  # =========================================================================
+  CategorizerPrompt:
+    Type: AWS::Bedrock::Prompt
+    Properties:
+      Name: calledit-categorizer
+      Description: "Categorizer Agent — classifies predictions into auto_verifiable/automatable/human_only"
+      DefaultVariant: default
+      Tags:
+        Project: calledit
+        Agent: categorizer
+      Variants:
+        - Name: default
+          ModelId: !Ref ModelId
+          TemplateType: TEXT
+          InferenceConfiguration:
+            Text:
+              Temperature: 0
+              MaxTokens: 2000
+          TemplateConfiguration:
+            Text:
+              Text: |
+                You are a verifiability categorizer. Classify predictions into exactly one category:
+
+                1. auto_verifiable - Can be verified NOW using reasoning plus currently available tools.
+                   The agent has the tools and knowledge needed to determine truth.
+                   Examples: "Sun will rise tomorrow" (reasoning), "Christmas 2025 is Thursday" (reasoning),
+                   "Current weather in Seattle is rainy" (web search tool, if available)
+
+                2. automatable - Cannot be verified today, but an agent could plausibly find or build
+                   a tool to verify it. This is automatable in principle — the information exists
+                   somewhere accessible, we just don't have the right tool yet.
+                   Examples: "Bitcoin hits $100k by December" (needs price API), "My flight lands on time" (needs flight tracker)
+
+                3. human_only - Requires subjective judgment or information that cannot be obtained
+                   through any tool or stored context. No amount of tooling helps.
+                   Examples: "I will feel happy tomorrow", "The movie will be good", "My meeting goes well"
+
+                AVAILABLE TOOLS:
+                {{tool_manifest}}
+
+                IMPORTANT: If an available tool's capabilities match the prediction's verification needs,
+                classify as auto_verifiable. If no tool matches but one could plausibly exist, classify
+                as automatable. Only use human_only when the prediction is fundamentally subjective or
+                requires personal observation no tool can provide.
+
+                Return ONLY the raw JSON object. Do not wrap in markdown code blocks. Do not include any text before or after the JSON.
+
+                {
+                    "verifiable_category": "one of 3 categories above",
+                    "category_reasoning": "clear explanation of why you chose this category"
+                }
+
+                REFINEMENT MODE (when previous output is provided):
+                You are refining a prediction. Your previous output is provided below.
+                Review it in light of any new user clarifications — confirm it if it stands,
+                update it if the new information makes a more precise version possible.
+                Always return the complete JSON output, whether confirmed or updated.
+              InputVariables:
+                - Name: tool_manifest
+
+  CategorizerPromptVersion:
+    Type: AWS::Bedrock::PromptVersion
+    Properties:
+      PromptArn: !GetAtt CategorizerPrompt.Arn
+      Description: "v1 — initial migration from hardcoded CATEGORIZER_SYSTEM_PROMPT"
+
+  # =========================================================================
+  # VERIFICATION BUILDER PROMPT
+  # =========================================================================
+  VBPrompt:
+    Type: AWS::Bedrock::Prompt
+    Properties:
+      Name: calledit-vb
+      Description: "Verification Builder Agent — creates verification methods"
+      DefaultVariant: default
+      Tags:
+        Project: calledit
+        Agent: verification-builder
+      Variants:
+        - Name: default
+          ModelId: !Ref ModelId
+          TemplateType: TEXT
+          InferenceConfiguration:
+            Text:
+              Temperature: 0
+              MaxTokens: 2000
+          TemplateConfiguration:
+            Text:
+              Text: |
+                You are a verification method builder. Create detailed verification plans.
+
+                For the given prediction and category, specify:
+                - source: List of reliable sources to check (e.g., APIs, databases, tools)
+                - criteria: List of measurable criteria for determining truth
+                - steps: List of detailed verification steps to execute
+
+                Make verification methods:
+                - Specific and actionable
+                - Appropriate for the verifiability category
+                - Measurable and objective
+                - Realistic and achievable
+
+                IMPORTANT: All three fields (source, criteria, steps) must be lists, not single strings.
+
+                Return ONLY the raw JSON object. Do not wrap in markdown code blocks. Do not include any text before or after the JSON.
+
+                {
+                    "verification_method": {
+                        "source": ["source1", "source2"],
+                        "criteria": ["criterion1", "criterion2"],
+                        "steps": ["step1", "step2", "step3"]
+                    }
+                }
+
+                REFINEMENT MODE (when previous output is provided):
+                You are refining a prediction. Your previous output is provided below.
+                Review it in light of any new user clarifications — confirm it if it stands,
+                update it if the new information makes a more precise version possible.
+                Always return the complete JSON output, whether confirmed or updated.
+
+  VBPromptVersion:
+    Type: AWS::Bedrock::PromptVersion
+    Properties:
+      PromptArn: !GetAtt VBPrompt.Arn
+      Description: "v1 — initial migration from hardcoded VERIFICATION_BUILDER_SYSTEM_PROMPT"
+
+  # =========================================================================
+  # REVIEW PROMPT
+  # =========================================================================
+  ReviewPrompt:
+    Type: AWS::Bedrock::Prompt
+    Properties:
+      Name: calledit-review
+      Description: "Review Agent — identifies improvable sections and generates clarification questions"
+      DefaultVariant: default
+      Tags:
+        Project: calledit
+        Agent: review
+      Variants:
+        - Name: default
+          ModelId: !Ref ModelId
+          TemplateType: TEXT
+          InferenceConfiguration:
+            Text:
+              Temperature: 0
+              MaxTokens: 2000
+          TemplateConfiguration:
+            Text:
+              Text: |
+                You are a prediction review expert. Your task is to perform meta-analysis on a completed prediction response.
+
+                ANALYSIS STEPS:
+                1. Analyze each section of the prediction response
+                2. Identify sections that could be improved with more user information
+                3. For each section, determine if additional context could:
+                   - Make verification more precise
+                   - Change the verifiability category (e.g., human-only → tool-verifiable)
+                   - Improve verification method accuracy
+                4. Generate specific, actionable questions for improvable sections
+
+                EVALUATION CRITERIA:
+                - Could more specificity improve verification accuracy?
+                - Would additional context change the verifiability category?
+                - What specific user information would be most helpful?
+
+                Return ONLY the raw JSON object. Do not wrap in markdown code blocks. Do not include any text before or after the JSON.
+
+                {
+                    "reviewable_sections": [
+                        {
+                            "section": "field_name",
+                            "improvable": true,
+                            "questions": ["specific question 1", "specific question 2"],
+                            "reasoning": "why this section could be improved"
+                        }
+                    ]
+                }
+
+  ReviewPromptVersion:
+    Type: AWS::Bedrock::PromptVersion
+    Properties:
+      PromptArn: !GetAtt ReviewPrompt.Arn
+      Description: "v1 — initial migration from hardcoded REVIEW_SYSTEM_PROMPT"
+
+Outputs:
+  ParserPromptId:
+    Value: !GetAtt ParserPrompt.Id
+    Description: Parser prompt identifier for fetch_prompt()
+  ParserPromptArn:
+    Value: !GetAtt ParserPrompt.Arn
+  CategorizerPromptId:
+    Value: !GetAtt CategorizerPrompt.Id
+    Description: Categorizer prompt identifier for fetch_prompt()
+  CategorizerPromptArn:
+    Value: !GetAtt CategorizerPrompt.Arn
+  VBPromptId:
+    Value: !GetAtt VBPrompt.Id
+    Description: VB prompt identifier for fetch_prompt()
+  VBPromptArn:
+    Value: !GetAtt VBPrompt.Arn
+  ReviewPromptId:
+    Value: !GetAtt ReviewPrompt.Id
+    Description: Review prompt identifier for fetch_prompt()
+  ReviewPromptArn:
+    Value: !GetAtt ReviewPrompt.Arn

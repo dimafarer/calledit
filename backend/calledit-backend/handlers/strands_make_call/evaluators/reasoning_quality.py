@@ -21,9 +21,9 @@ import boto3
 logger = logging.getLogger(__name__)
 
 # Default judge model — different from agent model (Sonnet 4) to avoid self-eval bias
-# Using Opus for highest quality reasoning assessment. This is a dev-time eval tool,
-# not a production hot path — latency and cost are not constraints.
-DEFAULT_JUDGE_MODEL = "us.anthropic.claude-opus-4-20250514-v1:0"
+# Using Opus 4.6 — strongest model available. Model ID from list_foundation_models
+# is anthropic.claude-opus-4-6-v1 (no :0 suffix, different format than older models).
+DEFAULT_JUDGE_MODEL = "us.anthropic.claude-opus-4-6-v1"
 AGENT_MODEL = "us.anthropic.claude-sonnet-4-20250514-v1:0"
 
 JUDGE_PROMPTS = {
@@ -170,7 +170,7 @@ def evaluate_reasoning_quality(
         }
 
     except Exception as e:
-        logger.error(f"ReasoningQuality judge failed for {agent_name}: {e}", exc_info=True)
+        logger.error(f"ReasoningQuality judge failed for {agent_name}: {type(e).__name__}: {e}")
         return {
             "score": 0.0,
             "evaluator": "ReasoningQuality",

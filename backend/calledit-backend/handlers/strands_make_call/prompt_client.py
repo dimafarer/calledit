@@ -39,11 +39,12 @@ import boto3
 logger = logging.getLogger(__name__)
 
 # Prompt identifiers in Bedrock Prompt Management
+# These are the 10-character IDs from the calledit-prompts CloudFormation stack
 PROMPT_IDENTIFIERS = {
-    "parser": "calledit-parser",
-    "categorizer": "calledit-categorizer",
-    "vb": "calledit-vb",
-    "review": "calledit-review",
+    "parser": "RBR4QBAQPY",
+    "categorizer": "C320LUMT9V",
+    "vb": "EBBKNNH2GI",
+    "review": "1MJYEPTLZL",
 }
 
 # Bundled fallback prompts — current hardcoded constants from agent modules.
@@ -154,9 +155,7 @@ def fetch_prompt(
 
     except Exception as e:
         logger.error(
-            f"Failed to fetch prompt '{prompt_id}' version {version}: {e}. "
-            f"Falling back to bundled prompt.",
-            exc_info=True,
+            f"Prompt Management fallback for '{prompt_id}': {type(e).__name__}",
         )
         _prompt_version_manifest[agent_name] = "fallback"
 

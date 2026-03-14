@@ -20,7 +20,12 @@
         "AWS_REGION": "us-west-2",
         "FASTMCP_LOG_LEVEL": "ERROR"
       },
-      "disabled": false
+      "disabled": false,
+      "autoApprove": [
+        "search_cloudformation_documentation",
+        "read_iac_documentation_page",
+        "validate_cloudformation_template"
+      ]
     },
     "awslabs.aws-serverless-mcp-server": {
       "command": "uvx",
