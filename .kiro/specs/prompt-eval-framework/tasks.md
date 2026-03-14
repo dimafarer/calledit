@@ -59,8 +59,8 @@ Phased implementation of a prompt evaluation and observability system for the Ca
 - [x] 3. Checkpoint — Verify OTEL instrumentation
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 4. Phase 2 — Bedrock Prompt Management migration
-  - [ ] 4.1 Create prompt management client (`prompt_client.py`)
+- [x] 4. Phase 2 — Bedrock Prompt Management migration
+  - [x] 4.1 Create prompt management client (`prompt_client.py`)
     - Create `backend/calledit-backend/handlers/strands_make_call/prompt_client.py`
     - Implement `fetch_prompt(prompt_identifier, prompt_version, variables)` — fetch from Bedrock Prompt Management API
     - Implement `get_prompt_version_manifest()` — return current `{parser, categorizer, vb, review}` version dict
@@ -76,7 +76,7 @@ Phased implementation of a prompt evaluation and observability system for the Ca
     - Create `tests/strands_make_call/test_prompt_client.py`
     - For any prompt template with variable placeholders and non-empty string values, verify resolved prompt contains every variable value as a substring
 
-  - [ ] 4.3 Migrate agent factory functions to use Bedrock Prompt Management
+  - [x] 4.3 Migrate agent factory functions to use Bedrock Prompt Management
     - Modify `create_parser_agent()` in `parser_agent.py` to call `fetch_prompt("calledit-parser", version)` instead of using `PARSER_SYSTEM_PROMPT`
     - Modify `create_categorizer_agent()` in `categorizer_agent.py` to call `fetch_prompt("calledit-categorizer", version, variables={"tool_manifest": manifest_text})`
     - Modify `create_verification_builder_agent()` in `verification_builder_agent.py` to call `fetch_prompt("calledit-vb", version)`
@@ -84,13 +84,13 @@ Phased implementation of a prompt evaluation and observability system for the Ca
     - Keep existing `*_SYSTEM_PROMPT` constants as fallback copies
     - _Requirements: 3.3, 3.4, 3.5, 3.6_
 
-  - [ ] 4.4 Verify SnapStart caching of fetched prompts
+  - [x] 4.4 Verify SnapStart caching of fetched prompts
     - Ensure `fetch_prompt()` is called during INIT (at agent creation time in `prediction_graph.py`)
     - Fetched prompt text is baked into agent `system_prompt` attribute, included in SnapStart snapshot
     - Warm invocations do not make additional Bedrock Prompt Management API calls
     - _Requirements: 3.5_
 
-- [ ] 5. Checkpoint — Verify Prompt Management migration
+- [x] 5. Checkpoint — Verify Prompt Management migration
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 6. Phase 3 — Golden dataset and custom evaluators

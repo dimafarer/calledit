@@ -256,14 +256,18 @@ def run_test_graph(
     graph = _create_test_graph(tool_manifest)
 
     # Initialize OTEL and create graph-level trace span
-    # Prompt versions are "hardcoded" until Phase 2 migrates to Bedrock Prompt Mgmt
+    # Prompt versions come from prompt_client (recorded during agent creation)
     tracer = init_otel()
-    prompt_version_manifest = {
-        "parser": "hardcoded",
-        "categorizer": "hardcoded",
-        "vb": "hardcoded",
-        "review": "hardcoded",
-    }
+    try:
+        from prompt_client import get_prompt_version_manifest
+        prompt_version_manifest = get_prompt_version_manifest()
+    except ImportError:
+        prompt_version_manifest = {}
+
+    # Fill in defaults for any agents not yet tracked
+    for name in ["parser", "categorizer", "vb", "review"]:
+        if name not in prompt_version_manifest:
+            prompt_version_manifest[name] = "hardcoded"
 
     logger.info(
         f"Test graph executing (round {round_num}): "

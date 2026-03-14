@@ -88,22 +88,22 @@ def create_verification_builder_agent() -> Agent:
     """
     Create the Verification Builder Agent with explicit configuration.
     
-    Following Strands best practices:
-    - Explicit model selection (Bedrock model ID)
-    - Focused system prompt
-    - No tools (pure reasoning task)
+    Fetches the system prompt from Bedrock Prompt Management if available,
+    falls back to the bundled VERIFICATION_BUILDER_SYSTEM_PROMPT constant if not.
     
     Returns:
         Configured Verification Builder Agent
     """
-    # Model: Claude Sonnet 4 (upgraded from 3.5 Sonnet v2 in Spec 1)
-    # Why Sonnet 4: Better instruction following (critical for clean JSON output),
-    # same Sonnet tier cost/latency, current Strands SDK default.
-    # Why us. prefix: Cross-region inference — works in all US regions.
-    # See: .kiro/specs/v2-cleanup-foundation/design.md, Component 3, Step 0
+    try:
+        from prompt_client import fetch_prompt
+        system_prompt = fetch_prompt("vb")
+    except Exception as e:
+        logger.warning(f"Prompt Management unavailable, using bundled prompt: {e}")
+        system_prompt = VERIFICATION_BUILDER_SYSTEM_PROMPT
+
     agent = Agent(
         model="us.anthropic.claude-sonnet-4-20250514-v1:0",
-        system_prompt=VERIFICATION_BUILDER_SYSTEM_PROMPT
+        system_prompt=system_prompt
     )
     
     logger.info("Verification Builder Agent created with explicit model configuration")

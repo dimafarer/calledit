@@ -100,31 +100,29 @@ def create_categorizer_agent(tool_manifest: str = "") -> Agent:
     """
     Create the Categorizer Agent with explicit configuration.
     
-    Following Strands best practices:
-    - Explicit model selection (Bedrock model ID)
-    - Focused system prompt
-    - No tools (pure reasoning task)
-    - Dynamic tool manifest injection for tool-aware categorization
+    Fetches the system prompt from Bedrock Prompt Management if available,
+    falls back to the bundled CATEGORIZER_SYSTEM_PROMPT constant if not.
+    The tool_manifest is injected as a variable in both paths.
     
     Args:
         tool_manifest: Human-readable list of available tools and their capabilities.
-                       Injected into the system prompt so the categorizer can distinguish
-                       auto_verifiable (tool exists) from automatable (tool could exist).
                        Empty string means no tools registered (pure reasoning mode).
     
     Returns:
         Configured Categorizer Agent
     """
-    # Model: Claude Sonnet 4 (upgraded from 3.5 Sonnet v2 in Spec 1)
-    # Why Sonnet 4: Better instruction following (critical for clean JSON output),
-    # same Sonnet tier cost/latency, current Strands SDK default.
-    # Why us. prefix: Cross-region inference — works in all US regions.
-    # See: .kiro/specs/v2-cleanup-foundation/design.md, Component 3, Step 0
-    
-    # Build the system prompt with tool manifest injected
     manifest_text = tool_manifest if tool_manifest else "No tools currently registered. Rely on pure reasoning for auto_verifiable."
-    system_prompt = CATEGORIZER_SYSTEM_PROMPT.format(tool_manifest=manifest_text)
-    
+
+    try:
+        from prompt_client import fetch_prompt
+        system_prompt = fetch_prompt(
+            "categorizer",
+            variables={"tool_manifest": manifest_text},
+        )
+    except Exception as e:
+        logger.warning(f"Prompt Management unavailable, using bundled prompt: {e}")
+        system_prompt = CATEGORIZER_SYSTEM_PROMPT.format(tool_manifest=manifest_text)
+
     agent = Agent(
         model="us.anthropic.claude-sonnet-4-20250514-v1:0",
         system_prompt=system_prompt

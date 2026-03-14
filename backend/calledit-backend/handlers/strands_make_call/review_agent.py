@@ -115,23 +115,22 @@ def create_review_agent() -> Agent:
     """
     Create the Review Agent with explicit configuration.
 
-    Following Strands best practices:
-    - Explicit model selection (Bedrock model ID)
-    - Focused system prompt
-    - No tools (pure reasoning task)
-    - Factory function pattern for graph node creation
+    Fetches the system prompt from Bedrock Prompt Management if available,
+    falls back to the bundled REVIEW_SYSTEM_PROMPT constant if not.
 
     Returns:
         Configured Review Agent (strands.Agent instance)
     """
-    # Model: Claude Sonnet 4 (upgraded from 3.5 Sonnet v2 in Spec 1)
-    # Why Sonnet 4: Better instruction following (critical for clean JSON output),
-    # same Sonnet tier cost/latency, current Strands SDK default.
-    # Why us. prefix: Cross-region inference — works in all US regions.
-    # See: .kiro/specs/v2-cleanup-foundation/design.md, Component 3, Step 0
+    try:
+        from prompt_client import fetch_prompt
+        system_prompt = fetch_prompt("review")
+    except Exception as e:
+        logger.warning(f"Prompt Management unavailable, using bundled prompt: {e}")
+        system_prompt = REVIEW_SYSTEM_PROMPT
+
     agent = Agent(
         model="us.anthropic.claude-sonnet-4-20250514-v1:0",
-        system_prompt=REVIEW_SYSTEM_PROMPT
+        system_prompt=system_prompt
     )
 
     logger.info("Review Agent created with explicit model configuration")
