@@ -21,8 +21,9 @@ import boto3
 logger = logging.getLogger(__name__)
 
 # Default judge model — different from agent model (Sonnet 4) to avoid self-eval bias
-# Using Haiku for cost efficiency on judge calls
-DEFAULT_JUDGE_MODEL = "us.anthropic.claude-3-5-haiku-20241022-v1:0"
+# Using Opus for highest quality reasoning assessment. This is a dev-time eval tool,
+# not a production hot path — latency and cost are not constraints.
+DEFAULT_JUDGE_MODEL = "us.anthropic.claude-opus-4-20250514-v1:0"
 AGENT_MODEL = "us.anthropic.claude-sonnet-4-20250514-v1:0"
 
 JUDGE_PROMPTS = {

@@ -37,6 +37,32 @@ from evaluators.clarification_quality import evaluate_clarification_quality
 logger = logging.getLogger(__name__)
 
 
+def _build_tool_manifest_from_config(config: dict) -> str:
+    """Build a tool manifest string from a golden dataset tool_manifest_config.
+
+    Mirrors the format produced by tool_registry.build_tool_manifest() so the
+    categorizer sees the same format it would in production.
+
+    Args:
+        config: {"tools": [{"name": "web_search", "description": "...", "capabilities": [...]}]}
+
+    Returns:
+        Formatted manifest string, or "" if no tools.
+    """
+    tools = config.get("tools", [])
+    if not tools:
+        return ""
+    lines = []
+    for tool in tools:
+        name = tool.get("name", "unknown")
+        desc = tool.get("description", "No description")
+        caps = tool.get("capabilities", [])
+        caps_str = ", ".join(caps) if caps else "general"
+        lines.append(f"- {name}: {desc}")
+        lines.append(f"  Capabilities: {caps_str}")
+    return "\n".join(lines)
+
+
 def _evaluate_base_prediction(
     bp: BasePrediction, result: dict, use_judge: bool = False
 ) -> dict:
@@ -203,7 +229,8 @@ def run_on_demand_evaluation(
         tc_start = time.time()
         try:
             if isinstance(tc, BasePrediction):
-                result = run_test_graph(tc.prediction_text, tool_manifest="")
+                manifest_str = _build_tool_manifest_from_config(tc.tool_manifest_config)
+                result = run_test_graph(tc.prediction_text, tool_manifest=manifest_str)
                 if result.get("error"):
                     raise RuntimeError(result["error"])
                 scores = _evaluate_base_prediction(tc, result, use_judge)
@@ -216,8 +243,13 @@ def run_on_demand_evaluation(
                 })
 
             elif isinstance(tc, FuzzyPrediction):
+                # Use the base prediction's tool manifest for fuzzy tests
+                base_bp_for_manifest = base_lookup.get(tc.base_prediction_id)
+                manifest_str = _build_tool_manifest_from_config(
+                    base_bp_for_manifest.tool_manifest_config if base_bp_for_manifest else {}
+                )
                 # Round 1
-                r1 = run_test_graph(tc.fuzzy_text, tool_manifest="")
+                r1 = run_test_graph(tc.fuzzy_text, tool_manifest=manifest_str)
                 if r1.get("error"):
                     raise RuntimeError(r1["error"])
 
@@ -227,7 +259,7 @@ def run_on_demand_evaluation(
                     if k not in ("reviewable_sections", "error")
                 }
                 r2 = run_test_graph(
-                    tc.fuzzy_text, round_num=2,
+                    tc.fuzzy_text, tool_manifest=manifest_str, round_num=2,
                     clarifications=tc.simulated_clarifications,
                     prev_outputs=prev_outputs,
                 )

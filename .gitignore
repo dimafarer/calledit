@@ -117,3 +117,7 @@ ehthumbs.db
 Thumbs.db
 git config --global user.name "dima farer"
 qchats/
+
+# Eval reports (regenerable, accumulate with each run)
+# Keep score_history.json and charts/ tracked for portfolio
+eval/reports/

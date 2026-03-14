@@ -1,0 +1,60 @@
+{
+  "evaluations": [
+    {
+      "timestamp": "2026-03-14T04:24:51Z",
+      "prompt_version_manifest": {
+        "parser": "fallback",
+        "categorizer": "fallback",
+        "vb": "fallback",
+        "review": "fallback"
+      },
+      "per_agent_aggregates": {
+        "parser": {
+          "json_validity_avg": 0.9666666666666666
+        },
+        "categorizer": {
+          "json_validity_avg": 1.0
+        },
+        "vb": {
+          "json_validity_avg": 1.0
+        }
+      },
+      "per_category_accuracy": {
+        "auto_verifiable": 0.3333333333333333,
+        "automatable": 1.0,
+        "human_only": 1.0
+      },
+      "overall_pass_rate": 0.6,
+      "total_tests": 20,
+      "passed": 12
+    },
+    {
+      "timestamp": "2026-03-14T04:40:52Z",
+      "prompt_version_manifest": {
+        "parser": "fallback",
+        "categorizer": "fallback",
+        "vb": "fallback",
+        "review": "fallback"
+      },
+      "per_agent_aggregates": {
+        "parser": {
+          "json_validity_avg": 0.9666666666666666
+        },
+        "categorizer": {
+          "json_validity_avg": 1.0
+        },
+        "vb": {
+          "json_validity_avg": 1.0
+        }
+      },
+      "per_category_accuracy": {
+        "auto_verifiable": 1.0,
+        "automatable": 0.8,
+        "human_only": 1.0
+      },
+      "overall_pass_rate": 0.8,
+      "total_tests": 20,
+      "passed": 16
+    }
+  ]
+}
