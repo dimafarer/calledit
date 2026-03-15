@@ -53,6 +53,7 @@ class GroundTruthMetadata:
     objectivity_assessment: str
     verification_criteria: List[str]
     verification_steps: List[str]
+    verification_timing: str  # WHEN to verify: "immediate", "after_event", "scheduled_prompt", etc.
 
 
 @dataclass
@@ -167,6 +168,14 @@ def _validate_ground_truth(gt_data: dict, prediction_id: str) -> GroundTruthMeta
             f"must be a non-empty list of strings"
         )
 
+    # verification_timing
+    vtiming = gt_data.get("verification_timing")
+    if not vtiming or not isinstance(vtiming, str):
+        raise ValueError(
+            f"Base prediction '{prediction_id}': 'ground_truth.verification_timing' "
+            f"must be a non-empty string"
+        )
+
     return GroundTruthMetadata(
         verifiability_reasoning=vr,
         date_derivation=dd,
@@ -174,6 +183,7 @@ def _validate_ground_truth(gt_data: dict, prediction_id: str) -> GroundTruthMeta
         objectivity_assessment=oa,
         verification_criteria=vc,
         verification_steps=vsteps,
+        verification_timing=vtiming,
     )
 
 
@@ -493,6 +503,7 @@ def _serialize_base(bp: BasePrediction) -> dict:
             "objectivity_assessment": bp.ground_truth.objectivity_assessment,
             "verification_criteria": bp.ground_truth.verification_criteria,
             "verification_steps": bp.ground_truth.verification_steps,
+            "verification_timing": bp.ground_truth.verification_timing,
         },
         "dimension_tags": {
             "domain": bp.dimension_tags.domain,

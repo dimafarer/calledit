@@ -179,19 +179,31 @@ def validate_dataset(path: str = "eval/golden_dataset.json") -> List[str]:
             if base_ref:
                 base_fuzzy_levels.setdefault(base_ref, set()).add(fl)
 
-        # simulated_clarifications
+        # simulated_clarifications — required non-empty for levels 1-3, allowed empty for level 0
         sc = fp.get("simulated_clarifications")
-        if not sc or not isinstance(sc, list):
-            errors.append(
-                f"STRUCTURAL: {prefix} '{fp_id}' missing 'simulated_clarifications'"
-            )
+        if fl == 0:
+            if sc is not None and not isinstance(sc, list):
+                errors.append(
+                    f"STRUCTURAL: {prefix} '{fp_id}' simulated_clarifications must be a list"
+                )
+        else:
+            if not sc or not isinstance(sc, list):
+                errors.append(
+                    f"STRUCTURAL: {prefix} '{fp_id}' missing 'simulated_clarifications'"
+                )
 
-        # expected_clarification_topics
+        # expected_clarification_topics — required non-empty for levels 1-3, allowed empty for level 0
         ect = fp.get("expected_clarification_topics")
-        if not ect or not isinstance(ect, list):
-            errors.append(
-                f"STRUCTURAL: {prefix} '{fp_id}' missing 'expected_clarification_topics'"
-            )
+        if fl == 0:
+            if ect is not None and not isinstance(ect, list):
+                errors.append(
+                    f"STRUCTURAL: {prefix} '{fp_id}' expected_clarification_topics must be a list"
+                )
+        else:
+            if not ect or not isinstance(ect, list):
+                errors.append(
+                    f"STRUCTURAL: {prefix} '{fp_id}' missing 'expected_clarification_topics'"
+                )
 
         # expected_category in post-clarification
         expected = fp.get("expected_post_clarification_outputs", {})
@@ -326,6 +338,12 @@ def _validate_ground_truth(gt: dict, bp_id: str) -> List[str]:
         errors.append(
             f"COHERENCE: '{bp_id}' ground_truth.objectivity_assessment "
             f"must be one of {VALID_OBJECTIVITY}, got '{oa}'"
+        )
+
+    vt = gt.get("verification_timing")
+    if not vt or not isinstance(vt, str):
+        errors.append(
+            f"COHERENCE: '{bp_id}' ground_truth.verification_timing must be non-empty string"
         )
 
     return errors

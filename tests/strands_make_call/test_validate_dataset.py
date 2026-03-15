@@ -24,6 +24,7 @@ def _make_ground_truth(**overrides):
         "objectivity_assessment": "objective",
         "verification_criteria": ["criterion_1"],
         "verification_steps": ["step_1"],
+        "verification_timing": "Immediate: data available now",
     }
     gt.update(overrides)
     return gt

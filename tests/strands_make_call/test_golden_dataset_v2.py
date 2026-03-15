@@ -48,6 +48,7 @@ def _make_ground_truth_dict(**overrides):
         "objectivity_assessment": "objective",
         "verification_criteria": ["price > threshold"],
         "verification_steps": ["query API", "compare"],
+        "verification_timing": "Immediate: data is available now via API",
     }
     gt.update(overrides)
     return gt
@@ -162,9 +163,11 @@ class TestDataclasses:
             objectivity_assessment="objective",
             verification_criteria=["crit"],
             verification_steps=["step"],
+            verification_timing="Immediate: data available now",
         )
         assert gt.verifiability_reasoning == "reason"
         assert gt.objectivity_assessment == "objective"
+        assert gt.verification_timing == "Immediate: data available now"
 
     def test_dimension_tags(self):
         dt = DimensionTags(
@@ -180,7 +183,7 @@ class TestDataclasses:
         assert dm.expected_fuzzy_count is None
 
     def test_base_prediction_v2_fields(self):
-        gt = GroundTruthMetadata("r", "d", ["s"], "objective", ["c"], ["st"])
+        gt = GroundTruthMetadata("r", "d", ["s"], "objective", ["c"], ["st"], "Immediate")
         dt = DimensionTags("finance", "moderate", "days", "investor")
         bp = BasePrediction(
             id="base-001", prediction_text="test", difficulty="medium",

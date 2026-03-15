@@ -139,12 +139,12 @@ Rewrite the golden dataset schema, loader, and serialization to v2 (ground truth
 - [x] 8. Checkpoint — Eval runner and score history v2 integration
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 9. Archive v1 dataset and create v2 golden dataset JSON
-  - [ ] 9.1 Archive v1 dataset
+- [x] 9. Archive v1 dataset and create v2 golden dataset JSON
+  - [x] 9.1 Archive v1 dataset
     - Move `eval/golden_dataset.json` to `eval/golden_dataset_v1_archived.json`
     - _Requirements: 7.5_
 
-  - [ ] 9.2 Create v2 `eval/golden_dataset.json` with 40-50 base predictions and 20-30 fuzzy predictions
+  - [x] 9.2 Create v2 `eval/golden_dataset.json` with 40-50 base predictions and 20-30 fuzzy predictions
     - Schema version "2.0", dataset version "2.0"
     - Include `metadata` with `expected_base_count` and `expected_fuzzy_count`
     - Persona-driven generation from 12+ personas across 8+ domains
@@ -159,10 +159,10 @@ Rewrite the golden dataset schema, loader, and serialization to v2 (ground truth
     - Only `expected_category` required in expected outputs; other agent outputs optional rubric guidance
     - _Requirements: 1.1–1.7, 2.1–2.7, 3.1–3.7, 4.1–4.4, 5.1–5.4_
 
-  - [ ] 9.3 Run validation script against the new v2 dataset to verify zero errors
+  - [x] 9.3 Run validation script against the new v2 dataset to verify zero errors
     - _Requirements: 8.1_
 
-- [ ] 10. Final checkpoint — Full integration
+- [x] 10. Final checkpoint — Full integration
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes
