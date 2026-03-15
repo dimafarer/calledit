@@ -159,12 +159,91 @@ For each base prediction: full ground truth metadata (6 fields), dimension tags,
 
 ## What the Next Agent Should Do
 
-1. Execute tasks from `.kiro/specs/golden-dataset-v2/tasks.md` starting with Task 1
+1. Follow the Content Creation Cycle below to build the v2 golden dataset (Task 9)
 2. After dataset is built, run full eval with new v2 dataset to establish v2 baseline
 3. Compare v2 baseline against v1 Run 3 results (qualitatively, not score-to-score)
 4. Begin ReviewAgent prompt iteration using the richer eval data and DDB reasoning traces
 5. Analyze cross-agent coherence using the ground truth anchors
 6. Consider the 4-category migration once enough reasoning data is captured in DDB
+
+---
+
+## Content Creation Cycle — Golden Dataset V2
+
+This section documents the deliberate, quality-focused process for creating the golden dataset content. The infrastructure (schema, loader, validation, DDB store, eval runner integration) is complete. What remains is the hardest part: crafting predictions that are genuinely useful for testing — not filler to hit a count target.
+
+### Philosophy
+
+Every prediction must earn its place. The dataset serves current testing (3-category system, 4-agent graph, clarification loop) and future testing (4-category system, new evaluators, prompt iteration, cross-agent coherence analysis). A prediction that only tests one thing is fine. A prediction that tests nothing interesting is waste.
+
+The ground truth metadata is the soul of each prediction. If the `verifiability_reasoning` is vague, the prediction is vague. If the `verification_steps` are generic ("check the data"), the prediction won't catch a generic VB agent. The metadata should be precise enough that a human reading it says "yes, that's exactly why this prediction is in this category."
+
+### Process: Batched Creation with Dual Review
+
+We work in batches of ~10-12 predictions, organized by category. Each batch goes through a 5-step cycle:
+
+**Step 1 — Draft.** The agent drafts predictions with full ground truth metadata, dimension tags, difficulty, tool manifest config, and evaluation rubric. Predictions are generated from the persona table, but the agent is free to invent new personas or combine them if it produces a more interesting test case.
+
+**Step 2 — Agent Self-Review.** Before presenting to the human, the agent reviews its own work against these quality questions:
+- Is the ground truth coherent? Do the sources support the criteria? Do the criteria align with the objectivity assessment?
+- Would the categorizer actually struggle with this, or is it trivially obvious?
+- Is the verifiability reasoning precise enough to re-derive labels under a 4-category system?
+- Are the verification steps actionable and specific to this prediction (not boilerplate)?
+- Does this prediction test something the existing v1 dataset doesn't?
+- Is the evaluation rubric specific enough to guide the LLM-as-judge?
+- For boundary cases: is the boundary condition clearly documented?
+
+The agent flags any predictions it's uncertain about or where it sees potential weakness.
+
+**Step 3 — Human Review.** The human reviews the batch, pushes back on weak predictions, suggests changes, and approves or rejects each prediction. The human brings domain knowledge the agent lacks — "people don't actually say it that way" or "this is too similar to base-015."
+
+**Step 4 — Iterate.** Based on human feedback, the agent revises rejected predictions or replaces them. This may take multiple rounds for tricky cases.
+
+**Step 5 — Commit Batch.** Approved predictions are added to the dataset JSON. The validation script is run to verify structural integrity and coverage progress.
+
+### Batch Order
+
+The batches are ordered to build coverage progressively:
+
+| Batch | Focus | Count | Why This Order |
+|---|---|---|---|
+| 1 | auto_verifiable | ~12-14 | Easiest to get right — objective, tool-dependent. Establishes the "this is what good ground truth looks like" pattern. |
+| 2 | automatable | ~12-14 | Builds on batch 1 — same objectivity but no tool available. Tests the "known tool vs hypothetical tool" distinction that matters for the 4-category future. |
+| 3 | human_only | ~12-14 | Hardest to get right — subjective, personal, opinion-based. The ground truth must explain WHY no tool helps, not just "it's subjective." |
+| 4 | Boundary cases | ~5-7 | Cross-category edge cases. These are the predictions that will break the categorizer. Each one should have a clear boundary_description explaining the trap. |
+| 5 | Fuzzy variants (levels 0-1) | ~10-12 | Control cases (level 0) and light degradation (level 1). Tests whether the ReviewAgent correctly identifies what's missing. |
+| 6 | Fuzzy variants (levels 2-3) | ~12-15 | Heavy degradation and slang/idioms. Tests the ReviewAgent's ability to ask the right clarification questions when the prediction is deeply ambiguous. |
+
+### Quality Signals to Watch For
+
+**Good predictions:**
+- The categorizer could plausibly get it wrong (not trivially obvious)
+- The ground truth tells a story you can follow
+- The verification steps are specific enough that you could actually do them
+- The evaluation rubric points the judge at something concrete
+
+**Red flags:**
+- Ground truth that says "this is [category] because it's [category]" (circular)
+- Verification steps that are just "check the data" or "verify the outcome"
+- Predictions that are too similar to each other (testing the same thing twice)
+- Boundary cases where the boundary isn't actually interesting
+- Fuzzy variants where the fuzziness is artificial (no human would say it that way)
+
+### Coverage Tracking
+
+After each batch, we check coverage against the requirements:
+- Categories: ≥12 per category (auto_verifiable, automatable, human_only)
+- Domains: ≥8 distinct domains
+- Stakes: ≥3 per level (life-changing, significant, moderate, trivial)
+- Time horizons: ≥3 per horizon (minutes-to-hours, days, weeks-to-months, months-to-years)
+- Personas: ≥12 distinct personas
+- Boundary cases: ≥5
+- Fuzzy levels: ≥3 at level 0, ≥5 at levels 1/2/3
+- Category-unchanged fuzzy: ≥5 where clarification doesn't change category
+
+The validation script (`eval/validate_dataset.py`) checks all of this automatically.
+
+---
 
 ## Files Created This Session
 
@@ -173,6 +252,16 @@ For each base prediction: full ground truth metadata (6 fields), dimension tags,
 - `.kiro/specs/golden-dataset-v2/requirements.md` — 9 requirements
 - `.kiro/specs/golden-dataset-v2/design.md` — 6 components, 11 correctness properties
 - `.kiro/specs/golden-dataset-v2/tasks.md` — 10 tasks with 4 checkpoints
+- `backend/calledit-backend/handlers/strands_make_call/golden_dataset.py` — Rewritten v2 schema, loader, serializer, filter
+- `backend/calledit-backend/handlers/strands_make_call/eval_reasoning_store.py` — DDB reasoning store (fire-and-forget)
+- `eval/validate_dataset.py` — Standalone validation script
+- `tests/strands_make_call/test_golden_dataset_v2.py` — 53 tests for v2 schema/loader
+- `tests/strands_make_call/test_validate_dataset.py` — 21 tests for validation script
+- `tests/strands_make_call/test_eval_reasoning_store.py` — 15 tests for DDB store
+- `tests/strands_make_call/test_score_history_v2.py` — 5 tests for dataset_version tracking
 
 ### Modified Files
-- `docs/project-updates/07-project-update-golden-dataset-design.md` — Updated with session decisions
+- `docs/project-updates/07-project-update-golden-dataset-design.md` — Updated with session decisions + content creation cycle
+- `backend/calledit-backend/template.yaml` — Added EvalReasoningTable DDB resource + CRUD policy
+- `backend/calledit-backend/handlers/strands_make_call/eval_runner.py` — V2 field access, reasoning store integration, dataset_version in reports
+- `backend/calledit-backend/handlers/strands_make_call/score_history.py` — dataset_version tracking, cross-version mismatch warnings
