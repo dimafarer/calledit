@@ -321,16 +321,30 @@ def _validate_fuzzy_prediction(
         )
 
     clarifications = fp.get("simulated_clarifications", [])
-    if not clarifications or not isinstance(clarifications, list):
-        raise ValueError(
-            f"Fuzzy prediction '{fp_id}': missing or empty 'simulated_clarifications'"
-        )
+    if fuzziness_level == 0:
+        # Level 0 = control case, empty clarifications allowed
+        if not isinstance(clarifications, list):
+            raise ValueError(
+                f"Fuzzy prediction '{fp_id}': 'simulated_clarifications' must be a list"
+            )
+    else:
+        if not clarifications or not isinstance(clarifications, list):
+            raise ValueError(
+                f"Fuzzy prediction '{fp_id}': missing or empty 'simulated_clarifications'"
+            )
 
     topics = fp.get("expected_clarification_topics", [])
-    if not topics or not isinstance(topics, list):
-        raise ValueError(
-            f"Fuzzy prediction '{fp_id}': missing or empty 'expected_clarification_topics'"
-        )
+    if fuzziness_level == 0:
+        # Level 0 = control case, empty topics allowed
+        if not isinstance(topics, list):
+            raise ValueError(
+                f"Fuzzy prediction '{fp_id}': 'expected_clarification_topics' must be a list"
+            )
+    else:
+        if not topics or not isinstance(topics, list):
+            raise ValueError(
+                f"Fuzzy prediction '{fp_id}': missing or empty 'expected_clarification_topics'"
+            )
 
     # expected_category — required in expected_post_clarification_outputs.categorizer
     expected = fp.get("expected_post_clarification_outputs", {})

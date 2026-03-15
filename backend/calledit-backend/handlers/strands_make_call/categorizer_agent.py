@@ -69,9 +69,11 @@ CATEGORIZER_SYSTEM_PROMPT = """You are a verifiability categorizer. Classify pre
    somewhere accessible, we just don't have the right tool yet.
    Examples: "Bitcoin hits $100k by December" (needs price API), "My flight lands on time" (needs flight tracker)
 
-3. human_only - Requires subjective judgment or information that cannot be obtained
-   through any tool or stored context. No amount of tooling helps.
-   Examples: "I will feel happy tomorrow", "The movie will be good", "My meeting goes well"
+3. human_only - Requires one or more of:
+   (a) Subjective judgment that no tool can assess (e.g., "I will feel happy", "The movie will be good")
+   (b) Direct physical observation of a specific person, place, or event that no remote tool can capture (e.g., "Tom will wear his blue shirt", "My soufflé won't fall")
+   (c) Private personal information not accessible through any API or public data source (e.g., "I'll get the promotion", "80% of my students will pass")
+   Even with unlimited tools, verification ultimately depends on a human.
 
 AVAILABLE TOOLS:
 {tool_manifest}

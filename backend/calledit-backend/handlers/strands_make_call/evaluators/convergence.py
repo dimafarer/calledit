@@ -45,7 +45,9 @@ def evaluate_convergence(round2_outputs: dict, base_expected: dict, span_id: str
     """
     # Category match (weight 0.5) — most important signal
     actual_cat = round2_outputs.get("verifiable_category", "")
-    expected_cat = base_expected.get("categorizer", {}).get("verifiable_category", "")
+    # V2 uses expected_category, V1 used verifiable_category
+    expected_cat = base_expected.get("categorizer", {}).get("expected_category", "") or \
+                   base_expected.get("categorizer", {}).get("verifiable_category", "")
     cat_score = 1.0 if actual_cat == expected_cat else 0.0
 
     # Prediction statement similarity (weight 0.2)
