@@ -269,6 +269,12 @@ def run_on_demand_evaluation(
                         k: str(v) for k, v in result.items()
                         if k in ("parser", "categorizer", "verification_builder", "review")
                     })
+                    reasoning_store.write_test_result(
+                        test_case_id=tc.id, layer="base",
+                        difficulty=tc.difficulty, expected_category=expected_cat,
+                        evaluator_scores=scores,
+                        duration_s=round(time.time() - tc_start, 2),
+                    )
 
             elif isinstance(tc, FuzzyPrediction):
                 # Use the base prediction's tool manifest for fuzzy tests
@@ -314,6 +320,16 @@ def run_on_demand_evaluation(
                     "duration_s": round(time.time() - tc_start, 2),
                 })
 
+                # Write fuzzy test result to DDB
+                if reasoning_store:
+                    reasoning_store.write_test_result(
+                        test_case_id=tc.id, layer="fuzzy",
+                        difficulty=base_bp.difficulty if base_bp else "unknown",
+                        expected_category=expected_cat,
+                        evaluator_scores=scores,
+                        duration_s=round(time.time() - tc_start, 2),
+                    )
+
         except Exception as e:
             logger.error(f"Test case {tc.id} failed: {e}", exc_info=True)
             test_results.append({
@@ -348,6 +364,10 @@ def run_on_demand_evaluation(
             total_tests=report["total_tests"],
             pass_rate=report["overall_pass_rate"],
             duration_s=round(time.time() - run_start, 2),
+            per_agent_aggregates=report.get("per_agent_aggregates"),
+            per_category_accuracy=report.get("per_category_accuracy"),
+            passed=report.get("passed", 0),
+            failed=report.get("failed", 0),
         )
 
     return report

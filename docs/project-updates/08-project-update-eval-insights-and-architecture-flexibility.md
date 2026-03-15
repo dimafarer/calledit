@@ -185,11 +185,14 @@ The eval suite — golden dataset with ground truth, multi-tier evaluators, DDB 
 
 ## What the Next Agent Should Do
 
-1. Wait for Run 2 (judge) to complete, analyze results
-2. Apply categorizer human_only prompt fix, run Run 3
-3. Spec the eval dashboard with data from all 3 runs
-4. Dashboard spec should include: trend lines, per-agent drill-down, cross-agent coherence view, architecture comparison, DDB reasoning explorer
-5. Consider the silo problem — how to make agents build on each other's output rather than re-interpreting from scratch
+1. Continue executing eval-dashboard tasks starting at Task 3 (`.kiro/specs/eval-dashboard/tasks.md`)
+   - Tasks 1-2 are complete (EvalReasoningStore extended with report_summary + test_result records)
+   - Task 3: Install streamlit/plotly dependencies, create dashboard directory structure
+   - Task 4: Implement unified EvalDataLoader (DDB primary, local fallback) — this is the critical foundation
+   - Tasks 6-13: Implement the 6 Streamlit pages and wire together
+2. After dashboard is functional, re-run eval with `--judge` to populate DDB with the new record types (report_summary, test_result) so the dashboard has data to display
+3. Fix the categorizer prompt automatable regression (71% → needs nuance about "personal but API-accessible" vs "truly private")
+4. Consider the silo problem — how to make agents build on each other's output rather than re-interpreting from scratch
 
 ## Files Created/Modified This Session
 

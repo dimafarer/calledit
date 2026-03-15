@@ -6,25 +6,25 @@ Build a local Streamlit dashboard for exploring CalledIt eval results. Extend th
 
 ## Tasks
 
-- [ ] 1. Extend EvalReasoningStore with new record types
-  - [ ] 1.1 Add `write_report_summary()` and `write_test_result()` methods to `eval_reasoning_store.py`
+- [x] 1. Extend EvalReasoningStore with new record types
+  - [x] 1.1 Add `write_report_summary()` and `write_test_result()` methods to `eval_reasoning_store.py`
     - `write_report_summary()` writes a `report_summary#SUMMARY` record with: timestamp, prompt_version_manifest, dataset_version, schema_version, architecture, model_config, per_agent_aggregates, per_category_accuracy, overall_pass_rate, total_tests, passed, failed, duration_s
     - `write_test_result(test_case_id, ...)` writes a `test_result#{test_case_id}` record with: test_case_id, layer, difficulty, expected_category, evaluator_scores, error, duration_s
     - Both use the existing fire-and-forget `_put_item` pattern with 90-day TTL
     - _Requirements: 9.1, 9.2_
 
-  - [ ] 1.2 Update `write_run_metadata()` to write `report_summary#SUMMARY` instead of `run_metadata#SUMMARY`
+  - [x] 1.2 Update `write_run_metadata()` to write `report_summary#SUMMARY` instead of `run_metadata#SUMMARY`
     - Change the record_key from `run_metadata#SUMMARY` to `report_summary#SUMMARY`
     - Add the additional fields: architecture (default "serial"), model_config (default {}), per_agent_aggregates, per_category_accuracy, passed, failed
     - Old `run_metadata#SUMMARY` records expire via existing 90-day TTL
     - _Requirements: 9.1, 9.2_
 
-  - [ ] 1.3 Update `eval_runner.py` to write `test_result` records during evaluation
+  - [x] 1.3 Update `eval_runner.py` to write `test_result` records during evaluation
     - After each test case is scored, call `reasoning_store.write_test_result()` with the per-test-case score dict
     - Pass the full report dict to an updated `write_report_summary()` call at the end of the run (replacing the existing `write_run_metadata()` call)
     - _Requirements: 9.1, 9.2_
 
-- [ ] 2. Checkpoint — Eval runner DDB extension
+- [x] 2. Checkpoint — Eval runner DDB extension
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 3. Install dependencies and set up dashboard project structure

@@ -10,7 +10,8 @@ TABLE: calledit-eval-reasoning
   SK: record_key (S) — record_type#test_case_id
 
 RECORD TYPES:
-  run_metadata#SUMMARY — overall run info
+  report_summary#SUMMARY — run-level aggregates (replaces old run_metadata#SUMMARY)
+  test_result#<test_case_id> — per-test-case scores
   agent_output#<test_case_id> — full text output from all 4 agents
   judge_reasoning#<test_case_id>#<agent_name> — judge score + reasoning
   token_counts#<test_case_id> — input/output tokens per agent
@@ -50,15 +51,48 @@ class EvalReasoningStore:
         total_tests: int,
         pass_rate: float,
         duration_s: float,
+        per_agent_aggregates: Optional[Dict] = None,
+        per_category_accuracy: Optional[Dict] = None,
+        passed: int = 0,
+        failed: int = 0,
+        architecture: str = "serial",
+        model_config: Optional[Dict] = None,
     ):
-        """Write overall run metadata."""
-        self._put_item("run_metadata#SUMMARY", {
+        """Write run-level aggregates as report_summary#SUMMARY."""
+        self._put_item("report_summary#SUMMARY", {
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "prompt_version_manifest": manifest,
             "dataset_version": dataset_version,
             "schema_version": schema_version,
+            "architecture": architecture,
+            "model_config": model_config or {},
             "total_tests": total_tests,
-            "pass_rate": str(pass_rate),  # DDB doesn't support float
+            "pass_rate": str(pass_rate),
+            "passed": passed,
+            "failed": failed,
+            "duration_s": str(duration_s),
+            "per_agent_aggregates": per_agent_aggregates or {},
+            "per_category_accuracy": {k: str(v) for k, v in (per_category_accuracy or {}).items()},
+        })
+
+    def write_test_result(
+        self,
+        test_case_id: str,
+        layer: str,
+        difficulty: str,
+        expected_category: str,
+        evaluator_scores: Dict[str, Any],
+        duration_s: float,
+        error: Optional[str] = None,
+    ):
+        """Write per-test-case scores as test_result#{test_case_id}."""
+        self._put_item(f"test_result#{test_case_id}", {
+            "test_case_id": test_case_id,
+            "layer": layer,
+            "difficulty": difficulty,
+            "expected_category": expected_category,
+            "evaluator_scores": evaluator_scores,
+            "error": error or "",
             "duration_s": str(duration_s),
         })
 

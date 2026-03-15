@@ -88,7 +88,7 @@ class TestItemStructure:
         )
         item = mock_table._table.put_item.call_args[1]["Item"]
         assert item["eval_run_id"] == "test-run-id"
-        assert item["record_key"] == "run_metadata#SUMMARY"
+        assert item["record_key"] == "report_summary#SUMMARY"
         assert item["dataset_version"] == "2.0"
         assert item["total_tests"] == 45
         assert item["pass_rate"] == "0.82"
