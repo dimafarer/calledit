@@ -334,6 +334,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: calledit-db
+        - DynamoDBCrudPolicy:
+            TableName: calledit-eval-reasoning
         - Statement:
             - Effect: Allow
               Action:
@@ -551,6 +553,30 @@ Resources:
             Auth:
               Authorizer: CognitoAuthorizer
 
+  # Eval Reasoning Store — captures full model reasoning traces during eval runs
+  EvalReasoningTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: calledit-eval-reasoning
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: eval_run_id
+          AttributeType: S
+        - AttributeName: record_key
+          AttributeType: S
+      KeySchema:
+        - AttributeName: eval_run_id
+          KeyType: HASH
+        - AttributeName: record_key
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+
 Outputs:
   HelloWorldApi:
     Description: API Gateway endpoint URL for Prod stage for Hello World function
@@ -586,5 +612,9 @@ Outputs:
   VerificationNotificationTopic:
     Description: ARN of the SNS notification topic
     Value: !Ref VerificationNotificationTopic
+
+  EvalReasoningTableName:
+    Description: Name of the DynamoDB eval reasoning store table
+    Value: !Ref EvalReasoningTable
 
 

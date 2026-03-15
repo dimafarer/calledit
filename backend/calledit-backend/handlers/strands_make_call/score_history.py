@@ -48,6 +48,7 @@ def append_score(report: dict, path: str = DEFAULT_HISTORY_PATH) -> None:
     entry = {
         "timestamp": report.get("timestamp", datetime.now(timezone.utc).isoformat()),
         "prompt_version_manifest": report.get("prompt_version_manifest", {}),
+        "dataset_version": report.get("dataset_version", ""),
         "per_agent_aggregates": report.get("per_agent_aggregates", {}),
         "per_category_accuracy": report.get("per_category_accuracy", {}),
         "overall_pass_rate": report.get("overall_pass_rate", 0.0),
@@ -132,6 +133,15 @@ def compare_latest(path: str = DEFAULT_HISTORY_PATH) -> Optional[dict]:
     return {
         "current_timestamp": current.get("timestamp"),
         "previous_timestamp": previous.get("timestamp"),
+        "dataset_version_mismatch": (
+            current.get("dataset_version", "") != previous.get("dataset_version", "")
+        ),
+        "dataset_version_warning": (
+            f"Dataset version changed: '{previous.get('dataset_version', 'unknown')}' → "
+            f"'{current.get('dataset_version', 'unknown')}' — score deltas may not be meaningful"
+            if current.get("dataset_version", "") != previous.get("dataset_version", "")
+            else None
+        ),
         "overall_pass_rate": {
             "current": curr_rate, "previous": prev_rate,
             "delta": round(curr_rate - prev_rate, 4),

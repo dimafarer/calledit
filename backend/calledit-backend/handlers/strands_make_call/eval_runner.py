@@ -68,14 +68,17 @@ def _evaluate_base_prediction(
 ) -> dict:
     """Apply evaluators to a base prediction result."""
     scores = {}
-    expected_cat = bp.expected_per_agent_outputs.categorizer
+    # V2: expected_per_agent_outputs is a plain dict, category at .categorizer
+    expected_cat = bp.expected_per_agent_outputs.get("categorizer", {})
     scores["CategoryMatch"] = evaluate_category_match(result, expected_cat)
     scores["JSONValidity_parser"] = evaluate_json_validity(result, "parser")
     scores["JSONValidity_categorizer"] = evaluate_json_validity(result, "categorizer")
     scores["JSONValidity_vb"] = evaluate_json_validity(result, "verification_builder")
+    # V2: review expected outputs are optional rubric guidance
+    review_expected = bp.expected_per_agent_outputs.get("review", {})
     scores["ClarificationQuality"] = evaluate_clarification_quality(
-        result, bp.expected_per_agent_outputs.review.get("reviewable_sections", [])
-        if bp.expected_per_agent_outputs.review else []
+        result, review_expected.get("reviewable_sections", [])
+        if review_expected else []
     )
 
     if use_judge:
@@ -106,7 +109,7 @@ def _evaluate_fuzzy_prediction(
     # Round 2: convergence to base prediction
     scores["Convergence"] = evaluate_convergence(r2_result, base_expected)
     scores["R2_CategoryMatch"] = evaluate_category_match(
-        r2_result, fp.expected_post_clarification_outputs.categorizer
+        r2_result, fp.expected_post_clarification_outputs.get("categorizer", {})
     )
 
     if use_judge:
@@ -122,7 +125,9 @@ def _evaluate_fuzzy_prediction(
     return scores
 
 
-def _aggregate_report(test_results: list, manifest: dict) -> dict:
+def _aggregate_report(test_results: list, manifest: dict,
+                      dataset_version: str = "", schema_version: str = "",
+                      eval_run_id: str = "") -> dict:
     """Build the evaluation report from per-test-case results."""
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -173,6 +178,9 @@ def _aggregate_report(test_results: list, manifest: dict) -> dict:
 
     return {
         "timestamp": timestamp,
+        "schema_version": schema_version,
+        "dataset_version": dataset_version,
+        "eval_run_id": eval_run_id,
         "prompt_version_manifest": manifest,
         "per_test_case_scores": test_results,
         "per_agent_aggregates": per_agent_aggregates,
@@ -221,6 +229,16 @@ def run_on_demand_evaluation(
             "fuzzy_count": fuzzy_count,
         }
 
+    # V2: Initialize reasoning store (fire-and-forget DDB writes)
+    try:
+        from eval_reasoning_store import EvalReasoningStore
+        reasoning_store = EvalReasoningStore()
+    except Exception as e:
+        logger.warning(f"Reasoning store unavailable: {e}")
+        reasoning_store = None
+
+    run_start = time.time()
+
     # Build base prediction lookup for fuzzy convergence scoring
     base_lookup = {bp.id: bp for bp in dataset.base_predictions}
     test_results = []
@@ -234,13 +252,23 @@ def run_on_demand_evaluation(
                 if result.get("error"):
                     raise RuntimeError(result["error"])
                 scores = _evaluate_base_prediction(tc, result, use_judge)
-                expected_cat = tc.expected_per_agent_outputs.categorizer.get("verifiable_category", "")
+                # V2: expected_category field path
+                expected_cat = tc.expected_per_agent_outputs.get(
+                    "categorizer", {}
+                ).get("expected_category", "")
                 test_results.append({
                     "test_case_id": tc.id, "layer": "base",
                     "difficulty": tc.difficulty, "expected_category": expected_cat,
                     "evaluator_scores": scores, "error": None,
                     "duration_s": round(time.time() - tc_start, 2),
                 })
+
+                # V2: Write agent outputs to reasoning store
+                if reasoning_store:
+                    reasoning_store.write_agent_outputs(tc.id, {
+                        k: str(v) for k, v in result.items()
+                        if k in ("parser", "categorizer", "verification_builder", "review")
+                    })
 
             elif isinstance(tc, FuzzyPrediction):
                 # Use the base prediction's tool manifest for fuzzy tests
@@ -267,13 +295,17 @@ def run_on_demand_evaluation(
                     raise RuntimeError(r2["error"])
 
                 base_bp = base_lookup.get(tc.base_prediction_id)
+                # V2: expected_per_agent_outputs is a plain dict
                 base_expected = {
-                    "parser": base_bp.expected_per_agent_outputs.parser if base_bp else {},
-                    "categorizer": base_bp.expected_per_agent_outputs.categorizer if base_bp else {},
-                    "verification_builder": base_bp.expected_per_agent_outputs.verification_builder if base_bp else {},
+                    "parser": base_bp.expected_per_agent_outputs.get("parser", {}) if base_bp else {},
+                    "categorizer": base_bp.expected_per_agent_outputs.get("categorizer", {}) if base_bp else {},
+                    "verification_builder": base_bp.expected_per_agent_outputs.get("verification_builder", {}) if base_bp else {},
                 }
                 scores = _evaluate_fuzzy_prediction(tc, r1, r2, base_expected, use_judge)
-                expected_cat = tc.expected_post_clarification_outputs.categorizer.get("verifiable_category", "")
+                # V2: expected_category field path
+                expected_cat = tc.expected_post_clarification_outputs.get(
+                    "categorizer", {}
+                ).get("expected_category", "")
                 test_results.append({
                     "test_case_id": tc.id, "layer": "fuzzy",
                     "difficulty": base_bp.difficulty if base_bp else "unknown",
@@ -300,7 +332,25 @@ def run_on_demand_evaluation(
 
     # Read manifest AFTER test cases run (populated during agent creation)
     manifest = get_prompt_version_manifest()
-    return _aggregate_report(test_results, manifest)
+    report = _aggregate_report(
+        test_results, manifest,
+        dataset_version=dataset.dataset_version,
+        schema_version=dataset.schema_version,
+        eval_run_id=reasoning_store.eval_run_id if reasoning_store else "",
+    )
+
+    # V2: Write run metadata to reasoning store
+    if reasoning_store:
+        reasoning_store.write_run_metadata(
+            manifest=manifest,
+            dataset_version=dataset.dataset_version,
+            schema_version=dataset.schema_version,
+            total_tests=report["total_tests"],
+            pass_rate=report["overall_pass_rate"],
+            duration_s=round(time.time() - run_start, 2),
+        )
+
+    return report
 
 
 def print_report(report: dict):

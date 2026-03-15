@@ -6,13 +6,13 @@ Rewrite the golden dataset schema, loader, and serialization to v2 (ground truth
 
 ## Tasks
 
-- [-] 1. Rewrite V2 schema and loader (`golden_dataset.py`)
-  - [-] 1.1 Define new dataclasses: `GroundTruthMetadata`, `DimensionTags`, `DatasetMetadata`, updated `BasePrediction`, `FuzzyPrediction`, `GoldenDataset` with v2 fields (`ground_truth`, `dimension_tags`, `is_boundary_case`, `boundary_description`, `fuzziness_level`, `dataset_version`, `metadata`)
+- [x] 1. Rewrite V2 schema and loader (`golden_dataset.py`)
+  - [x] 1.1 Define new dataclasses: `GroundTruthMetadata`, `DimensionTags`, `DatasetMetadata`, updated `BasePrediction`, `FuzzyPrediction`, `GoldenDataset` with v2 fields (`ground_truth`, `dimension_tags`, `is_boundary_case`, `boundary_description`, `fuzziness_level`, `dataset_version`, `metadata`)
     - Replace all v1 dataclasses — clean break, no backward compatibility
     - Update constants: `SUPPORTED_SCHEMA_VERSION = "2.0"`, add `VALID_OBJECTIVITY`, `VALID_STAKES`, `VALID_TIME_HORIZONS`, `VALID_FUZZINESS_LEVELS`
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 3.2, 7.1_
 
-  - [ ] 1.2 Rewrite `load_golden_dataset()` as v2-only loader
+  - [x] 1.2 Rewrite `load_golden_dataset()` as v2-only loader
     - Reject `schema_version != "2.0"` with `ValueError` including both version strings
     - Validate all ground truth fields present and correctly typed for each base prediction
     - Validate `fuzziness_level` in {0,1,2,3} for each fuzzy prediction
@@ -22,11 +22,11 @@ Rewrite the golden dataset schema, loader, and serialization to v2 (ground truth
     - Validate `dataset_version` is present and non-empty
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 3.2, 4.1, 4.4, 7.1, 7.2, 9.3_
 
-  - [ ] 1.3 Rewrite `dataset_to_dict()` for v2 serialization
+  - [x] 1.3 Rewrite `dataset_to_dict()` for v2 serialization
     - Serialize all v2 fields including `ground_truth`, `dimension_tags`, `is_boundary_case`, `boundary_description`, `fuzziness_level`, `dataset_version`, `metadata`
     - _Requirements: 9.1_
 
-  - [ ] 1.4 Update `filter_test_cases()` for v2 fields
+  - [x] 1.4 Update `filter_test_cases()` for v2 fields
     - Support filtering by `fuzziness_level` for fuzzy predictions
     - Use `expected_category` from new v2 expected outputs structure
     - _Requirements: 4.1_
@@ -61,11 +61,11 @@ Rewrite the golden dataset schema, loader, and serialization to v2 (ground truth
     - Generate sets of fuzzy predictions sharing `base_prediction_id`, verify each has a distinct `fuzziness_level`
     - **Validates: Requirements 3.7**
 
-- [ ] 2. Checkpoint — V2 schema and loader
+- [x] 2. Checkpoint — V2 schema and loader
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 3. Create validation script (`eval/validate_dataset.py`)
-  - [ ] 3.1 Implement `validate_dataset()` returning list of error strings
+- [x] 3. Create validation script (`eval/validate_dataset.py`)
+  - [x] 3.1 Implement `validate_dataset()` returning list of error strings
     - Check structural constraints: required fields, types, valid enum values
     - Check referential integrity: fuzzy `base_prediction_id` references resolve
     - Check uniqueness: no duplicate IDs, no base/fuzzy ID namespace collisions
@@ -81,8 +81,8 @@ Rewrite the golden dataset schema, loader, and serialization to v2 (ground truth
     - Generate valid dataset JSON, inject exactly one structural violation (missing field, invalid enum, duplicate ID, dangling fuzzy reference, count mismatch), verify non-empty error list identifying the violation
     - **Validates: Requirements 8.1, 8.2, 8.4, 9.2**
 
-- [ ] 4. Add DynamoDB EvalReasoningTable to SAM template
-  - [ ] 4.1 Add `EvalReasoningTable` resource to `backend/calledit-backend/template.yaml`
+- [x] 4. Add DynamoDB EvalReasoningTable to SAM template
+  - [x] 4.1 Add `EvalReasoningTable` resource to `backend/calledit-backend/template.yaml`
     - Table name: `calledit-eval-reasoning`
     - Partition key: `eval_run_id` (S), Sort key: `record_key` (S)
     - BillingMode: PAY_PER_REQUEST
@@ -90,8 +90,8 @@ Rewrite the golden dataset schema, loader, and serialization to v2 (ground truth
     - Add DynamoDB CRUD policy to `MakeCallStreamFunction` for the new table
     - _Requirements: 6.5_
 
-- [ ] 5. Implement EvalReasoningStore (`eval_reasoning_store.py`)
-  - [ ] 5.1 Create `backend/calledit-backend/handlers/strands_make_call/eval_reasoning_store.py`
+- [x] 5. Implement EvalReasoningStore (`eval_reasoning_store.py`)
+  - [x] 5.1 Create `backend/calledit-backend/handlers/strands_make_call/eval_reasoning_store.py`
     - `EvalReasoningStore` class with fire-and-forget `_put_item` (log warning on failure, never raise)
     - `write_run_metadata()`, `write_agent_outputs()`, `write_judge_reasoning()`, `write_token_counts()`
     - TTL set to 90 days from creation
@@ -108,11 +108,11 @@ Rewrite the golden dataset schema, loader, and serialization to v2 (ground truth
     - Generate random agent outputs (4 non-empty strings), token counts (4 agents with input/output ints), judge reasoning (score float, reasoning string, model ID), verify DDB items contain all fields with correct types and future TTL
     - **Validates: Requirements 6.1, 6.2, 6.3, 6.4**
 
-- [ ] 6. Checkpoint — DDB table and reasoning store
+- [x] 6. Checkpoint — DDB table and reasoning store
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 7. Integrate V2 into eval runner and score history
-  - [ ] 7.1 Update `eval_runner.py` for v2 schema
+- [x] 7. Integrate V2 into eval runner and score history
+  - [x] 7.1 Update `eval_runner.py` for v2 schema
     - Add `dataset_version` and `schema_version` to evaluation report dict
     - Add `eval_run_id` to report (links to DDB reasoning store)
     - Create `EvalReasoningStore` instance per run, write agent outputs / judge reasoning / token counts as test cases execute
@@ -120,7 +120,7 @@ Rewrite the golden dataset schema, loader, and serialization to v2 (ground truth
     - Update expected output field access for v2 structure (`expected_category` instead of nested `verifiable_category`)
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.6, 7.1, 7.3_
 
-  - [ ] 7.2 Update `score_history.py` for dataset_version tracking
+  - [x] 7.2 Update `score_history.py` for dataset_version tracking
     - Include `dataset_version` in each score history entry
     - In `compare_latest()`, detect `dataset_version` mismatch between runs, add `dataset_version_mismatch: True` flag and warning message with both version strings
     - Compute per-test-case deltas only for IDs present in both runs when versions differ
@@ -136,7 +136,7 @@ Rewrite the golden dataset schema, loader, and serialization to v2 (ground truth
     - Generate two consecutive score history entries with different `dataset_version` values, verify `compare_latest()` returns `dataset_version_mismatch: True` and warning containing both version strings
     - **Validates: Requirements 7.4**
 
-- [ ] 8. Checkpoint — Eval runner and score history v2 integration
+- [x] 8. Checkpoint — Eval runner and score history v2 integration
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 9. Archive v1 dataset and create v2 golden dataset JSON
