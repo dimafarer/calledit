@@ -11,6 +11,11 @@ import streamlit as st
 st.set_page_config(page_title="CalledIt Eval Dashboard", layout="wide")
 
 # Imports after set_page_config (Streamlit requirement)
+import sys
+import os
+# Ensure project root is on path so eval.dashboard imports work
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+
 from eval.dashboard.data_loader import EvalDataLoader
 from eval.dashboard import sidebar
 from eval.dashboard.pages import (

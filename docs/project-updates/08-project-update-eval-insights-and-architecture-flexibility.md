@@ -186,16 +186,37 @@ The eval suite — golden dataset with ground truth, multi-tier evaluators, DDB 
 ### Decision 43: Integrate Strands Evals SDK Into Eval Suite
 After v1 of the eval dashboard is complete, integrate `strands-agents-evals` into the eval suite. The principle: use the SDK over custom code wherever the SDK provides equivalent functionality, keep custom code only for capabilities the SDK doesn't supply (DDB persistence, prompt version manifests, architecture comparison, dataset versioning, fuzzy round evaluation, visual dashboard). Specifically: replace the hand-rolled LLM judge with `OutputEvaluator` (rubric-based, per-agent), add `TrajectoryEvaluator` to measure inter-agent coherence (the silo problem), and wrap golden dataset entries as `Case` objects for SDK experiment management. Full comparison in `docs/eval-framework-comparison.md`.
 
+### Decision 44: Verification Criteria Is the Primary Eval Target, Not Categorization
+Category labels (auto_verifiable, automatable, human_only) are downgraded to helpful routing hints. The real success metric is: does the verification builder produce verification criteria that a verification agent can use to determine true/false at the right time?
+
+The verification builder's job is to transform the human prediction into a list of criteria an agent can verify. It should produce the most automated plan possible using tools available to the system, and gracefully degrade to manual instructions when automation isn't possible (explaining how to do it manually, or where to find/build the tool).
+
+At verification time, the verification agent reads the verification criteria and method, then uses its own reasoning and currently-available tools to verify — which may differ from what the VB assumed when it built the plan. The eval should measure: given the VB's output, would a verification agent succeed?
+
+This reframes the eval priorities:
+1. Verification criteria quality (does it capture the prediction's intent as checkable conditions?) — PRIMARY
+2. Verification method quality (is the automation plan realistic and gracefully degrading?) — SECONDARY
+3. Category accuracy (did it pick the right label?) — TERTIARY, routing hint only
+
+Implications for the eval framework:
+- CategoryMatch evaluator becomes less important in the overall pass rate calculation
+- Need a new evaluator: "Would these verification criteria enable successful verification?"
+- The judge rubric should focus on verification plan executability, not reasoning essay quality
+- The golden dataset ground truth should include expected verification criteria, not just expected category
+
 ## What the Next Agent Should Do
 
-1. Continue executing eval-dashboard tasks starting at Task 3 (`.kiro/specs/eval-dashboard/tasks.md`)
-   - Tasks 1-2 are complete (EvalReasoningStore extended with report_summary + test_result records)
-   - Task 3: Install streamlit/plotly dependencies, create dashboard directory structure
-   - Task 4: Implement unified EvalDataLoader (DDB primary, local fallback) — this is the critical foundation
-   - Tasks 6-13: Implement the 6 Streamlit pages and wire together
-2. After dashboard is functional, re-run eval with `--judge` to populate DDB with the new record types (report_summary, test_result) so the dashboard has data to display
-3. Fix the categorizer prompt automatable regression (71% → needs nuance about "personal but API-accessible" vs "truly private")
-4. Consider the silo problem — how to make agents build on each other's output rather than re-interpreting from scratch
+1. Execute Spec: Golden Dataset V3 + Verification-Centric Evaluators (`.kiro/specs/verification-evaluators/`)
+   - Add expected_verification_criteria and expected_verification_method to golden dataset entries
+   - Build IntentPreservation evaluator (does VB criteria capture the prediction's meaning?)
+   - Build CriteriaMethodAlignment evaluator (does the verification method enable proving true/false?)
+   - Integrate Strands Evals SDK OutputEvaluator for judge calls
+   - Recalibrate judge rubric to focus on verification executability, not reasoning essay quality
+   - Downweight CategoryMatch in overall pass rate calculation
+2. After new evaluators are in place, execute Spec: VB Prompt Iteration
+   - Iterate on verification builder prompt to improve criteria quality and method realism
+   - Use new evaluators to measure improvement
+3. Consider the silo problem — how to make agents build on each other's output rather than re-interpreting from scratch
 
 ## Files Created/Modified This Session
 
