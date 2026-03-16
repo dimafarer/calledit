@@ -27,21 +27,21 @@ Build a local Streamlit dashboard for exploring CalledIt eval results. Extend th
 - [x] 2. Checkpoint — Eval runner DDB extension
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 3. Install dependencies and set up dashboard project structure
-  - [ ] 3.1 Add `streamlit` and `plotly` to root `requirements.txt` as dev dependencies
+- [x] 3. Install dependencies and set up dashboard project structure
+  - [x] 3.1 Add `streamlit` and `plotly` to root `requirements.txt` as dev dependencies
     - Add `streamlit>=1.30.0` and `plotly>=5.18.0` to `requirements.txt`
     - User should run: `/home/wsluser/projects/calledit/venv/bin/pip install -r requirements.txt`
     - _Requirements: 10.1_
 
-  - [ ] 3.2 Create dashboard directory structure and entry point
+  - [x] 3.2 Create dashboard directory structure and entry point
     - Create `eval/dashboard/` directory with `__init__.py`
     - Create `eval/dashboard/app.py` — Streamlit entry point that loads data, renders sidebar, dispatches to selected page
     - Create `eval/dashboard/sidebar.py` — run selector, comparison selector, layer/category/dataset_version filters stored in `st.session_state`
     - Create `eval/dashboard/pages/` directory with `__init__.py`
     - _Requirements: 10.1, 8.1, 8.3_
 
-- [ ] 4. Implement unified data loader (`eval/dashboard/data_loader.py`)
-  - [ ] 4.1 Implement `EvalDataLoader` class with DDB-primary, local-fallback pattern
+- [x] 4. Implement unified data loader (`eval/dashboard/data_loader.py`)
+  - [x] 4.1 Implement `EvalDataLoader` class with DDB-primary, local-fallback pattern
     - Constructor: initialize boto3 DDB client (catch import/connection errors gracefully), set local file paths
     - `is_ddb_available()`: returns True if DDB connection was established
     - `load_all_runs()`: query all `report_summary#SUMMARY` records from DDB; fallback to `score_history.json`; cache with `@st.cache_data`
@@ -55,7 +55,7 @@ Build a local Streamlit dashboard for exploring CalledIt eval results. Extend th
     - Show banner when DDB unavailable: "DDB unavailable — using local data. Reasoning traces not available."
     - _Requirements: 9.1, 9.2, 9.3, 9.4, 6.1, 6.2, 6.4_
 
-  - [ ] 4.2 Implement `compare_runs(run_a, run_b)` method on `EvalDataLoader`
+  - [x] 4.2 Implement `compare_runs(run_a, run_b)` method on `EvalDataLoader`
     - Identify prompt keys where versions differ between two manifests
     - Compute category deltas (current minus previous for every category in either run)
     - Flag dataset_version mismatch
@@ -90,11 +90,11 @@ Build a local Streamlit dashboard for exploring CalledIt eval results. Extend th
     - **Property 13: Malformed reports are skipped without affecting valid reports**
     - **Validates: Requirements 9.4**
 
-- [ ] 5. Checkpoint — Data loader and property tests
+- [x] 5. Checkpoint — Data loader and property tests
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Implement Trends page (`eval/dashboard/pages/trends.py`)
-  - [ ] 6.1 Implement `render(runs: list[dict])` function
+- [x] 6. Implement Trends page (`eval/dashboard/pages/trends.py`)
+  - [x] 6.1 Implement `render(runs: list[dict])` function
     - Plotly line chart: overall pass rate over time (x=timestamp, y=pass_rate)
     - Plotly grouped bar chart: per-category accuracy over time
     - Prompt version annotations on the trend line (show which prompts changed between runs)
@@ -102,8 +102,8 @@ Build a local Streamlit dashboard for exploring CalledIt eval results. Extend th
     - Filter integration: respect sidebar layer/category/dataset_version filters
     - _Requirements: 1.1, 1.2, 1.3, 6.3_
 
-- [ ] 7. Implement Heatmap page (`eval/dashboard/pages/heatmap.py`)
-  - [ ] 7.1 Implement `render(run_detail: dict)` function
+- [x] 7. Implement Heatmap page (`eval/dashboard/pages/heatmap.py`)
+  - [x] 7.1 Implement `render(run_detail: dict)` function
     - Plotly heatmap: rows = test cases, columns = evaluator names, cells = scores
     - Group columns: deterministic evaluators (left) vs judge evaluators (right)
     - Color scale: 0.0 (red) → 1.0 (green) with NaN as grey
@@ -123,8 +123,8 @@ Build a local Streamlit dashboard for exploring CalledIt eval results. Extend th
     - **Property 4: Heatmap sort orders by ascending average score**
     - **Validates: Requirements 2.5**
 
-- [ ] 8. Implement Prompt Correlation page (`eval/dashboard/pages/prompt_correlation.py`)
-  - [ ] 8.1 Implement `render(run_a: dict, run_b: dict, runs: list[dict])` function
+- [x] 8. Implement Prompt Correlation page (`eval/dashboard/pages/prompt_correlation.py`)
+  - [x] 8.1 Implement `render(run_a: dict, run_b: dict, runs: list[dict])` function
     - Side-by-side comparison of two selected runs using `compare_runs()`
     - Show prompt version diff (which prompts changed, from → to)
     - Show category delta table with color coding (green=improved, red=regressed, grey=unchanged)
@@ -132,8 +132,8 @@ Build a local Streamlit dashboard for exploring CalledIt eval results. Extend th
     - Overall pass rate delta with directional indicator
     - _Requirements: 3.1, 3.2, 8.2_
 
-- [ ] 9. Implement Reasoning Explorer page (`eval/dashboard/pages/reasoning_explorer.py`)
-  - [ ] 9.1 Implement `render(run_detail: dict, loader: EvalDataLoader)` function
+- [x] 9. Implement Reasoning Explorer page (`eval/dashboard/pages/reasoning_explorer.py`)
+  - [x] 9.1 Implement `render(run_detail: dict, loader: EvalDataLoader)` function
     - Test case selector (dropdown or table with click)
     - For selected test case: show all evaluator scores in a summary table
     - Agent output viewer: display full text output from each agent in pipeline order (parser → categorizer → verification_builder → review)
@@ -150,16 +150,16 @@ Build a local Streamlit dashboard for exploring CalledIt eval results. Extend th
     - **Property 7: Agent output field extraction returns expected fields from valid JSON**
     - **Validates: Requirements 5.3**
 
-- [ ] 10. Implement Coherence View page (`eval/dashboard/pages/coherence.py`)
-  - [ ] 10.1 Implement `render(run_detail: dict, loader: EvalDataLoader)` function
+- [x] 10. Implement Coherence View page (`eval/dashboard/pages/coherence.py`)
+  - [x] 10.1 Implement `render(run_detail: dict, loader: EvalDataLoader)` function
     - For each test case: show whether deterministic scores and judge scores agree
     - Highlight disagreements: cases where deterministic evaluators pass but judge scores are low (or vice versa)
     - Summary statistics: % agreement, most common disagreement patterns
     - Drill-down to reasoning for disagreement cases
     - _Requirements: 2.3, 5.3_
 
-- [ ] 11. Implement Fuzzy Convergence page (`eval/dashboard/pages/fuzzy_convergence.py`)
-  - [ ] 11.1 Implement `render(run_detail: dict)` function
+- [x] 11. Implement Fuzzy Convergence page (`eval/dashboard/pages/fuzzy_convergence.py`)
+  - [x] 11.1 Implement `render(run_detail: dict)` function
     - Filter to fuzzy test cases only
     - Show round 1 scores (R1_ prefixed), round 2 scores (R2_ prefixed + Convergence), and clarification quality separately
     - Convergence visualization: bar chart comparing R1 vs R2 scores per test case
@@ -170,11 +170,11 @@ Build a local Streamlit dashboard for exploring CalledIt eval results. Extend th
     - **Property 10: Fuzzy score extraction correctly separates round 1 and round 2 scores**
     - **Validates: Requirements 7.1, 7.2, 7.3, 7.4**
 
-- [ ] 12. Checkpoint — All pages implemented
+- [x] 12. Checkpoint — All pages implemented
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 13. Wire everything together in app.py and sidebar.py
-  - [ ] 13.1 Complete `app.py` page routing and data flow
+- [x] 13. Wire everything together in app.py and sidebar.py
+  - [x] 13.1 Complete `app.py` page routing and data flow
     - Initialize `EvalDataLoader`, load all runs
     - Render sidebar, get selected run and filters
     - Page navigation: tabs or selectbox for 6 pages
@@ -183,7 +183,7 @@ Build a local Streamlit dashboard for exploring CalledIt eval results. Extend th
     - Show empty state when no eval runs found
     - _Requirements: 8.1, 8.3, 9.3, 10.1_
 
-  - [ ] 13.2 Complete `sidebar.py` run selection and filtering
+  - [x] 13.2 Complete `sidebar.py` run selection and filtering
     - Run selector dropdown populated from `load_all_runs()` (sorted by timestamp descending)
     - Comparison run selector (optional second run for Prompt Correlation page)
     - Layer filter (base/fuzzy/all)
@@ -192,7 +192,7 @@ Build a local Streamlit dashboard for exploring CalledIt eval results. Extend th
     - Store selections in `st.session_state`
     - _Requirements: 8.1, 8.3, 6.3_
 
-- [ ] 14. Final checkpoint — Full integration
+- [x] 14. Final checkpoint — Full integration
   - Ensure all tests pass, ask the user if questions arise.
   - User should run: `cd /home/wsluser/projects/calledit && /home/wsluser/projects/calledit/venv/bin/python -m streamlit run eval/dashboard/app.py` to verify the dashboard launches.
 

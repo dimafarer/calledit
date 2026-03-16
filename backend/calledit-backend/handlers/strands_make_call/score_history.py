@@ -47,6 +47,7 @@ def append_score(report: dict, path: str = DEFAULT_HISTORY_PATH) -> None:
 
     entry = {
         "timestamp": report.get("timestamp", datetime.now(timezone.utc).isoformat()),
+        "eval_run_id": report.get("eval_run_id", ""),
         "prompt_version_manifest": report.get("prompt_version_manifest", {}),
         "dataset_version": report.get("dataset_version", ""),
         "per_agent_aggregates": report.get("per_agent_aggregates", {}),

@@ -183,6 +183,9 @@ The dashboard spec should include an "architecture" dimension so eval runs can b
 ### Decision 41: Eval Framework as Portfolio Centerpiece
 The eval suite — golden dataset with ground truth, multi-tier evaluators, DDB reasoning capture, architecture-agnostic scoring, and a visual dashboard — is the transferable skill set. Even if the data shows a single Opus 4.6 agent outperforms the multi-agent graph, the eval framework that proved it is the valuable artifact.
 
+### Decision 43: Integrate Strands Evals SDK Into Eval Suite
+After v1 of the eval dashboard is complete, integrate `strands-agents-evals` into the eval suite. The principle: use the SDK over custom code wherever the SDK provides equivalent functionality, keep custom code only for capabilities the SDK doesn't supply (DDB persistence, prompt version manifests, architecture comparison, dataset versioning, fuzzy round evaluation, visual dashboard). Specifically: replace the hand-rolled LLM judge with `OutputEvaluator` (rubric-based, per-agent), add `TrajectoryEvaluator` to measure inter-agent coherence (the silo problem), and wrap golden dataset entries as `Case` objects for SDK experiment management. Full comparison in `docs/eval-framework-comparison.md`.
+
 ## What the Next Agent Should Do
 
 1. Continue executing eval-dashboard tasks starting at Task 3 (`.kiro/specs/eval-dashboard/tasks.md`)

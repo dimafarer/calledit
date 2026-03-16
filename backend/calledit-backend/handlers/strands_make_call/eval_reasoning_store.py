@@ -134,6 +134,22 @@ class EvalReasoningStore:
             data[f"{agent}_output_tokens"] = tokens.get("output_tokens", 0)
         self._put_item(f"token_counts#{test_case_id}", data)
 
+    @staticmethod
+    def _sanitize_for_ddb(obj):
+        """Recursively convert floats to strings for DDB compatibility.
+
+        DynamoDB rejects Python floats that can't be exactly represented
+        as Decimal (e.g., 0.9666666666666666). Converting to str avoids
+        the Inexact/Rounded errors from boto3's type serializer.
+        """
+        if isinstance(obj, float):
+            return str(round(obj, 6))
+        if isinstance(obj, dict):
+            return {k: EvalReasoningStore._sanitize_for_ddb(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [EvalReasoningStore._sanitize_for_ddb(i) for i in obj]
+        return obj
+
     def _put_item(self, record_key: str, data: dict):
         """Fire-and-forget DDB write. Logs warning on failure, never raises."""
         if not self._table:
@@ -143,7 +159,7 @@ class EvalReasoningStore:
                 "eval_run_id": self.eval_run_id,
                 "record_key": record_key,
                 "ttl": int(time.time()) + (TTL_DAYS * 86400),
-                **data,
+                **self._sanitize_for_ddb(data),
             }
             self._table.put_item(Item=item)
         except Exception as e:
