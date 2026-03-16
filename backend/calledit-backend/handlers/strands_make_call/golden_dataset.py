@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 # --- Constants ---
 
-SUPPORTED_SCHEMA_VERSION = "2.0"
+SUPPORTED_SCHEMA_VERSION = "3.0"
 VALID_CATEGORIES = {"auto_verifiable", "automatable", "human_only"}
 VALID_DIFFICULTIES = {"easy", "medium", "hard"}
 VALID_OBJECTIVITY = {"objective", "subjective", "mixed"}
@@ -54,6 +54,9 @@ class GroundTruthMetadata:
     verification_criteria: List[str]
     verification_steps: List[str]
     verification_timing: str  # WHEN to verify: "immediate", "after_event", "scheduled_prompt", etc.
+    # V3: verification-centric eval fields
+    expected_verification_criteria: List[str] = field(default_factory=list)  # checkable true/false conditions
+    expected_verification_method: str = ""  # approach for proving true/false
 
 
 @dataclass
@@ -176,6 +179,22 @@ def _validate_ground_truth(gt_data: dict, prediction_id: str) -> GroundTruthMeta
             f"must be a non-empty string"
         )
 
+    # V3: expected_verification_criteria
+    evc = gt_data.get("expected_verification_criteria")
+    if not evc or not isinstance(evc, list) or not all(isinstance(c, str) and c for c in evc):
+        raise ValueError(
+            f"Base prediction '{prediction_id}': 'ground_truth.expected_verification_criteria' "
+            f"must be a non-empty list of non-empty strings"
+        )
+
+    # V3: expected_verification_method
+    evm = gt_data.get("expected_verification_method")
+    if not evm or not isinstance(evm, str):
+        raise ValueError(
+            f"Base prediction '{prediction_id}': 'ground_truth.expected_verification_method' "
+            f"must be a non-empty string"
+        )
+
     return GroundTruthMetadata(
         verifiability_reasoning=vr,
         date_derivation=dd,
@@ -184,6 +203,8 @@ def _validate_ground_truth(gt_data: dict, prediction_id: str) -> GroundTruthMeta
         verification_criteria=vc,
         verification_steps=vsteps,
         verification_timing=vtiming,
+        expected_verification_criteria=evc,
+        expected_verification_method=evm,
     )
 
 
@@ -403,7 +424,7 @@ def load_golden_dataset(path: str = "eval/golden_dataset.json") -> GoldenDataset
         raise ValueError(
             f"Unsupported schema version '{version}', "
             f"expected '{SUPPORTED_SCHEMA_VERSION}'. "
-            f"V1 datasets must be migrated to v2 schema."
+            f"V1/V2 datasets must be migrated to v3 schema."
         )
 
     # Validate dataset_version
@@ -518,6 +539,8 @@ def _serialize_base(bp: BasePrediction) -> dict:
             "verification_criteria": bp.ground_truth.verification_criteria,
             "verification_steps": bp.ground_truth.verification_steps,
             "verification_timing": bp.ground_truth.verification_timing,
+            "expected_verification_criteria": bp.ground_truth.expected_verification_criteria,
+            "expected_verification_method": bp.ground_truth.expected_verification_method,
         },
         "dimension_tags": {
             "domain": bp.dimension_tags.domain,

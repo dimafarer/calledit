@@ -5,7 +5,7 @@ import streamlit as st
 
 
 def _is_judge_evaluator(name: str) -> bool:
-    return "ReasoningQuality" in name
+    return "ReasoningQuality" in name or name in ("IntentPreservation", "CriteriaMethodAlignment")
 
 
 def _build_matrix(test_cases: list[dict]) -> tuple[list[str], list[str], list[list[float | None]]]:

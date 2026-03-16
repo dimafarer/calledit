@@ -56,8 +56,8 @@ def validate_dataset(path: str = "eval/golden_dataset.json") -> List[str]:
 
     # Schema version
     version = data.get("schema_version")
-    if version != "2.0":
-        errors.append(f"STRUCTURAL: schema_version must be '2.0', got '{version}'")
+    if version != "3.0":
+        errors.append(f"STRUCTURAL: schema_version must be '3.0', got '{version}'")
 
     # Dataset version
     dv = data.get("dataset_version")
@@ -344,6 +344,22 @@ def _validate_ground_truth(gt: dict, bp_id: str) -> List[str]:
     if not vt or not isinstance(vt, str):
         errors.append(
             f"COHERENCE: '{bp_id}' ground_truth.verification_timing must be non-empty string"
+        )
+
+    # V3: expected_verification_criteria
+    evc = gt.get("expected_verification_criteria")
+    if not evc or not isinstance(evc, list) or not all(isinstance(c, str) and c for c in evc):
+        errors.append(
+            f"COHERENCE: '{bp_id}' ground_truth.expected_verification_criteria "
+            f"must be non-empty list of non-empty strings"
+        )
+
+    # V3: expected_verification_method
+    evm = gt.get("expected_verification_method")
+    if not evm or not isinstance(evm, str):
+        errors.append(
+            f"COHERENCE: '{bp_id}' ground_truth.expected_verification_method "
+            f"must be non-empty string"
         )
 
     return errors

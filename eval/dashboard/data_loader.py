@@ -80,6 +80,7 @@ def _normalize_run_summary(raw: dict) -> dict:
         "model_config": raw.get("model_config", {}),
         "per_agent_aggregates": raw.get("per_agent_aggregates", {}),
         "per_category_accuracy": pca,
+        "verification_quality_aggregates": raw.get("verification_quality_aggregates", {}),
         "overall_pass_rate": float(raw.get("overall_pass_rate", raw.get("pass_rate", 0.0))),
         "total_tests": int(raw.get("total_tests", 0)),
         "passed": int(raw.get("passed", 0)),

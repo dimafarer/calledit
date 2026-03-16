@@ -28,6 +28,7 @@ plotly>=5.18.0
 #strands
 strands-agents[otel]>=1.7.0
 strands-agents-tools>=0.2.6
+strands-agents-evals>=0.1.10
 
 
 dateparser

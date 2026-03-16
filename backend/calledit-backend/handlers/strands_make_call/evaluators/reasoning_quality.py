@@ -46,7 +46,7 @@ Score the reasoning on a scale of 0.0 to 1.0:
 
 Return ONLY valid JSON: {{"score": 0.0-1.0, "reasoning": "your explanation"}}""",
 
-    "verification_builder": """You are evaluating the quality of verification steps for a prediction.
+    "verification_builder": """You are evaluating whether a verification plan would succeed at verifying a prediction.
 
 PREDICTION: {prediction_text}
 VERIFICATION METHOD:
@@ -56,11 +56,11 @@ VERIFICATION METHOD:
 
 {rubric_section}
 
-Score the verification method on a scale of 0.0 to 1.0:
-- 1.0: Steps are specific, actionable, and tailored to this exact prediction
-- 0.7: Steps are reasonable but could be more specific to the prediction
-- 0.4: Steps are generic boilerplate (e.g., "manual review needed")
-- 0.0: Steps are irrelevant or nonsensical for this prediction
+Score the verification plan on whether it would actually succeed at determining the prediction true or false:
+- 1.0: Plan identifies specific data sources, timing, and concrete steps that would successfully verify this exact prediction
+- 0.7: Plan has the correct approach and data sources but is vague on timing or specific steps
+- 0.4: Plan is generic and could apply to many predictions — not tailored to this specific claim
+- 0.0: Plan would fail to verify the prediction or is irrelevant to the claim being made
 
 Return ONLY valid JSON: {{"score": 0.0-1.0, "reasoning": "your explanation"}}""",
 

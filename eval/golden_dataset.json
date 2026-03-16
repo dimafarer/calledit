@@ -1,6 +1,6 @@
 {
-  "schema_version": "2.0",
-  "dataset_version": "2.0",
+  "schema_version": "3.0",
+  "dataset_version": "3.0",
   "metadata": {
     "expected_base_count": 45,
     "expected_fuzzy_count": 23
@@ -11,13 +11,26 @@
       "prediction_text": "The sun will rise tomorrow in New York City",
       "difficulty": "easy",
       "ground_truth": {
-        "verifiability_reasoning": "Sunrise is an astronomical certainty calculable from Earth's rotation and orbital mechanics. No external data source or tool is needed — pure reasoning about well-known physical laws suffices. Any agent with basic astronomical knowledge can verify this.",
+        "verifiability_reasoning": "Sunrise is an astronomical certainty calculable from Earth's rotation and orbital mechanics. No external data source or tool is needed \u2014 pure reasoning about well-known physical laws suffices. Any agent with basic astronomical knowledge can verify this.",
         "date_derivation": "Relative date: 'tomorrow' resolved against current date.",
-        "verification_sources": ["astronomical_calculations", "earth_rotation_knowledge"],
+        "verification_sources": [
+          "astronomical_calculations",
+          "earth_rotation_knowledge"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["Sun appears above the horizon in New York City on the specified date"],
-        "verification_steps": ["Determine current date", "Confirm Earth continues rotating (axiomatic)", "Conclude sunrise will occur at approximately the calculated time for NYC latitude/longitude"],
-        "verification_timing": "Immediate — astronomical certainty can be confirmed at any time through reasoning."
+        "verification_criteria": [
+          "Sun appears above the horizon in New York City on the specified date"
+        ],
+        "verification_steps": [
+          "Determine current date",
+          "Confirm Earth continues rotating (axiomatic)",
+          "Conclude sunrise will occur at approximately the calculated time for NYC latitude/longitude"
+        ],
+        "verification_timing": "Immediate \u2014 astronomical certainty can be confirmed at any time through reasoning.",
+        "expected_verification_criteria": [
+          "The sun appears above the horizon in New York City on the date following the prediction date"
+        ],
+        "expected_verification_method": "Confirm via astronomical calculations based on Earth's rotation and NYC coordinates. Deterministic from orbital mechanics \u2014 no external data source needed."
       },
       "dimension_tags": {
         "domain": "nature",
@@ -25,11 +38,15 @@
         "time_horizon": "days",
         "persona": "commuter"
       },
-      "tool_manifest_config": {"tools": []},
-      "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "auto_verifiable"}
+      "tool_manifest_config": {
+        "tools": []
       },
-      "evaluation_rubric": "Categorizer reasoning should reference astronomical knowledge, Earth rotation, or physical certainty. Should NOT reference any tool — this is pure reasoning. VB steps should be trivially simple.",
+      "expected_per_agent_outputs": {
+        "categorizer": {
+          "expected_category": "auto_verifiable"
+        }
+      },
+      "evaluation_rubric": "Categorizer reasoning should reference astronomical knowledge, Earth rotation, or physical certainty. Should NOT reference any tool \u2014 this is pure reasoning. VB steps should be trivially simple.",
       "is_boundary_case": false,
       "boundary_description": null
     },
@@ -38,13 +55,25 @@
       "prediction_text": "Christmas 2026 will fall on a Friday",
       "difficulty": "easy",
       "ground_truth": {
-        "verifiability_reasoning": "The day of the week for any date is deterministic and calculable through calendar arithmetic. No external data source needed — pure reasoning about the Gregorian calendar suffices.",
+        "verifiability_reasoning": "The day of the week for any date is deterministic and calculable through calendar arithmetic. No external data source needed \u2014 pure reasoning about the Gregorian calendar suffices.",
         "date_derivation": "Explicit date: December 25, 2026 stated directly in prediction.",
-        "verification_sources": ["calendar_arithmetic", "gregorian_calendar_rules"],
+        "verification_sources": [
+          "calendar_arithmetic",
+          "gregorian_calendar_rules"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["December 25, 2026 falls on a Friday according to the Gregorian calendar"],
-        "verification_steps": ["Apply calendar arithmetic or day-of-week algorithm to December 25, 2026", "Confirm the result is Friday"],
-        "verification_timing": "Immediate — calendar arithmetic can be performed at any time."
+        "verification_criteria": [
+          "December 25, 2026 falls on a Friday according to the Gregorian calendar"
+        ],
+        "verification_steps": [
+          "Apply calendar arithmetic or day-of-week algorithm to December 25, 2026",
+          "Confirm the result is Friday"
+        ],
+        "verification_timing": "Immediate \u2014 calendar arithmetic can be performed at any time.",
+        "expected_verification_criteria": [
+          "December 25, 2026 falls on a Friday according to the Gregorian calendar"
+        ],
+        "expected_verification_method": "Apply day-of-week algorithm or calendar arithmetic to December 25, 2026. Deterministic calculation \u2014 no external data source needed."
       },
       "dimension_tags": {
         "domain": "personal",
@@ -52,9 +81,13 @@
         "time_horizon": "months-to-years",
         "persona": "parent"
       },
-      "tool_manifest_config": {"tools": []},
+      "tool_manifest_config": {
+        "tools": []
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "auto_verifiable"}
+        "categorizer": {
+          "expected_category": "auto_verifiable"
+        }
       },
       "evaluation_rubric": "Categorizer reasoning should reference calendar lookup or date arithmetic. Should NOT need any tool. VB should describe a straightforward calendar check.",
       "is_boundary_case": false,
@@ -62,16 +95,29 @@
     },
     {
       "id": "base-003",
-      "prediction_text": "The high temperature in Central Park, New York will reach at least 70°F tomorrow",
+      "prediction_text": "The high temperature in Central Park, New York will reach at least 70\u00b0F tomorrow",
       "difficulty": "medium",
       "ground_truth": {
-        "verifiability_reasoning": "Weather forecast data for specific locations is publicly available through weather services. The web_search tool can access forecast data including high temperature predictions for Central Park. The specific threshold (70°F) makes this precisely verifiable.",
+        "verifiability_reasoning": "Weather forecast data for specific locations is publicly available through weather services. The web_search tool can access forecast data including high temperature predictions for Central Park. The specific threshold (70\u00b0F) makes this precisely verifiable.",
         "date_derivation": "Relative date: 'tomorrow' resolved against current date.",
-        "verification_sources": ["weather_forecast_services", "web_search_tool"],
+        "verification_sources": [
+          "weather_forecast_services",
+          "web_search_tool"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["Forecast or actual high temperature in Central Park >= 70°F on the specified date"],
-        "verification_steps": ["Search for Central Park, NYC weather forecast for tomorrow", "Extract the forecast high temperature", "Compare against 70°F threshold"],
-        "verification_timing": "Check forecast day-of or verify actual temperature after the day passes."
+        "verification_criteria": [
+          "Forecast or actual high temperature in Central Park >= 70\u00b0F on the specified date"
+        ],
+        "verification_steps": [
+          "Search for Central Park, NYC weather forecast for tomorrow",
+          "Extract the forecast high temperature",
+          "Compare against 70\u00b0F threshold"
+        ],
+        "verification_timing": "Check forecast day-of or verify actual temperature after the day passes.",
+        "expected_verification_criteria": [
+          "The high temperature recorded in Central Park, NYC on the specified date is at least 70\u00b0F"
+        ],
+        "expected_verification_method": "Query a weather service (e.g., weather.gov, OpenWeatherMap) for Central Park high temperature on the target date. Compare against 70\u00b0F threshold."
       },
       "dimension_tags": {
         "domain": "weather",
@@ -79,11 +125,25 @@
         "time_horizon": "days",
         "persona": "commuter"
       },
-      "tool_manifest_config": {"tools": [{"name": "web_search", "description": "Search the web for current information", "capabilities": ["current_weather", "forecasts", "news"]}]},
-      "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "auto_verifiable"}
+      "tool_manifest_config": {
+        "tools": [
+          {
+            "name": "web_search",
+            "description": "Search the web for current information",
+            "capabilities": [
+              "current_weather",
+              "forecasts",
+              "news"
+            ]
+          }
+        ]
       },
-      "evaluation_rubric": "Categorizer reasoning should reference the web_search tool's weather/forecast capability. VB should specify the 70°F threshold and Central Park location.",
+      "expected_per_agent_outputs": {
+        "categorizer": {
+          "expected_category": "auto_verifiable"
+        }
+      },
+      "evaluation_rubric": "Categorizer reasoning should reference the web_search tool's weather/forecast capability. VB should specify the 70\u00b0F threshold and Central Park location.",
       "is_boundary_case": false,
       "boundary_description": null
     },
@@ -94,11 +154,25 @@
       "ground_truth": {
         "verifiability_reasoning": "Stock market closing prices are public financial data published daily. The web_search tool with financial_data capability can access S&P 500 closing prices for comparison. Both today's and yesterday's close are objective, published numbers.",
         "date_derivation": "Implicit same-day: 'today' means current trading day, market closes at 4pm ET.",
-        "verification_sources": ["stock_market_data", "financial_news_services", "web_search_tool"],
+        "verification_sources": [
+          "stock_market_data",
+          "financial_news_services",
+          "web_search_tool"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["S&P 500 closing price today > S&P 500 closing price yesterday"],
-        "verification_steps": ["Search for S&P 500 closing price for today", "Search for S&P 500 closing price for yesterday", "Compare the two values"],
-        "verification_timing": "After market close (4pm ET) — both closing prices needed for comparison."
+        "verification_criteria": [
+          "S&P 500 closing price today > S&P 500 closing price yesterday"
+        ],
+        "verification_steps": [
+          "Search for S&P 500 closing price for today",
+          "Search for S&P 500 closing price for yesterday",
+          "Compare the two values"
+        ],
+        "verification_timing": "After market close (4pm ET) \u2014 both closing prices needed for comparison.",
+        "expected_verification_criteria": [
+          "The S&P 500 closing price on the prediction date exceeds the S&P 500 closing price on the previous trading day"
+        ],
+        "expected_verification_method": "Query a financial data source (e.g., Yahoo Finance, Google Finance) for S&P 500 closing prices on both days. Compare the two values."
       },
       "dimension_tags": {
         "domain": "finance",
@@ -106,9 +180,22 @@
         "time_horizon": "minutes-to-hours",
         "persona": "investor"
       },
-      "tool_manifest_config": {"tools": [{"name": "web_search", "description": "Search the web", "capabilities": ["financial_data", "stock_prices"]}]},
+      "tool_manifest_config": {
+        "tools": [
+          {
+            "name": "web_search",
+            "description": "Search the web",
+            "capabilities": [
+              "financial_data",
+              "stock_prices"
+            ]
+          }
+        ]
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "auto_verifiable"}
+        "categorizer": {
+          "expected_category": "auto_verifiable"
+        }
       },
       "evaluation_rubric": "Categorizer should reference web_search capability for financial data. VB should specify the comparison logic (today close > yesterday close).",
       "is_boundary_case": false,
@@ -121,11 +208,23 @@
       "ground_truth": {
         "verifiability_reasoning": "Weather forecast data for London is publicly available through weather services accessible via web_search. Precipitation forecasts are objective meteorological data.",
         "date_derivation": "Relative date: 'tomorrow' resolved against current date.",
-        "verification_sources": ["weather_forecast_services", "web_search_tool"],
+        "verification_sources": [
+          "weather_forecast_services",
+          "web_search_tool"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["Weather forecast or actual observation reports precipitation (rain) in London, UK on the specified date"],
-        "verification_steps": ["Search for London, UK weather forecast for tomorrow", "Check if precipitation (rain) is forecast or reported"],
-        "verification_timing": "Check forecast day-of or verify actual precipitation after the day passes."
+        "verification_criteria": [
+          "Weather forecast or actual observation reports precipitation (rain) in London, UK on the specified date"
+        ],
+        "verification_steps": [
+          "Search for London, UK weather forecast for tomorrow",
+          "Check if precipitation (rain) is forecast or reported"
+        ],
+        "verification_timing": "Check forecast day-of or verify actual precipitation after the day passes.",
+        "expected_verification_criteria": [
+          "Precipitation (rain) is recorded in London, UK on the date following the prediction date"
+        ],
+        "expected_verification_method": "Query a weather service (e.g., Met Office, OpenWeatherMap) for London precipitation data on the target date. Check for any recorded rainfall."
       },
       "dimension_tags": {
         "domain": "weather",
@@ -133,9 +232,22 @@
         "time_horizon": "days",
         "persona": "traveler"
       },
-      "tool_manifest_config": {"tools": [{"name": "web_search", "description": "Search the web", "capabilities": ["current_weather", "forecasts"]}]},
+      "tool_manifest_config": {
+        "tools": [
+          {
+            "name": "web_search",
+            "description": "Search the web",
+            "capabilities": [
+              "current_weather",
+              "forecasts"
+            ]
+          }
+        ]
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "auto_verifiable"}
+        "categorizer": {
+          "expected_category": "auto_verifiable"
+        }
       },
       "evaluation_rubric": "Categorizer should reference web_search for weather data. VB should specify London location and precipitation check.",
       "is_boundary_case": false,
@@ -146,13 +258,27 @@
       "prediction_text": "The USGS will report at least one magnitude 5.0+ earthquake in the Pacific Ring of Fire within the next 30 days",
       "difficulty": "hard",
       "ground_truth": {
-        "verifiability_reasoning": "USGS earthquake data is publicly available and searchable in real-time. The web_search tool can access USGS earthquake feeds. While the prediction is statistically near-certain, it still requires actual verification against published seismic data — the categorizer should focus on verifiability, not probability.",
+        "verifiability_reasoning": "USGS earthquake data is publicly available and searchable in real-time. The web_search tool can access USGS earthquake feeds. While the prediction is statistically near-certain, it still requires actual verification against published seismic data \u2014 the categorizer should focus on verifiability, not probability.",
         "date_derivation": "Relative window: 'within the next 30 days' from current date.",
-        "verification_sources": ["usgs_earthquake_data", "seismic_monitoring_services", "web_search_tool"],
+        "verification_sources": [
+          "usgs_earthquake_data",
+          "seismic_monitoring_services",
+          "web_search_tool"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["USGS reports at least one earthquake with magnitude >= 5.0 located within the Pacific Ring of Fire region within 30 days of prediction date"],
-        "verification_steps": ["Search USGS earthquake data feed for events in Pacific Ring of Fire region", "Filter for magnitude >= 5.0", "Check if any qualifying events occurred within the 30-day window"],
-        "verification_timing": "Monitor continuously over the 30-day window; can check USGS feed at any time."
+        "verification_criteria": [
+          "USGS reports at least one earthquake with magnitude >= 5.0 located within the Pacific Ring of Fire region within 30 days of prediction date"
+        ],
+        "verification_steps": [
+          "Search USGS earthquake data feed for events in Pacific Ring of Fire region",
+          "Filter for magnitude >= 5.0",
+          "Check if any qualifying events occurred within the 30-day window"
+        ],
+        "verification_timing": "Monitor continuously over the 30-day window; can check USGS feed at any time.",
+        "expected_verification_criteria": [
+          "USGS reports at least one earthquake with magnitude >= 5.0 located within the Pacific Ring of Fire region within 30 days of the prediction date"
+        ],
+        "expected_verification_method": "Query the USGS earthquake API (earthquake.usgs.gov) filtering for magnitude >= 5.0 and Pacific Ring of Fire coordinates within the 30-day window."
       },
       "dimension_tags": {
         "domain": "nature",
@@ -160,9 +286,22 @@
         "time_horizon": "weeks-to-months",
         "persona": "student"
       },
-      "tool_manifest_config": {"tools": [{"name": "web_search", "description": "Search the web", "capabilities": ["seismic_data", "news"]}]},
+      "tool_manifest_config": {
+        "tools": [
+          {
+            "name": "web_search",
+            "description": "Search the web",
+            "capabilities": [
+              "seismic_data",
+              "news"
+            ]
+          }
+        ]
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "auto_verifiable"}
+        "categorizer": {
+          "expected_category": "auto_verifiable"
+        }
       },
       "evaluation_rubric": "Categorizer should note that seismic data is publicly searchable via web_search. Should focus on verifiability (can we check?) not probability (will it happen?). VB should reference USGS data and magnitude threshold.",
       "is_boundary_case": false,
@@ -173,13 +312,27 @@
       "prediction_text": "The New York Yankees' next home game will start after 6pm ET",
       "difficulty": "medium",
       "ground_truth": {
-        "verifiability_reasoning": "MLB game schedules are published in advance and publicly accessible. The web_search tool can find the Yankees' schedule including game start times. Schedule data is factual and objective — distinct from game outcome predictions.",
+        "verifiability_reasoning": "MLB game schedules are published in advance and publicly accessible. The web_search tool can find the Yankees' schedule including game start times. Schedule data is factual and objective \u2014 distinct from game outcome predictions.",
         "date_derivation": "Implicit near-future: 'next home game' requires looking up the schedule to determine the date.",
-        "verification_sources": ["mlb_schedule_data", "sports_news_services", "web_search_tool"],
+        "verification_sources": [
+          "mlb_schedule_data",
+          "sports_news_services",
+          "web_search_tool"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["The scheduled start time of the Yankees' next home game is after 6:00 PM Eastern Time"],
-        "verification_steps": ["Search for New York Yankees upcoming home game schedule", "Identify the next home game date and start time", "Check if start time is after 6pm ET"],
-        "verification_timing": "Immediate — schedule data is published in advance and accessible now."
+        "verification_criteria": [
+          "The scheduled start time of the Yankees' next home game is after 6:00 PM Eastern Time"
+        ],
+        "verification_steps": [
+          "Search for New York Yankees upcoming home game schedule",
+          "Identify the next home game date and start time",
+          "Check if start time is after 6pm ET"
+        ],
+        "verification_timing": "Immediate \u2014 schedule data is published in advance and accessible now.",
+        "expected_verification_criteria": [
+          "The scheduled start time of the New York Yankees' next home game is after 6:00 PM Eastern Time"
+        ],
+        "expected_verification_method": "Query MLB schedule data (mlb.com or ESPN) for the Yankees' next home game. Check the published start time against 6:00 PM ET."
       },
       "dimension_tags": {
         "domain": "sports",
@@ -187,9 +340,22 @@
         "time_horizon": "days",
         "persona": "sports_fan"
       },
-      "tool_manifest_config": {"tools": [{"name": "web_search", "description": "Search the web", "capabilities": ["sports_scores", "schedules"]}]},
+      "tool_manifest_config": {
+        "tools": [
+          {
+            "name": "web_search",
+            "description": "Search the web",
+            "capabilities": [
+              "sports_scores",
+              "schedules"
+            ]
+          }
+        ]
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "auto_verifiable"}
+        "categorizer": {
+          "expected_category": "auto_verifiable"
+        }
       },
       "evaluation_rubric": "Categorizer should recognize this is about schedule data (factual, published) not game outcome (uncertain). Should reference web_search for sports schedules. VB should describe schedule lookup, not outcome prediction.",
       "is_boundary_case": false,
@@ -197,16 +363,29 @@
     },
     {
       "id": "base-008",
-      "prediction_text": "The current temperature in Tokyo, Japan is above 10°C",
+      "prediction_text": "The current temperature in Tokyo, Japan is above 10\u00b0C",
       "difficulty": "easy",
       "ground_truth": {
         "verifiability_reasoning": "Current weather conditions are real-time public data available through weather services. The web_search tool can access current temperature readings for any major city. This is a present-tense factual check, not a forecast.",
         "date_derivation": "Present tense: 'current' means right now at the time of verification.",
-        "verification_sources": ["real_time_weather_data", "web_search_tool"],
+        "verification_sources": [
+          "real_time_weather_data",
+          "web_search_tool"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["Current temperature reading in Tokyo, Japan exceeds 10°C at time of verification"],
-        "verification_steps": ["Search for current weather conditions in Tokyo, Japan", "Extract the current temperature reading", "Compare against 10°C threshold"],
-        "verification_timing": "Immediate — current temperature is real-time data accessible right now."
+        "verification_criteria": [
+          "Current temperature reading in Tokyo, Japan exceeds 10\u00b0C at time of verification"
+        ],
+        "verification_steps": [
+          "Search for current weather conditions in Tokyo, Japan",
+          "Extract the current temperature reading",
+          "Compare against 10\u00b0C threshold"
+        ],
+        "verification_timing": "Immediate \u2014 current temperature is real-time data accessible right now.",
+        "expected_verification_criteria": [
+          "The current temperature reading in Tokyo, Japan exceeds 10\u00b0C at the time of verification"
+        ],
+        "expected_verification_method": "Query a real-time weather service (e.g., OpenWeatherMap, weather.com) for current Tokyo temperature. Compare against 10\u00b0C threshold."
       },
       "dimension_tags": {
         "domain": "weather",
@@ -214,9 +393,21 @@
         "time_horizon": "minutes-to-hours",
         "persona": "traveler"
       },
-      "tool_manifest_config": {"tools": [{"name": "web_search", "description": "Search the web", "capabilities": ["current_weather"]}]},
+      "tool_manifest_config": {
+        "tools": [
+          {
+            "name": "web_search",
+            "description": "Search the web",
+            "capabilities": [
+              "current_weather"
+            ]
+          }
+        ]
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "auto_verifiable"}
+        "categorizer": {
+          "expected_category": "auto_verifiable"
+        }
       },
       "evaluation_rubric": "Categorizer should recognize present-tense weather verification via web_search. Parser should handle 'current' as present time, not a future date.",
       "is_boundary_case": false,
@@ -229,11 +420,25 @@
       "ground_truth": {
         "verifiability_reasoning": "The US Treasury publishes real-time national debt figures on TreasuryDirect.gov. This is public government data accessible via web_search. The threshold ($35 trillion) makes it a precise, verifiable claim.",
         "date_derivation": "Present tense: 'currently' means at the time of verification.",
-        "verification_sources": ["us_treasury_data", "government_financial_reports", "web_search_tool"],
+        "verification_sources": [
+          "us_treasury_data",
+          "government_financial_reports",
+          "web_search_tool"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["US national debt total as reported by Treasury exceeds $35,000,000,000,000"],
-        "verification_steps": ["Search for current US national debt figure", "Identify the official Treasury-reported total", "Compare against $35 trillion threshold"],
-        "verification_timing": "Immediate — Treasury debt figures are published in real-time."
+        "verification_criteria": [
+          "US national debt total as reported by Treasury exceeds $35,000,000,000,000"
+        ],
+        "verification_steps": [
+          "Search for current US national debt figure",
+          "Identify the official Treasury-reported total",
+          "Compare against $35 trillion threshold"
+        ],
+        "verification_timing": "Immediate \u2014 Treasury debt figures are published in real-time.",
+        "expected_verification_criteria": [
+          "The total US national debt as reported by the US Treasury exceeds $35 trillion at the time of verification"
+        ],
+        "expected_verification_method": "Query TreasuryDirect.gov or a financial data aggregator for the current US national debt total. Compare against $35 trillion threshold."
       },
       "dimension_tags": {
         "domain": "finance",
@@ -241,9 +446,22 @@
         "time_horizon": "minutes-to-hours",
         "persona": "retiree"
       },
-      "tool_manifest_config": {"tools": [{"name": "web_search", "description": "Search the web", "capabilities": ["financial_data", "government_data"]}]},
+      "tool_manifest_config": {
+        "tools": [
+          {
+            "name": "web_search",
+            "description": "Search the web",
+            "capabilities": [
+              "financial_data",
+              "government_data"
+            ]
+          }
+        ]
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "auto_verifiable"}
+        "categorizer": {
+          "expected_category": "auto_verifiable"
+        }
       },
       "evaluation_rubric": "Categorizer should recognize government financial data is publicly accessible via web_search. VB should reference Treasury data source and specific dollar threshold.",
       "is_boundary_case": false,
@@ -254,13 +472,25 @@
       "prediction_text": "The next full moon will occur before April 1, 2026",
       "difficulty": "easy",
       "ground_truth": {
-        "verifiability_reasoning": "Lunar cycles are deterministic and calculable through astronomical algorithms. No external data source or tool is needed — pure reasoning about well-established orbital mechanics suffices. The full moon cycle is approximately 29.5 days.",
+        "verifiability_reasoning": "Lunar cycles are deterministic and calculable through astronomical algorithms. No external data source or tool is needed \u2014 pure reasoning about well-established orbital mechanics suffices. The full moon cycle is approximately 29.5 days.",
         "date_derivation": "Explicit deadline: 'before April 1, 2026' provides a clear cutoff date.",
-        "verification_sources": ["lunar_cycle_calculations", "astronomical_algorithms"],
+        "verification_sources": [
+          "lunar_cycle_calculations",
+          "astronomical_algorithms"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["The next full moon date falls before April 1, 2026"],
-        "verification_steps": ["Calculate the next full moon date using lunar cycle algorithms", "Compare the calculated date against April 1, 2026 deadline"],
-        "verification_timing": "Immediate — lunar cycle is calculable through astronomical algorithms at any time."
+        "verification_criteria": [
+          "The next full moon date falls before April 1, 2026"
+        ],
+        "verification_steps": [
+          "Calculate the next full moon date using lunar cycle algorithms",
+          "Compare the calculated date against April 1, 2026 deadline"
+        ],
+        "verification_timing": "Immediate \u2014 lunar cycle is calculable through astronomical algorithms at any time.",
+        "expected_verification_criteria": [
+          "The next full moon date (from the prediction date) falls before April 1, 2026"
+        ],
+        "expected_verification_method": "Calculate the next full moon date using lunar cycle algorithms (approximately 29.5-day cycle). Compare against April 1, 2026 deadline. Deterministic calculation."
       },
       "dimension_tags": {
         "domain": "nature",
@@ -268,11 +498,15 @@
         "time_horizon": "weeks-to-months",
         "persona": "gardener"
       },
-      "tool_manifest_config": {"tools": []},
-      "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "auto_verifiable"}
+      "tool_manifest_config": {
+        "tools": []
       },
-      "evaluation_rubric": "Categorizer should reference lunar cycle calculations or astronomical knowledge. Should NOT need any tool — this is pure reasoning like sunrise (base-001).",
+      "expected_per_agent_outputs": {
+        "categorizer": {
+          "expected_category": "auto_verifiable"
+        }
+      },
+      "evaluation_rubric": "Categorizer should reference lunar cycle calculations or astronomical knowledge. Should NOT need any tool \u2014 this is pure reasoning like sunrise (base-001).",
       "is_boundary_case": false,
       "boundary_description": null
     },
@@ -283,11 +517,25 @@
       "ground_truth": {
         "verifiability_reasoning": "Software release status is publicly verifiable through official project websites and release announcements. The web_search tool can access python.org release pages and tech news. This is a present-tense factual check about a publicly documented event.",
         "date_derivation": "Present tense: 'has been released' means checking current release status, no future date.",
-        "verification_sources": ["python_org_releases", "software_release_announcements", "web_search_tool"],
+        "verification_sources": [
+          "python_org_releases",
+          "software_release_announcements",
+          "web_search_tool"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["Python 3.13 appears as an official release on python.org or equivalent authoritative source"],
-        "verification_steps": ["Search for Python 3.13 release status", "Check python.org downloads page or release announcements", "Confirm official release (not beta/RC)"],
-        "verification_timing": "Immediate — release status is a current fact checkable right now."
+        "verification_criteria": [
+          "Python 3.13 appears as an official release on python.org or equivalent authoritative source"
+        ],
+        "verification_steps": [
+          "Search for Python 3.13 release status",
+          "Check python.org downloads page or release announcements",
+          "Confirm official release (not beta/RC)"
+        ],
+        "verification_timing": "Immediate \u2014 release status is a current fact checkable right now.",
+        "expected_verification_criteria": [
+          "Python 3.13 appears as an official stable release (not beta or RC) on python.org"
+        ],
+        "expected_verification_method": "Check python.org/downloads/ for the Python 3.13 release listing. Confirm it is marked as a stable release, not a pre-release."
       },
       "dimension_tags": {
         "domain": "tech",
@@ -295,9 +543,22 @@
         "time_horizon": "minutes-to-hours",
         "persona": "entrepreneur"
       },
-      "tool_manifest_config": {"tools": [{"name": "web_search", "description": "Search the web", "capabilities": ["news", "announcements"]}]},
+      "tool_manifest_config": {
+        "tools": [
+          {
+            "name": "web_search",
+            "description": "Search the web",
+            "capabilities": [
+              "news",
+              "announcements"
+            ]
+          }
+        ]
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "auto_verifiable"}
+        "categorizer": {
+          "expected_category": "auto_verifiable"
+        }
       },
       "evaluation_rubric": "Categorizer should recognize software release status as publicly verifiable via web_search. VB should reference official Python release channels.",
       "is_boundary_case": false,
@@ -310,11 +571,25 @@
       "ground_truth": {
         "verifiability_reasoning": "Currency exchange rates are real-time public financial data published by exchanges and financial data providers. The web_search tool can access current EUR/USD rates from multiple sources. The specific threshold (1.05) makes this precisely verifiable.",
         "date_derivation": "Present tense: 'currently' means at the time of verification.",
-        "verification_sources": ["currency_exchange_data", "financial_data_providers", "web_search_tool"],
+        "verification_sources": [
+          "currency_exchange_data",
+          "financial_data_providers",
+          "web_search_tool"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["EUR/USD exchange rate exceeds 1.05 at time of verification"],
-        "verification_steps": ["Search for current EUR/USD exchange rate", "Extract the rate from a reliable financial source", "Compare against 1.05 threshold"],
-        "verification_timing": "Immediate — exchange rates are real-time data accessible right now."
+        "verification_criteria": [
+          "EUR/USD exchange rate exceeds 1.05 at time of verification"
+        ],
+        "verification_steps": [
+          "Search for current EUR/USD exchange rate",
+          "Extract the rate from a reliable financial source",
+          "Compare against 1.05 threshold"
+        ],
+        "verification_timing": "Immediate \u2014 exchange rates are real-time data accessible right now.",
+        "expected_verification_criteria": [
+          "The EUR/USD exchange rate exceeds 1.05 at the time of verification"
+        ],
+        "expected_verification_method": "Query a financial data source (e.g., xe.com, Google Finance) for the current EUR/USD spot rate. Compare against 1.05 threshold."
       },
       "dimension_tags": {
         "domain": "finance",
@@ -322,9 +597,21 @@
         "time_horizon": "minutes-to-hours",
         "persona": "traveler"
       },
-      "tool_manifest_config": {"tools": [{"name": "web_search", "description": "Search the web", "capabilities": ["financial_data"]}]},
+      "tool_manifest_config": {
+        "tools": [
+          {
+            "name": "web_search",
+            "description": "Search the web",
+            "capabilities": [
+              "financial_data"
+            ]
+          }
+        ]
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "auto_verifiable"}
+        "categorizer": {
+          "expected_category": "auto_verifiable"
+        }
       },
       "evaluation_rubric": "Categorizer should recognize real-time currency data is accessible via web_search. VB should specify EUR/USD pair and 1.05 threshold.",
       "is_boundary_case": false,
@@ -335,13 +622,27 @@
       "prediction_text": "The Wikipedia article for 'Artificial Intelligence' has more than 500 references",
       "difficulty": "hard",
       "ground_truth": {
-        "verifiability_reasoning": "Wikipedia content is publicly accessible web content. The reference count on a Wikipedia article is an objective, countable metric. The web_search tool can access Wikipedia pages. However, counting references requires parsing page structure, which makes this harder than a simple search — the VB needs to describe a specific counting methodology.",
+        "verifiability_reasoning": "Wikipedia content is publicly accessible web content. The reference count on a Wikipedia article is an objective, countable metric. The web_search tool can access Wikipedia pages. However, counting references requires parsing page structure, which makes this harder than a simple search \u2014 the VB needs to describe a specific counting methodology.",
         "date_derivation": "Present tense: checking current state of the Wikipedia article.",
-        "verification_sources": ["wikipedia_article_content", "web_search_tool"],
+        "verification_sources": [
+          "wikipedia_article_content",
+          "web_search_tool"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["The References section of the English Wikipedia article 'Artificial intelligence' contains more than 500 citation entries"],
-        "verification_steps": ["Search for or navigate to the Wikipedia article on Artificial Intelligence", "Locate the References section", "Count the number of citation entries", "Compare against 500 threshold"],
-        "verification_timing": "Immediate — Wikipedia content is accessible right now."
+        "verification_criteria": [
+          "The References section of the English Wikipedia article 'Artificial intelligence' contains more than 500 citation entries"
+        ],
+        "verification_steps": [
+          "Search for or navigate to the Wikipedia article on Artificial Intelligence",
+          "Locate the References section",
+          "Count the number of citation entries",
+          "Compare against 500 threshold"
+        ],
+        "verification_timing": "Immediate \u2014 Wikipedia content is accessible right now.",
+        "expected_verification_criteria": [
+          "The References section of the English Wikipedia article 'Artificial intelligence' contains more than 500 citation entries"
+        ],
+        "expected_verification_method": "Access the Wikipedia article for 'Artificial intelligence', navigate to the References section, and count citation entries. Alternatively, use the Wikipedia API to retrieve reference count metadata."
       },
       "dimension_tags": {
         "domain": "tech",
@@ -349,9 +650,21 @@
         "time_horizon": "minutes-to-hours",
         "persona": "student"
       },
-      "tool_manifest_config": {"tools": [{"name": "web_search", "description": "Search the web", "capabilities": ["web_content"]}]},
+      "tool_manifest_config": {
+        "tools": [
+          {
+            "name": "web_search",
+            "description": "Search the web",
+            "capabilities": [
+              "web_content"
+            ]
+          }
+        ]
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "auto_verifiable"}
+        "categorizer": {
+          "expected_category": "auto_verifiable"
+        }
       },
       "evaluation_rubric": "Categorizer should recognize Wikipedia as publicly accessible via web_search. May note the counting challenge but should still classify as auto_verifiable since the data is accessible. VB should describe how to count references specifically.",
       "is_boundary_case": false,
@@ -362,13 +675,27 @@
       "prediction_text": "Bitcoin will exceed $150,000 USD by December 31, 2026",
       "difficulty": "medium",
       "ground_truth": {
-        "verifiability_reasoning": "Cryptocurrency price data is publicly available through well-known APIs (CoinGecko, CoinMarketCap, Binance). The data is objective and real-time. However, no cryptocurrency price API tool is currently registered in the tool manifest. Category depends on tool manifest: without crypto price API → automatable; with crypto price API → auto_verifiable.",
+        "verifiability_reasoning": "Cryptocurrency price data is publicly available through well-known APIs (CoinGecko, CoinMarketCap, Binance). The data is objective and real-time. However, no cryptocurrency price API tool is currently registered in the tool manifest. Category depends on tool manifest: without crypto price API \u2192 automatable; with crypto price API \u2192 auto_verifiable.",
         "date_derivation": "Explicit date: December 31, 2026 stated directly in prediction.",
-        "verification_sources": ["cryptocurrency_price_api", "CoinGecko", "CoinMarketCap"],
+        "verification_sources": [
+          "cryptocurrency_price_api",
+          "CoinGecko",
+          "CoinMarketCap"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["BTC/USD spot price exceeds $150,000 at any point before December 31, 2026 23:59 UTC"],
-        "verification_steps": ["Query cryptocurrency price API for BTC/USD price", "Compare price against $150,000 threshold", "Check if date is before December 31, 2026 deadline"],
-        "verification_timing": "After tool registration: check price at any time up to December 31, 2026 deadline."
+        "verification_criteria": [
+          "BTC/USD spot price exceeds $150,000 at any point before December 31, 2026 23:59 UTC"
+        ],
+        "verification_steps": [
+          "Query cryptocurrency price API for BTC/USD price",
+          "Compare price against $150,000 threshold",
+          "Check if date is before December 31, 2026 deadline"
+        ],
+        "verification_timing": "After tool registration: check price at any time up to December 31, 2026 deadline.",
+        "expected_verification_criteria": [
+          "The BTC/USD spot price exceeds $150,000 at any point before December 31, 2026 23:59 UTC"
+        ],
+        "expected_verification_method": "Monitor BTC/USD price via a cryptocurrency price API (CoinGecko, CoinMarketCap, or exchange API). Check periodically until the deadline. No crypto price tool currently registered \u2014 requires tool registration or manual monitoring."
       },
       "dimension_tags": {
         "domain": "finance",
@@ -376,9 +703,13 @@
         "time_horizon": "months-to-years",
         "persona": "investor"
       },
-      "tool_manifest_config": {"tools": []},
+      "tool_manifest_config": {
+        "tools": []
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "automatable"}
+        "categorizer": {
+          "expected_category": "automatable"
+        }
       },
       "evaluation_rubric": "Categorizer reasoning should explain that price data exists publicly but no tool is registered. Should NOT classify as auto_verifiable without a price API tool. VB should reference specific price threshold and data sources.",
       "is_boundary_case": false,
@@ -389,13 +720,27 @@
       "prediction_text": "My flight AA1234 from JFK to LAX on March 20 will arrive on time",
       "difficulty": "medium",
       "ground_truth": {
-        "verifiability_reasoning": "Flight tracking data is available through well-documented APIs (FlightAware, FlightRadar24, airline APIs). On-time arrival is an objective, measurable outcome. However, no flight tracking tool is currently registered. Category depends on tool manifest: without flight tracker → automatable; with flight tracker → auto_verifiable.",
+        "verifiability_reasoning": "Flight tracking data is available through well-documented APIs (FlightAware, FlightRadar24, airline APIs). On-time arrival is an objective, measurable outcome. However, no flight tracking tool is currently registered. Category depends on tool manifest: without flight tracker \u2192 automatable; with flight tracker \u2192 auto_verifiable.",
         "date_derivation": "Explicit date: March 20 stated directly in prediction.",
-        "verification_sources": ["flight_tracking_api", "FlightAware", "airline_status_systems"],
+        "verification_sources": [
+          "flight_tracking_api",
+          "FlightAware",
+          "airline_status_systems"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["Flight AA1234 JFK→LAX on March 20 arrives within the airline's on-time window (typically within 15 minutes of scheduled arrival)"],
-        "verification_steps": ["Query flight tracking API for flight AA1234 on March 20", "Compare actual arrival time against scheduled arrival time", "Determine if arrival falls within on-time threshold"],
-        "verification_timing": "After tool registration: check flight status on March 20 around scheduled arrival time."
+        "verification_criteria": [
+          "Flight AA1234 JFK\u2192LAX on March 20 arrives within the airline's on-time window (typically within 15 minutes of scheduled arrival)"
+        ],
+        "verification_steps": [
+          "Query flight tracking API for flight AA1234 on March 20",
+          "Compare actual arrival time against scheduled arrival time",
+          "Determine if arrival falls within on-time threshold"
+        ],
+        "verification_timing": "After tool registration: check flight status on March 20 around scheduled arrival time.",
+        "expected_verification_criteria": [
+          "Flight AA1234 from JFK to LAX on March 20 arrives within the airline's on-time window (typically within 15 minutes of scheduled arrival)"
+        ],
+        "expected_verification_method": "Query a flight tracking service (FlightAware, FlightRadar24, or American Airlines status page) for flight AA1234 on March 20. Compare actual arrival time against scheduled arrival. No flight tracking tool currently registered \u2014 requires tool registration or manual check."
       },
       "dimension_tags": {
         "domain": "travel",
@@ -403,11 +748,15 @@
         "time_horizon": "days",
         "persona": "traveler"
       },
-      "tool_manifest_config": {"tools": []},
-      "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "automatable"}
+      "tool_manifest_config": {
+        "tools": []
       },
-      "evaluation_rubric": "Categorizer should identify flight tracking as automatable — data exists via known APIs but no tool registered. VB should reference specific flight number and on-time criteria.",
+      "expected_per_agent_outputs": {
+        "categorizer": {
+          "expected_category": "automatable"
+        }
+      },
+      "evaluation_rubric": "Categorizer should identify flight tracking as automatable \u2014 data exists via known APIs but no tool registered. VB should reference specific flight number and on-time criteria.",
       "is_boundary_case": false,
       "boundary_description": null
     },
@@ -416,13 +765,27 @@
       "prediction_text": "The next iPhone will be announced in September 2026",
       "difficulty": "medium",
       "ground_truth": {
-        "verifiability_reasoning": "This is a future event prediction about a corporate announcement. Even with web_search available, the tool can only verify AFTER the announcement happens — it cannot predict whether Apple will announce in September. The temporal gap between prediction time and event time makes this automatable: the verification method exists (check news after September) but cannot be executed now. Category depends on timing: before September → automatable; after September → auto_verifiable with web_search.",
+        "verifiability_reasoning": "This is a future event prediction about a corporate announcement. Even with web_search available, the tool can only verify AFTER the announcement happens \u2014 it cannot predict whether Apple will announce in September. The temporal gap between prediction time and event time makes this automatable: the verification method exists (check news after September) but cannot be executed now. Category depends on timing: before September \u2192 automatable; after September \u2192 auto_verifiable with web_search.",
         "date_derivation": "Explicit month: September 2026, end of month as deadline.",
-        "verification_sources": ["apple_press_releases", "tech_news_outlets", "web_search_tool_after_event"],
+        "verification_sources": [
+          "apple_press_releases",
+          "tech_news_outlets",
+          "web_search_tool_after_event"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["Apple officially announces a new iPhone model during September 2026"],
-        "verification_steps": ["Wait until September 2026 passes", "Search for Apple iPhone announcement news from September 2026", "Confirm official announcement occurred within the month"],
-        "verification_timing": "After September 2026 passes — cannot verify until the announcement window closes."
+        "verification_criteria": [
+          "Apple officially announces a new iPhone model during September 2026"
+        ],
+        "verification_steps": [
+          "Wait until September 2026 passes",
+          "Search for Apple iPhone announcement news from September 2026",
+          "Confirm official announcement occurred within the month"
+        ],
+        "verification_timing": "After September 2026 passes \u2014 cannot verify until the announcement window closes.",
+        "expected_verification_criteria": [
+          "Apple officially announces a new iPhone model during September 2026"
+        ],
+        "expected_verification_method": "After September 2026 ends, search Apple press releases and tech news for iPhone announcement during that month. Cannot verify before the window closes."
       },
       "dimension_tags": {
         "domain": "tech",
@@ -430,9 +793,22 @@
         "time_horizon": "months-to-years",
         "persona": "entrepreneur"
       },
-      "tool_manifest_config": {"tools": [{"name": "web_search", "description": "Search the web", "capabilities": ["news", "announcements"]}]},
+      "tool_manifest_config": {
+        "tools": [
+          {
+            "name": "web_search",
+            "description": "Search the web",
+            "capabilities": [
+              "news",
+              "announcements"
+            ]
+          }
+        ]
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "automatable"}
+        "categorizer": {
+          "expected_category": "automatable"
+        }
       },
       "evaluation_rubric": "Categorizer should distinguish between verifying a future event vs checking current facts. Even with web_search, this is about a future announcement that hasn't happened yet. Should NOT classify as auto_verifiable just because web_search is available.",
       "is_boundary_case": false,
@@ -443,13 +819,27 @@
       "prediction_text": "The global average temperature in 2026 will be higher than 2025",
       "difficulty": "hard",
       "ground_truth": {
-        "verifiability_reasoning": "Climate data is collected and published by authoritative agencies (NOAA, NASA GISS, Copernicus). Annual global average temperatures are objective measurements. However, 2026 annual data won't be available until early 2027, and no climate data API tool is registered. Category depends on tool manifest and timing: without climate API → automatable; with climate API after 2026 → auto_verifiable.",
+        "verifiability_reasoning": "Climate data is collected and published by authoritative agencies (NOAA, NASA GISS, Copernicus). Annual global average temperatures are objective measurements. However, 2026 annual data won't be available until early 2027, and no climate data API tool is registered. Category depends on tool manifest and timing: without climate API \u2192 automatable; with climate API after 2026 \u2192 auto_verifiable.",
         "date_derivation": "Implicit year-end: comparison requires full-year 2026 data, available in early 2027.",
-        "verification_sources": ["NOAA_global_temperature_data", "NASA_GISS", "Copernicus_climate_service"],
+        "verification_sources": [
+          "NOAA_global_temperature_data",
+          "NASA_GISS",
+          "Copernicus_climate_service"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["Global mean surface temperature for 2026 exceeds global mean surface temperature for 2025 as reported by NOAA or NASA"],
-        "verification_steps": ["Wait until 2026 annual temperature data is published (typically Q1 2027)", "Obtain 2026 and 2025 annual global mean temperatures from NOAA or NASA", "Compare the two values"],
-        "verification_timing": "After Q1 2027 — annual temperature data not published until well after year-end."
+        "verification_criteria": [
+          "Global mean surface temperature for 2026 exceeds global mean surface temperature for 2025 as reported by NOAA or NASA"
+        ],
+        "verification_steps": [
+          "Wait until 2026 annual temperature data is published (typically Q1 2027)",
+          "Obtain 2026 and 2025 annual global mean temperatures from NOAA or NASA",
+          "Compare the two values"
+        ],
+        "verification_timing": "After Q1 2027 \u2014 annual temperature data not published until well after year-end.",
+        "expected_verification_criteria": [
+          "The global mean surface temperature for calendar year 2026 exceeds the global mean surface temperature for calendar year 2025"
+        ],
+        "expected_verification_method": "After 2026 ends, query NOAA or NASA GISS for annual global mean temperature data for both years. Compare the two values. Data typically available in early 2027. No climate data API currently registered."
       },
       "dimension_tags": {
         "domain": "nature",
@@ -457,9 +847,13 @@
         "time_horizon": "months-to-years",
         "persona": "student"
       },
-      "tool_manifest_config": {"tools": []},
+      "tool_manifest_config": {
+        "tools": []
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "automatable"}
+        "categorizer": {
+          "expected_category": "automatable"
+        }
       },
       "evaluation_rubric": "Categorizer should identify this as automatable due to both tool unavailability and temporal delay (data not yet published). VB should reference specific climate data agencies and the year-end timeline.",
       "is_boundary_case": false,
@@ -470,13 +864,27 @@
       "prediction_text": "The Dominican Republic will win their next World Baseball Classic game",
       "difficulty": "hard",
       "ground_truth": {
-        "verifiability_reasoning": "Sports game outcomes are objective facts once the game is played. Results are published by MLB and sports news services. However, this is a future event with temporal uncertainty — the next game date is unknown. Even with web_search for sports scores, the tool can only verify after the game occurs. The categorizer should not be over-confident about auto_verifiable just because web_search has sports capabilities. Category depends on timing: before game → automatable; after game → auto_verifiable with web_search.",
+        "verifiability_reasoning": "Sports game outcomes are objective facts once the game is played. Results are published by MLB and sports news services. However, this is a future event with temporal uncertainty \u2014 the next game date is unknown. Even with web_search for sports scores, the tool can only verify after the game occurs. The categorizer should not be over-confident about auto_verifiable just because web_search has sports capabilities. Category depends on timing: before game \u2192 automatable; after game \u2192 auto_verifiable with web_search.",
         "date_derivation": "Unknown future date: 'next game' requires schedule lookup, estimated within weeks to months.",
-        "verification_sources": ["mlb_game_results", "WBC_official_results", "sports_news_services"],
+        "verification_sources": [
+          "mlb_game_results",
+          "WBC_official_results",
+          "sports_news_services"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["Dominican Republic wins their next scheduled World Baseball Classic game"],
-        "verification_steps": ["Determine the date of DR's next WBC game from the schedule", "Wait until the game is played", "Check the official game result"],
-        "verification_timing": "After the game is played — must first determine game date from schedule, then wait for result."
+        "verification_criteria": [
+          "Dominican Republic wins their next scheduled World Baseball Classic game"
+        ],
+        "verification_steps": [
+          "Determine the date of DR's next WBC game from the schedule",
+          "Wait until the game is played",
+          "Check the official game result"
+        ],
+        "verification_timing": "After the game is played \u2014 must first determine game date from schedule, then wait for result.",
+        "expected_verification_criteria": [
+          "The Dominican Republic national baseball team wins their next scheduled World Baseball Classic game"
+        ],
+        "expected_verification_method": "Identify the next WBC game for the Dominican Republic from the tournament schedule. After the game is played, check the official WBC results or sports news for the outcome. No dedicated sports results API currently registered \u2014 use web search after the event."
       },
       "dimension_tags": {
         "domain": "sports",
@@ -484,11 +892,24 @@
         "time_horizon": "weeks-to-months",
         "persona": "sports_fan"
       },
-      "tool_manifest_config": {"tools": [{"name": "web_search", "description": "Search the web", "capabilities": ["sports_scores", "news"]}]},
-      "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "automatable"}
+      "tool_manifest_config": {
+        "tools": [
+          {
+            "name": "web_search",
+            "description": "Search the web",
+            "capabilities": [
+              "sports_scores",
+              "news"
+            ]
+          }
+        ]
       },
-      "evaluation_rubric": "Categorizer should note temporal uncertainty — game hasn't happened yet. Should NOT classify as auto_verifiable just because web_search has sports capabilities. VB should acknowledge needing to find the game date first, then wait for the result.",
+      "expected_per_agent_outputs": {
+        "categorizer": {
+          "expected_category": "automatable"
+        }
+      },
+      "evaluation_rubric": "Categorizer should note temporal uncertainty \u2014 game hasn't happened yet. Should NOT classify as auto_verifiable just because web_search has sports capabilities. VB should acknowledge needing to find the game date first, then wait for the result.",
       "is_boundary_case": false,
       "boundary_description": null
     },
@@ -497,13 +918,27 @@
       "prediction_text": "Tesla stock (TSLA) will close above $300 on the last trading day of March 2026",
       "difficulty": "medium",
       "ground_truth": {
-        "verifiability_reasoning": "Stock closing prices are public financial data published by exchanges (NYSE, NASDAQ). The data is objective and precise. However, no stock price API tool is currently registered, and the date is in the future. Category depends on tool manifest and timing: without stock API before date → automatable; with stock API after date → auto_verifiable.",
+        "verifiability_reasoning": "Stock closing prices are public financial data published by exchanges (NYSE, NASDAQ). The data is objective and precise. However, no stock price API tool is currently registered, and the date is in the future. Category depends on tool manifest and timing: without stock API before date \u2192 automatable; with stock API after date \u2192 auto_verifiable.",
         "date_derivation": "Explicit date: last trading day of March 2026 (March 31, 2026 if a trading day, otherwise the preceding trading day).",
-        "verification_sources": ["stock_exchange_data", "financial_data_providers", "NASDAQ_closing_prices"],
+        "verification_sources": [
+          "stock_exchange_data",
+          "financial_data_providers",
+          "NASDAQ_closing_prices"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["TSLA closing price on the last trading day of March 2026 exceeds $300.00"],
-        "verification_steps": ["Determine the last trading day of March 2026", "Query stock price data for TSLA closing price on that date", "Compare against $300 threshold"],
-        "verification_timing": "After last trading day of March 2026 — closing price available after 4pm ET that day."
+        "verification_criteria": [
+          "TSLA closing price on the last trading day of March 2026 exceeds $300.00"
+        ],
+        "verification_steps": [
+          "Determine the last trading day of March 2026",
+          "Query stock price data for TSLA closing price on that date",
+          "Compare against $300 threshold"
+        ],
+        "verification_timing": "After last trading day of March 2026 \u2014 closing price available after 4pm ET that day.",
+        "expected_verification_criteria": [
+          "Tesla (TSLA) closing price on the last trading day of March 2026 exceeds $300.00"
+        ],
+        "expected_verification_method": "After the last trading day of March 2026, query a financial data source (Yahoo Finance, Google Finance) for TSLA closing price on that date. Compare against $300 threshold. No stock API currently registered."
       },
       "dimension_tags": {
         "domain": "finance",
@@ -511,9 +946,13 @@
         "time_horizon": "weeks-to-months",
         "persona": "investor"
       },
-      "tool_manifest_config": {"tools": []},
+      "tool_manifest_config": {
+        "tools": []
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "automatable"}
+        "categorizer": {
+          "expected_category": "automatable"
+        }
       },
       "evaluation_rubric": "Categorizer should explain that stock data exists publicly but no tool is registered. VB should reference specific stock ticker, exchange, and price threshold.",
       "is_boundary_case": false,
@@ -524,13 +963,26 @@
       "prediction_text": "The average price of a gallon of regular gasoline in the US will be below $3.00 by June 2026",
       "difficulty": "medium",
       "ground_truth": {
-        "verifiability_reasoning": "US gasoline prices are tracked and published by the EIA (Energy Information Administration) and AAA. These are well-known, authoritative public data sources with historical and current pricing. However, no energy price API tool is registered. Category depends on tool manifest: without energy price API → automatable; with energy price API → auto_verifiable.",
+        "verifiability_reasoning": "US gasoline prices are tracked and published by the EIA (Energy Information Administration) and AAA. These are well-known, authoritative public data sources with historical and current pricing. However, no energy price API tool is registered. Category depends on tool manifest: without energy price API \u2192 automatable; with energy price API \u2192 auto_verifiable.",
         "date_derivation": "Explicit deadline: 'by June 2026' means checking at any point during or before June 2026.",
-        "verification_sources": ["EIA_gasoline_prices", "AAA_fuel_gauge_report"],
+        "verification_sources": [
+          "EIA_gasoline_prices",
+          "AAA_fuel_gauge_report"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["US national average price for regular gasoline falls below $3.00/gallon at any point before end of June 2026"],
-        "verification_steps": ["Query EIA or AAA for current US average regular gasoline price", "Compare against $3.00 threshold", "Check if the date is before end of June 2026"],
-        "verification_timing": "Check periodically through June 2026 — price could drop below threshold at any point."
+        "verification_criteria": [
+          "US national average price for regular gasoline falls below $3.00/gallon at any point before end of June 2026"
+        ],
+        "verification_steps": [
+          "Query EIA or AAA for current US average regular gasoline price",
+          "Compare against $3.00 threshold",
+          "Check if the date is before end of June 2026"
+        ],
+        "verification_timing": "Check periodically through June 2026 \u2014 price could drop below threshold at any point.",
+        "expected_verification_criteria": [
+          "The US national average price for a gallon of regular gasoline falls below $3.00 at the time of verification"
+        ],
+        "expected_verification_method": "Query AAA's gas price tracker (gasprices.aaa.com) or EIA data for the current US national average regular gasoline price. Compare against $3.00 threshold. No fuel price API currently registered."
       },
       "dimension_tags": {
         "domain": "finance",
@@ -538,9 +990,13 @@
         "time_horizon": "months-to-years",
         "persona": "commuter"
       },
-      "tool_manifest_config": {"tools": []},
+      "tool_manifest_config": {
+        "tools": []
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "automatable"}
+        "categorizer": {
+          "expected_category": "automatable"
+        }
       },
       "evaluation_rubric": "Categorizer should reference government/industry data sources (EIA, AAA) and explain no tool is registered. VB should specify the price threshold and data source.",
       "is_boundary_case": false,
@@ -551,13 +1007,27 @@
       "prediction_text": "The James Webb Space Telescope will discover at least one new exoplanet by the end of 2026",
       "difficulty": "hard",
       "ground_truth": {
-        "verifiability_reasoning": "NASA publishes JWST discoveries through official channels and the NASA Exoplanet Archive catalogs confirmed exoplanets. Discovery announcements are objective, documented events. However, no astronomy or NASA data tool is registered, and the discovery hasn't happened yet. Category depends on tool manifest and timing: without NASA API before discovery → automatable; with NASA API after discovery → auto_verifiable.",
+        "verifiability_reasoning": "NASA publishes JWST discoveries through official channels and the NASA Exoplanet Archive catalogs confirmed exoplanets. Discovery announcements are objective, documented events. However, no astronomy or NASA data tool is registered, and the discovery hasn't happened yet. Category depends on tool manifest and timing: without NASA API before discovery \u2192 automatable; with NASA API after discovery \u2192 auto_verifiable.",
         "date_derivation": "Explicit deadline: 'by the end of 2026' means December 31, 2026.",
-        "verification_sources": ["NASA_exoplanet_archive", "NASA_JWST_announcements", "scientific_publications"],
+        "verification_sources": [
+          "NASA_exoplanet_archive",
+          "NASA_JWST_announcements",
+          "scientific_publications"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["At least one new exoplanet discovery is attributed to JWST and cataloged in the NASA Exoplanet Archive before December 31, 2026"],
-        "verification_steps": ["Search NASA Exoplanet Archive for discoveries attributed to JWST", "Filter for discoveries made during 2026", "Confirm at least one qualifying discovery exists"],
-        "verification_timing": "Check NASA archives periodically through end of 2026 for JWST exoplanet announcements."
+        "verification_criteria": [
+          "At least one new exoplanet discovery is attributed to JWST and cataloged in the NASA Exoplanet Archive before December 31, 2026"
+        ],
+        "verification_steps": [
+          "Search NASA Exoplanet Archive for discoveries attributed to JWST",
+          "Filter for discoveries made during 2026",
+          "Confirm at least one qualifying discovery exists"
+        ],
+        "verification_timing": "Check NASA archives periodically through end of 2026 for JWST exoplanet announcements.",
+        "expected_verification_criteria": [
+          "NASA announces at least one new exoplanet discovery attributed to the James Webb Space Telescope before the end of 2026"
+        ],
+        "expected_verification_method": "Search NASA press releases and the NASA Exoplanet Archive for JWST-attributed exoplanet discoveries during 2026. Confirm at least one new discovery is officially announced."
       },
       "dimension_tags": {
         "domain": "nature",
@@ -565,9 +1035,13 @@
         "time_horizon": "months-to-years",
         "persona": "student"
       },
-      "tool_manifest_config": {"tools": []},
+      "tool_manifest_config": {
+        "tools": []
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "automatable"}
+        "categorizer": {
+          "expected_category": "automatable"
+        }
       },
       "evaluation_rubric": "Categorizer should recognize NASA data as authoritative but note no tool is registered. VB should reference NASA Exoplanet Archive and JWST attribution.",
       "is_boundary_case": false,
@@ -578,13 +1052,27 @@
       "prediction_text": "My package from Amazon (order #123-4567890) will be delivered by Friday",
       "difficulty": "medium",
       "ground_truth": {
-        "verifiability_reasoning": "Package tracking data is available through carrier APIs (UPS, FedEx, USPS) and Amazon's tracking system. Delivery status is an objective, timestamped event. The specific order number makes this precisely trackable. However, no package tracking tool is registered. Category depends on tool manifest: without tracking API → automatable; with tracking API → auto_verifiable.",
+        "verifiability_reasoning": "Package tracking data is available through carrier APIs (UPS, FedEx, USPS) and Amazon's tracking system. Delivery status is an objective, timestamped event. The specific order number makes this precisely trackable. However, no package tracking tool is registered. Category depends on tool manifest: without tracking API \u2192 automatable; with tracking API \u2192 auto_verifiable.",
         "date_derivation": "Relative deadline: 'by Friday' resolved to the next upcoming Friday from current date.",
-        "verification_sources": ["package_tracking_api", "carrier_delivery_systems", "amazon_order_tracking"],
+        "verification_sources": [
+          "package_tracking_api",
+          "carrier_delivery_systems",
+          "amazon_order_tracking"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["Amazon order #123-4567890 shows delivery status as 'Delivered' with a timestamp on or before Friday"],
-        "verification_steps": ["Query package tracking system for order #123-4567890", "Check delivery status and timestamp", "Confirm delivery occurred on or before Friday"],
-        "verification_timing": "After tool registration: check tracking status approaching Friday deadline."
+        "verification_criteria": [
+          "Amazon order #123-4567890 shows delivery status as 'Delivered' with a timestamp on or before Friday"
+        ],
+        "verification_steps": [
+          "Query package tracking system for order #123-4567890",
+          "Check delivery status and timestamp",
+          "Confirm delivery occurred on or before Friday"
+        ],
+        "verification_timing": "After tool registration: check tracking status approaching Friday deadline.",
+        "expected_verification_criteria": [
+          "Amazon order #123-4567890 shows delivery status as 'Delivered' by end of day Friday following the prediction date"
+        ],
+        "expected_verification_method": "Check Amazon order tracking for order #123-4567890 delivery status. Requires authenticated access to the user's Amazon account \u2014 no Amazon order API currently registered. Fallback: ask the user to check their order status."
       },
       "dimension_tags": {
         "domain": "personal",
@@ -592,11 +1080,15 @@
         "time_horizon": "days",
         "persona": "parent"
       },
-      "tool_manifest_config": {"tools": []},
-      "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "automatable"}
+      "tool_manifest_config": {
+        "tools": []
       },
-      "evaluation_rubric": "Categorizer should recognize package tracking as automatable — well-known APIs exist but no tool registered. VB should reference specific order number and delivery deadline.",
+      "expected_per_agent_outputs": {
+        "categorizer": {
+          "expected_category": "automatable"
+        }
+      },
+      "evaluation_rubric": "Categorizer should recognize package tracking as automatable \u2014 well-known APIs exist but no tool registered. VB should reference specific order number and delivery deadline.",
       "is_boundary_case": false,
       "boundary_description": null
     },
@@ -605,13 +1097,27 @@
       "prediction_text": "The wait time at the nearest DMV is currently under 30 minutes",
       "difficulty": "hard",
       "ground_truth": {
-        "verifiability_reasoning": "Some DMV offices publish real-time wait times online, but coverage is inconsistent across states and locations. No standardized DMV wait time API exists — a custom scraper or integration would need to be built. The 'nearest' adds location ambiguity requiring geocoding. Category depends on tool manifest: without DMV wait time tool → automatable; with custom DMV tool → auto_verifiable. This is closer to 'assumed_agent_verifiable_with_tool_build' under a 4-category system since no well-known API exists.",
+        "verifiability_reasoning": "Some DMV offices publish real-time wait times online, but coverage is inconsistent across states and locations. No standardized DMV wait time API exists \u2014 a custom scraper or integration would need to be built. The 'nearest' adds location ambiguity requiring geocoding. Category depends on tool manifest: without DMV wait time tool \u2192 automatable; with custom DMV tool \u2192 auto_verifiable. This is closer to 'assumed_agent_verifiable_with_tool_build' under a 4-category system since no well-known API exists.",
         "date_derivation": "Present tense: 'currently' means at the time of verification.",
-        "verification_sources": ["dmv_wait_time_websites", "state_dmv_online_systems"],
+        "verification_sources": [
+          "dmv_wait_time_websites",
+          "state_dmv_online_systems"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["The real-time wait time at the DMV office nearest to the user's location is less than 30 minutes"],
-        "verification_steps": ["Determine user's location", "Identify the nearest DMV office", "Check if that DMV publishes wait times online", "If available, compare current wait time against 30-minute threshold"],
-        "verification_timing": "After tool registration: check DMV wait time in real-time when user needs it."
+        "verification_criteria": [
+          "The real-time wait time at the DMV office nearest to the user's location is less than 30 minutes"
+        ],
+        "verification_steps": [
+          "Determine user's location",
+          "Identify the nearest DMV office",
+          "Check if that DMV publishes wait times online",
+          "If available, compare current wait time against 30-minute threshold"
+        ],
+        "verification_timing": "After tool registration: check DMV wait time in real-time when user needs it.",
+        "expected_verification_criteria": [
+          "The current wait time at the nearest DMV location to the user is under 30 minutes at the time of verification"
+        ],
+        "expected_verification_method": "Check the state DMV's online wait time tracker for the nearest location. Many states publish real-time wait times. Requires knowing the user's location to identify the nearest DMV. No DMV API currently registered."
       },
       "dimension_tags": {
         "domain": "social",
@@ -619,9 +1125,13 @@
         "time_horizon": "minutes-to-hours",
         "persona": "commuter"
       },
-      "tool_manifest_config": {"tools": []},
+      "tool_manifest_config": {
+        "tools": []
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "automatable"}
+        "categorizer": {
+          "expected_category": "automatable"
+        }
       },
       "evaluation_rubric": "Categorizer should note that DMV wait time data may exist online but no tool is registered. Should recognize the location ambiguity ('nearest'). VB should describe the multi-step process including geocoding.",
       "is_boundary_case": false,
@@ -632,13 +1142,26 @@
       "prediction_text": "My Uber ride to the airport will cost less than $40",
       "difficulty": "medium",
       "ground_truth": {
-        "verifiability_reasoning": "Uber's API provides fare estimates for routes, and actual trip costs are recorded in the rider's account. Fare data is objective. However, no ride-hailing API tool is registered. Category depends on tool manifest: without Uber API → automatable; with Uber API → auto_verifiable.",
+        "verifiability_reasoning": "Uber's API provides fare estimates for routes, and actual trip costs are recorded in the rider's account. Fare data is objective. However, no ride-hailing API tool is registered. Category depends on tool manifest: without Uber API \u2192 automatable; with Uber API \u2192 auto_verifiable.",
         "date_derivation": "Implicit near-future: the ride hasn't happened yet, timing depends on when the user takes the ride.",
-        "verification_sources": ["uber_fare_api", "ride_hailing_pricing_data"],
+        "verification_sources": [
+          "uber_fare_api",
+          "ride_hailing_pricing_data"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["The actual Uber fare for the trip to the airport is less than $40.00"],
-        "verification_steps": ["Query Uber API for fare estimate on the route to the airport", "Or check actual trip receipt after ride completion", "Compare fare against $40 threshold"],
-        "verification_timing": "After tool registration: check fare estimate before ride, or actual fare after ride completion."
+        "verification_criteria": [
+          "The actual Uber fare for the trip to the airport is less than $40.00"
+        ],
+        "verification_steps": [
+          "Query Uber API for fare estimate on the route to the airport",
+          "Or check actual trip receipt after ride completion",
+          "Compare fare against $40 threshold"
+        ],
+        "verification_timing": "After tool registration: check fare estimate before ride, or actual fare after ride completion.",
+        "expected_verification_criteria": [
+          "The estimated fare for an Uber ride from the user's current location to the airport is less than $40 at the time of verification"
+        ],
+        "expected_verification_method": "Query the Uber price estimate API or check the Uber app for a fare estimate from the user's location to the airport. Requires knowing the user's location and destination airport. No Uber API currently registered."
       },
       "dimension_tags": {
         "domain": "travel",
@@ -646,11 +1169,15 @@
         "time_horizon": "minutes-to-hours",
         "persona": "traveler"
       },
-      "tool_manifest_config": {"tools": []},
-      "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "automatable"}
+      "tool_manifest_config": {
+        "tools": []
       },
-      "evaluation_rubric": "Categorizer should recognize ride-hailing fare data as automatable — API exists but no tool registered. VB should reference fare estimate or trip receipt and $40 threshold.",
+      "expected_per_agent_outputs": {
+        "categorizer": {
+          "expected_category": "automatable"
+        }
+      },
+      "evaluation_rubric": "Categorizer should recognize ride-hailing fare data as automatable \u2014 API exists but no tool registered. VB should reference fare estimate or trip receipt and $40 threshold.",
       "is_boundary_case": false,
       "boundary_description": null
     },
@@ -659,13 +1186,25 @@
       "prediction_text": "The cherry blossoms in Washington DC will reach peak bloom before April 10, 2026",
       "difficulty": "hard",
       "ground_truth": {
-        "verifiability_reasoning": "The National Park Service (NPS) tracks and officially announces cherry blossom peak bloom dates annually for the Tidal Basin in DC. Peak bloom is objectively defined as when 70% of Yoshino cherry blossoms are open. This is public data but no NPS or botanical tracking tool is registered. Category depends on tool manifest and timing: without NPS tool before bloom → automatable; with NPS tool after bloom → auto_verifiable.",
+        "verifiability_reasoning": "The National Park Service (NPS) tracks and officially announces cherry blossom peak bloom dates annually for the Tidal Basin in DC. Peak bloom is objectively defined as when 70% of Yoshino cherry blossoms are open. This is public data but no NPS or botanical tracking tool is registered. Category depends on tool manifest and timing: without NPS tool before bloom \u2192 automatable; with NPS tool after bloom \u2192 auto_verifiable.",
         "date_derivation": "Explicit deadline: 'before April 10, 2026' provides a clear cutoff.",
-        "verification_sources": ["NPS_cherry_blossom_tracker", "national_park_service_announcements"],
+        "verification_sources": [
+          "NPS_cherry_blossom_tracker",
+          "national_park_service_announcements"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["NPS officially declares peak bloom for DC cherry blossoms on a date before April 10, 2026"],
-        "verification_steps": ["Monitor NPS cherry blossom peak bloom announcements", "Check if the declared peak bloom date falls before April 10, 2026"],
-        "verification_timing": "Monitor NPS announcements in March-April 2026 leading up to the April 10 deadline."
+        "verification_criteria": [
+          "NPS officially declares peak bloom for DC cherry blossoms on a date before April 10, 2026"
+        ],
+        "verification_steps": [
+          "Monitor NPS cherry blossom peak bloom announcements",
+          "Check if the declared peak bloom date falls before April 10, 2026"
+        ],
+        "verification_timing": "Monitor NPS announcements in March-April 2026 leading up to the April 10 deadline.",
+        "expected_verification_criteria": [
+          "The National Park Service declares peak bloom for Washington DC cherry blossoms before April 10, 2026"
+        ],
+        "expected_verification_method": "Monitor the National Park Service's cherry blossom bloom forecast and peak bloom declaration (nps.gov/cherry). Check after the bloom period for the official peak bloom date. Web search can access NPS announcements."
       },
       "dimension_tags": {
         "domain": "nature",
@@ -673,9 +1212,13 @@
         "time_horizon": "weeks-to-months",
         "persona": "gardener"
       },
-      "tool_manifest_config": {"tools": []},
+      "tool_manifest_config": {
+        "tools": []
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "automatable"}
+        "categorizer": {
+          "expected_category": "automatable"
+        }
       },
       "evaluation_rubric": "Categorizer should recognize NPS as authoritative data source but note no tool registered. Should recognize that peak bloom has an objective definition (70% open). VB should reference NPS tracking and the April 10 deadline.",
       "is_boundary_case": false,
@@ -686,13 +1229,26 @@
       "prediction_text": "The next SpaceX Starship launch will occur before May 1, 2026",
       "difficulty": "hard",
       "ground_truth": {
-        "verifiability_reasoning": "SpaceX launch events are publicly documented by SpaceX, NASA, and launch tracking services (NextSpaceflight, SpaceFlightNow). Launch dates are objective facts once they occur. However, schedules are volatile and frequently change, and no space launch tracking tool is registered. Category depends on tool manifest and timing: without launch tracker before event → automatable; with launch tracker after event → auto_verifiable.",
+        "verifiability_reasoning": "SpaceX launch events are publicly documented by SpaceX, NASA, and launch tracking services (NextSpaceflight, SpaceFlightNow). Launch dates are objective facts once they occur. However, schedules are volatile and frequently change, and no space launch tracking tool is registered. Category depends on tool manifest and timing: without launch tracker before event \u2192 automatable; with launch tracker after event \u2192 auto_verifiable.",
         "date_derivation": "Explicit deadline: 'before May 1, 2026' provides a clear cutoff.",
-        "verification_sources": ["spacex_launch_announcements", "NASA_launch_schedule", "NextSpaceflight"],
+        "verification_sources": [
+          "spacex_launch_announcements",
+          "NASA_launch_schedule",
+          "NextSpaceflight"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["A SpaceX Starship launch occurs on a date before May 1, 2026"],
-        "verification_steps": ["Monitor SpaceX and NASA launch announcements", "Check if a Starship launch is confirmed and completed before May 1, 2026"],
-        "verification_timing": "Monitor launch announcements through April 2026 leading up to the May 1 deadline."
+        "verification_criteria": [
+          "A SpaceX Starship launch occurs on a date before May 1, 2026"
+        ],
+        "verification_steps": [
+          "Monitor SpaceX and NASA launch announcements",
+          "Check if a Starship launch is confirmed and completed before May 1, 2026"
+        ],
+        "verification_timing": "Monitor launch announcements through April 2026 leading up to the May 1 deadline.",
+        "expected_verification_criteria": [
+          "SpaceX conducts a Starship launch attempt before May 1, 2026"
+        ],
+        "expected_verification_method": "Monitor SpaceX launch schedule and news. After any launch attempt, confirm via SpaceX announcements or space news outlets. Web search can access launch news."
       },
       "dimension_tags": {
         "domain": "tech",
@@ -700,11 +1256,15 @@
         "time_horizon": "weeks-to-months",
         "persona": "entrepreneur"
       },
-      "tool_manifest_config": {"tools": []},
-      "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "automatable"}
+      "tool_manifest_config": {
+        "tools": []
       },
-      "evaluation_rubric": "Categorizer should note launch tracking data exists but no tool registered. Should recognize schedule volatility doesn't change verifiability — the event is still objectively verifiable after it occurs. VB should reference launch tracking sources and May 1 deadline.",
+      "expected_per_agent_outputs": {
+        "categorizer": {
+          "expected_category": "automatable"
+        }
+      },
+      "evaluation_rubric": "Categorizer should note launch tracking data exists but no tool registered. Should recognize schedule volatility doesn't change verifiability \u2014 the event is still objectively verifiable after it occurs. VB should reference launch tracking sources and May 1 deadline.",
       "is_boundary_case": false,
       "boundary_description": null
     },
@@ -713,13 +1273,27 @@
       "prediction_text": "I will enjoy the movie I am seeing tonight",
       "difficulty": "easy",
       "ground_truth": {
-        "verifiability_reasoning": "Enjoyment is an internal emotional state that only the person experiencing it can assess. No tool, API, or external data source can measure personal enjoyment — movie ratings measure aggregate opinion, not this individual's experience. The agent's job is to create a verification plan that prompts the user to self-report after the movie. Future personal context: knowing the user's movie preferences and past ratings could help the ReviewAgent ask better clarification questions (e.g., 'what genre?' or 'what does enjoy mean to you — entertainment value, emotional impact, or something else?').",
+        "verifiability_reasoning": "Enjoyment is an internal emotional state that only the person experiencing it can assess. No tool, API, or external data source can measure personal enjoyment \u2014 movie ratings measure aggregate opinion, not this individual's experience. The agent's job is to create a verification plan that prompts the user to self-report after the movie. Future personal context: knowing the user's movie preferences and past ratings could help the ReviewAgent ask better clarification questions (e.g., 'what genre?' or 'what does enjoy mean to you \u2014 entertainment value, emotional impact, or something else?').",
         "date_derivation": "Implicit same-day: 'tonight' resolved to evening of current date.",
-        "verification_sources": ["user_self_report"],
+        "verification_sources": [
+          "user_self_report"
+        ],
         "objectivity_assessment": "subjective",
-        "verification_criteria": ["User reports they enjoyed the movie after viewing"],
-        "verification_steps": ["Determine the movie showtime from the prediction context (tonight = evening)", "Schedule a verification prompt for 30 minutes after the estimated movie end time (e.g., if 7pm showing of a 2-hour movie, prompt at 9:30pm)", "Send prompt: 'You predicted you would enjoy the movie tonight. Now that you have seen it, did you enjoy it? (yes/no)'", "If user responds yes → prediction verified as true. If no → prediction verified as false.", "Record the response with timestamp as the verification outcome"],
-        "verification_timing": "Scheduled prompt: send verification question at approximately 10-11pm on the evening of the movie, after the user has had time to watch and reflect."
+        "verification_criteria": [
+          "User reports they enjoyed the movie after viewing"
+        ],
+        "verification_steps": [
+          "Determine the movie showtime from the prediction context (tonight = evening)",
+          "Schedule a verification prompt for 30 minutes after the estimated movie end time (e.g., if 7pm showing of a 2-hour movie, prompt at 9:30pm)",
+          "Send prompt: 'You predicted you would enjoy the movie tonight. Now that you have seen it, did you enjoy it? (yes/no)'",
+          "If user responds yes \u2192 prediction verified as true. If no \u2192 prediction verified as false.",
+          "Record the response with timestamp as the verification outcome"
+        ],
+        "verification_timing": "Scheduled prompt: send verification question at approximately 10-11pm on the evening of the movie, after the user has had time to watch and reflect.",
+        "expected_verification_criteria": [
+          "The user reports a positive subjective experience after watching the movie they see tonight"
+        ],
+        "expected_verification_method": "Ask the user after the movie whether they enjoyed it. This is a subjective assessment that only the user can provide \u2014 no tool or data source can determine personal enjoyment."
       },
       "dimension_tags": {
         "domain": "entertainment",
@@ -727,9 +1301,13 @@
         "time_horizon": "minutes-to-hours",
         "persona": "gamer"
       },
-      "tool_manifest_config": {"tools": []},
+      "tool_manifest_config": {
+        "tools": []
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+        "categorizer": {
+          "expected_category": "human_only"
+        }
       },
       "evaluation_rubric": "Categorizer must identify subjective enjoyment as human_only. No tool can measure personal enjoyment. VB should describe a user self-report verification plan, not just 'ask the person.'",
       "is_boundary_case": false,
@@ -742,11 +1320,26 @@
       "ground_truth": {
         "verifiability_reasoning": "'Go well' is a subjective quality judgment that depends on the participant's expectations and standards. Even with meeting transcripts, productivity metrics, or action item counts, 'well' requires personal interpretation. The agent should create a verification plan that prompts the user to assess after the meeting. Future personal context: knowing the user's role, team dynamics, and what 'well' means to them (productive discussion? decisions made? no conflict?) would help the ReviewAgent ask targeted clarification questions.",
         "date_derivation": "Relative date with specific time: 'tomorrow at 2pm' resolved against current date.",
-        "verification_sources": ["user_self_report"],
+        "verification_sources": [
+          "user_self_report"
+        ],
         "objectivity_assessment": "subjective",
-        "verification_criteria": ["User reports the meeting went well after it concludes"],
-        "verification_steps": ["Extract meeting time from prediction: tomorrow at 2pm", "Estimate meeting duration (default 1 hour if not specified)", "Schedule verification prompt for 1 hour after meeting end (3pm tomorrow)", "Send prompt: 'Your 2pm team meeting should be over. Did it go well? (yes/no)'", "If user doesn't respond within 4 hours, send a follow-up reminder", "Record the response with timestamp as the verification outcome"],
-        "verification_timing": "Scheduled prompt: send verification question at 3pm tomorrow (1 hour after the 2pm meeting ends, allowing time for reflection)."
+        "verification_criteria": [
+          "User reports the meeting went well after it concludes"
+        ],
+        "verification_steps": [
+          "Extract meeting time from prediction: tomorrow at 2pm",
+          "Estimate meeting duration (default 1 hour if not specified)",
+          "Schedule verification prompt for 1 hour after meeting end (3pm tomorrow)",
+          "Send prompt: 'Your 2pm team meeting should be over. Did it go well? (yes/no)'",
+          "If user doesn't respond within 4 hours, send a follow-up reminder",
+          "Record the response with timestamp as the verification outcome"
+        ],
+        "verification_timing": "Scheduled prompt: send verification question at 3pm tomorrow (1 hour after the 2pm meeting ends, allowing time for reflection).",
+        "expected_verification_criteria": [
+          "The user assesses their team meeting at 2pm tomorrow as having gone well"
+        ],
+        "expected_verification_method": "Ask the user after the meeting for their assessment. 'Going well' is a subjective judgment that only the meeting participant can evaluate \u2014 no external data source applies."
       },
       "dimension_tags": {
         "domain": "work",
@@ -754,9 +1347,13 @@
         "time_horizon": "days",
         "persona": "manager"
       },
-      "tool_manifest_config": {"tools": []},
+      "tool_manifest_config": {
+        "tools": []
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+        "categorizer": {
+          "expected_category": "human_only"
+        }
       },
       "evaluation_rubric": "Categorizer must identify 'go well' as subjective. VB should describe a timed self-report verification plan with a specific prompt time after the meeting.",
       "is_boundary_case": false,
@@ -767,13 +1364,28 @@
       "prediction_text": "Tom will wear his blue shirt to work on Monday",
       "difficulty": "easy",
       "ground_truth": {
-        "verifiability_reasoning": "This is an objective physical fact (either Tom wears the blue shirt or he doesn't), but it requires direct physical observation of a specific person at a specific location. No API or data source tracks individual clothing choices. The verification method is inherently human — someone must physically observe Tom. This is human_only not because it's subjective, but because the observation access is restricted to physical presence. Future personal context: knowing who Tom is (coworker? family member?) and the user's relationship to Tom would help the agent build a better verification plan.",
+        "verifiability_reasoning": "This is an objective physical fact (either Tom wears the blue shirt or he doesn't), but it requires direct physical observation of a specific person at a specific location. No API or data source tracks individual clothing choices. The verification method is inherently human \u2014 someone must physically observe Tom. This is human_only not because it's subjective, but because the observation access is restricted to physical presence. Future personal context: knowing who Tom is (coworker? family member?) and the user's relationship to Tom would help the agent build a better verification plan.",
         "date_derivation": "Explicit day: 'Monday' resolved to next upcoming Monday.",
-        "verification_sources": ["direct_physical_observation", "user_report"],
+        "verification_sources": [
+          "direct_physical_observation",
+          "user_report"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["Tom is observed wearing a blue shirt at his workplace on Monday"],
-        "verification_steps": ["Extract the day: Monday", "Schedule verification prompt for Monday at 2pm (mid-afternoon, after Tom would have been at work for hours)", "Send prompt: 'Did Tom wear his blue shirt to work today?'", "If user responds 'I didn't see Tom today', mark as unverifiable (not false)", "Record the observation with timestamp"],
-        "verification_timing": "Scheduled prompt: send verification question Monday afternoon (e.g., 2pm) after the user has been at work and could observe Tom."
+        "verification_criteria": [
+          "Tom is observed wearing a blue shirt at his workplace on Monday"
+        ],
+        "verification_steps": [
+          "Extract the day: Monday",
+          "Schedule verification prompt for Monday at 2pm (mid-afternoon, after Tom would have been at work for hours)",
+          "Send prompt: 'Did Tom wear his blue shirt to work today?'",
+          "If user responds 'I didn't see Tom today', mark as unverifiable (not false)",
+          "Record the observation with timestamp"
+        ],
+        "verification_timing": "Scheduled prompt: send verification question Monday afternoon (e.g., 2pm) after the user has been at work and could observe Tom.",
+        "expected_verification_criteria": [
+          "Tom is observed wearing a blue shirt at work on Monday"
+        ],
+        "expected_verification_method": "Requires direct physical observation of Tom at his workplace on Monday. Ask the user or another observer present at Tom's workplace to confirm shirt color. No tool can remotely observe clothing."
       },
       "dimension_tags": {
         "domain": "personal",
@@ -781,11 +1393,15 @@
         "time_horizon": "days",
         "persona": "parent"
       },
-      "tool_manifest_config": {"tools": []},
-      "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+      "tool_manifest_config": {
+        "tools": []
       },
-      "evaluation_rubric": "Categorizer must identify this as human_only due to physical observation requirement — NOT because it's subjective (it's actually objective). VB should describe a user-prompted observation plan.",
+      "expected_per_agent_outputs": {
+        "categorizer": {
+          "expected_category": "human_only"
+        }
+      },
+      "evaluation_rubric": "Categorizer must identify this as human_only due to physical observation requirement \u2014 NOT because it's subjective (it's actually objective). VB should describe a user-prompted observation plan.",
       "is_boundary_case": false,
       "boundary_description": null
     },
@@ -794,13 +1410,26 @@
       "prediction_text": "I will feel happy when I wake up tomorrow morning",
       "difficulty": "easy",
       "ground_truth": {
-        "verifiability_reasoning": "Emotional states are inherently subjective and can only be assessed through self-report. No biometric tool can reliably determine 'happiness' as the person defines it — even mood tracking apps rely on self-report. The agent should schedule a morning verification prompt. Future personal context: knowing the user's baseline mood patterns, sleep habits, or what typically affects their morning mood could help the ReviewAgent ask better clarification questions.",
+        "verifiability_reasoning": "Emotional states are inherently subjective and can only be assessed through self-report. No biometric tool can reliably determine 'happiness' as the person defines it \u2014 even mood tracking apps rely on self-report. The agent should schedule a morning verification prompt. Future personal context: knowing the user's baseline mood patterns, sleep habits, or what typically affects their morning mood could help the ReviewAgent ask better clarification questions.",
         "date_derivation": "Relative date with time: 'tomorrow morning' resolved to next day, estimated 7am.",
-        "verification_sources": ["user_self_report"],
+        "verification_sources": [
+          "user_self_report"
+        ],
         "objectivity_assessment": "subjective",
-        "verification_criteria": ["User reports feeling happy upon waking tomorrow morning"],
-        "verification_steps": ["Extract timing: tomorrow morning", "Schedule verification prompt for tomorrow at 8am (shortly after typical wake-up)", "Send prompt: 'Good morning! You predicted you would feel happy when you woke up. How are you feeling? (happy/not happy)'", "Record the self-assessment with timestamp"],
-        "verification_timing": "Scheduled prompt: send verification question tomorrow morning at 8am, shortly after typical wake-up time."
+        "verification_criteria": [
+          "User reports feeling happy upon waking tomorrow morning"
+        ],
+        "verification_steps": [
+          "Extract timing: tomorrow morning",
+          "Schedule verification prompt for tomorrow at 8am (shortly after typical wake-up)",
+          "Send prompt: 'Good morning! You predicted you would feel happy when you woke up. How are you feeling? (happy/not happy)'",
+          "Record the self-assessment with timestamp"
+        ],
+        "verification_timing": "Scheduled prompt: send verification question tomorrow morning at 8am, shortly after typical wake-up time.",
+        "expected_verification_criteria": [
+          "The user reports feeling happy upon waking tomorrow morning"
+        ],
+        "expected_verification_method": "Ask the user tomorrow morning about their emotional state. Happiness is a subjective internal experience that only the user can report \u2014 no external measurement applies."
       },
       "dimension_tags": {
         "domain": "personal",
@@ -808,9 +1437,13 @@
         "time_horizon": "days",
         "persona": "teenager"
       },
-      "tool_manifest_config": {"tools": []},
+      "tool_manifest_config": {
+        "tools": []
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+        "categorizer": {
+          "expected_category": "human_only"
+        }
       },
       "evaluation_rubric": "Categorizer must identify emotional prediction as human_only. VB should describe a timed morning self-report prompt.",
       "is_boundary_case": false,
@@ -818,16 +1451,30 @@
     },
     {
       "id": "base-031",
-      "prediction_text": "My soufflé won't fall when I take it out of the oven tonight",
+      "prediction_text": "My souffl\u00e9 won't fall when I take it out of the oven tonight",
       "difficulty": "medium",
       "ground_truth": {
-        "verifiability_reasoning": "Soufflé collapse is an objective physical event (it either falls or it doesn't). However, it requires real-time physical observation in a specific kitchen at a specific moment. No sensor, API, or remote monitoring tool can determine this — even a kitchen camera would require human judgment about what constitutes 'falling.' The verification is inherently tied to being physically present. Future personal context: knowing the user's cooking experience and soufflé history could help the ReviewAgent assess whether clarification is needed about what 'fall' means (partial deflation vs total collapse).",
+        "verifiability_reasoning": "Souffl\u00e9 collapse is an objective physical event (it either falls or it doesn't). However, it requires real-time physical observation in a specific kitchen at a specific moment. No sensor, API, or remote monitoring tool can determine this \u2014 even a kitchen camera would require human judgment about what constitutes 'falling.' The verification is inherently tied to being physically present. Future personal context: knowing the user's cooking experience and souffl\u00e9 history could help the ReviewAgent assess whether clarification is needed about what 'fall' means (partial deflation vs total collapse).",
         "date_derivation": "Implicit same-day: 'tonight' resolved to evening of current date.",
-        "verification_sources": ["direct_physical_observation", "user_report"],
+        "verification_sources": [
+          "direct_physical_observation",
+          "user_report"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["The soufflé maintains its risen structure after removal from the oven"],
-        "verification_steps": ["Extract timing: tonight, after oven use", "Schedule verification prompt for tonight at 9pm (after typical dinner time)", "Send prompt: 'How did the soufflé turn out? Did it hold its shape after you took it out of the oven? (yes, it held / no, it fell)'", "Record the observation with timestamp"],
-        "verification_timing": "Scheduled prompt: send verification question tonight at approximately 8-9pm, after dinner when the soufflé outcome is known."
+        "verification_criteria": [
+          "The souffl\u00e9 maintains its risen structure after removal from the oven"
+        ],
+        "verification_steps": [
+          "Extract timing: tonight, after oven use",
+          "Schedule verification prompt for tonight at 9pm (after typical dinner time)",
+          "Send prompt: 'How did the souffl\u00e9 turn out? Did it hold its shape after you took it out of the oven? (yes, it held / no, it fell)'",
+          "Record the observation with timestamp"
+        ],
+        "verification_timing": "Scheduled prompt: send verification question tonight at approximately 8-9pm, after dinner when the souffl\u00e9 outcome is known.",
+        "expected_verification_criteria": [
+          "The user's souffl\u00e9 maintains its risen structure after removal from the oven tonight"
+        ],
+        "expected_verification_method": "Requires direct physical observation of the souffl\u00e9 immediately after removal from the oven. Ask the user to report the outcome. No tool can remotely observe cooking results."
       },
       "dimension_tags": {
         "domain": "food",
@@ -835,9 +1482,13 @@
         "time_horizon": "minutes-to-hours",
         "persona": "chef"
       },
-      "tool_manifest_config": {"tools": []},
+      "tool_manifest_config": {
+        "tools": []
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+        "categorizer": {
+          "expected_category": "human_only"
+        }
       },
       "evaluation_rubric": "Categorizer should identify this as human_only due to physical observation requirement. Like base-029, this is objective but requires human presence. VB should describe a user-prompted observation plan.",
       "is_boundary_case": false,
@@ -848,13 +1499,27 @@
       "prediction_text": "My daughter will love the birthday present I got her",
       "difficulty": "easy",
       "ground_truth": {
-        "verifiability_reasoning": "'Love' is a subjective emotional response that requires interpreting another person's emotional cues. Even observing the child's reaction requires subjective interpretation — excitement could be politeness, and initial disappointment could turn to appreciation. No tool can measure whether someone 'loves' a gift. Future personal context: knowing the daughter's age, interests, and past gift reactions would help the ReviewAgent ask targeted clarification questions about what 'love' means in this context.",
+        "verifiability_reasoning": "'Love' is a subjective emotional response that requires interpreting another person's emotional cues. Even observing the child's reaction requires subjective interpretation \u2014 excitement could be politeness, and initial disappointment could turn to appreciation. No tool can measure whether someone 'loves' a gift. Future personal context: knowing the daughter's age, interests, and past gift reactions would help the ReviewAgent ask targeted clarification questions about what 'love' means in this context.",
         "date_derivation": "Implicit near-future: the birthday event timing, likely within days.",
-        "verification_sources": ["user_observation_of_recipient", "user_self_report"],
+        "verification_sources": [
+          "user_observation_of_recipient",
+          "user_self_report"
+        ],
         "objectivity_assessment": "subjective",
-        "verification_criteria": ["User reports that their daughter loved the birthday present"],
-        "verification_steps": ["Determine birthday timing from context (if not specified, ask during clarification)", "Schedule verification prompt for the day after the birthday", "Send prompt: 'How did your daughter react to the birthday present? Did she love it? (yes/no)'", "Record the assessment with timestamp"],
-        "verification_timing": "Scheduled prompt: send verification question the day after the birthday, giving time for the gift to be opened and the reaction observed."
+        "verification_criteria": [
+          "User reports that their daughter loved the birthday present"
+        ],
+        "verification_steps": [
+          "Determine birthday timing from context (if not specified, ask during clarification)",
+          "Schedule verification prompt for the day after the birthday",
+          "Send prompt: 'How did your daughter react to the birthday present? Did she love it? (yes/no)'",
+          "Record the assessment with timestamp"
+        ],
+        "verification_timing": "Scheduled prompt: send verification question the day after the birthday, giving time for the gift to be opened and the reaction observed.",
+        "expected_verification_criteria": [
+          "The user's daughter expresses positive reaction (joy, excitement, gratitude) upon receiving her birthday present"
+        ],
+        "expected_verification_method": "Requires direct observation of the daughter's reaction at the time of gift-giving. Ask the user to report the daughter's response. Subjective assessment of another person's emotional reaction."
       },
       "dimension_tags": {
         "domain": "personal",
@@ -862,9 +1527,13 @@
         "time_horizon": "days",
         "persona": "parent"
       },
-      "tool_manifest_config": {"tools": []},
+      "tool_manifest_config": {
+        "tools": []
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+        "categorizer": {
+          "expected_category": "human_only"
+        }
       },
       "evaluation_rubric": "Categorizer must identify emotional response prediction about another person as human_only. VB should describe a post-event user report verification plan.",
       "is_boundary_case": false,
@@ -875,13 +1544,28 @@
       "prediction_text": "I'll get the promotion at work this quarter",
       "difficulty": "medium",
       "ground_truth": {
-        "verifiability_reasoning": "A promotion is an objective organizational decision (it either happens or it doesn't). However, the decision is made within a private organizational process — no public API or data source tracks individual employment decisions. The information is privately held by the employer and the employee. Verification requires the user confirming the outcome. Future personal context: knowing the user's company, role, and promotion timeline would help the agent schedule verification at the right time (end of quarter).",
+        "verifiability_reasoning": "A promotion is an objective organizational decision (it either happens or it doesn't). However, the decision is made within a private organizational process \u2014 no public API or data source tracks individual employment decisions. The information is privately held by the employer and the employee. Verification requires the user confirming the outcome. Future personal context: knowing the user's company, role, and promotion timeline would help the agent schedule verification at the right time (end of quarter).",
         "date_derivation": "Relative deadline: 'this quarter' resolved to end of current calendar quarter.",
-        "verification_sources": ["user_self_report", "private_employment_records"],
+        "verification_sources": [
+          "user_self_report",
+          "private_employment_records"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["User confirms they received a promotion before the end of the current quarter"],
-        "verification_steps": ["Determine current quarter end date (March 31, June 30, September 30, or December 31)", "Schedule verification prompt for 3 business days after quarter end", "Send prompt: 'The quarter has ended. Did you get the promotion? (yes/no/still pending)'", "If 'still pending', schedule a follow-up prompt for 2 weeks later", "Record the final outcome with timestamp"],
-        "verification_timing": "Scheduled prompt: send verification question 3 business days after the current quarter ends, allowing time for formal announcement."
+        "verification_criteria": [
+          "User confirms they received a promotion before the end of the current quarter"
+        ],
+        "verification_steps": [
+          "Determine current quarter end date (March 31, June 30, September 30, or December 31)",
+          "Schedule verification prompt for 3 business days after quarter end",
+          "Send prompt: 'The quarter has ended. Did you get the promotion? (yes/no/still pending)'",
+          "If 'still pending', schedule a follow-up prompt for 2 weeks later",
+          "Record the final outcome with timestamp"
+        ],
+        "verification_timing": "Scheduled prompt: send verification question 3 business days after the current quarter ends, allowing time for formal announcement.",
+        "expected_verification_criteria": [
+          "The user receives a promotion at their workplace during the current quarter"
+        ],
+        "expected_verification_method": "Ask the user at the end of the quarter whether they received a promotion. This is private employment information not accessible through any public API or data source."
       },
       "dimension_tags": {
         "domain": "work",
@@ -889,11 +1573,15 @@
         "time_horizon": "weeks-to-months",
         "persona": "manager"
       },
-      "tool_manifest_config": {"tools": []},
-      "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+      "tool_manifest_config": {
+        "tools": []
       },
-      "evaluation_rubric": "Categorizer should identify this as human_only because the data is privately held — not because it's subjective (it's actually objective). VB should describe a quarter-end timed verification prompt.",
+      "expected_per_agent_outputs": {
+        "categorizer": {
+          "expected_category": "human_only"
+        }
+      },
+      "evaluation_rubric": "Categorizer should identify this as human_only because the data is privately held \u2014 not because it's subjective (it's actually objective). VB should describe a quarter-end timed verification prompt.",
       "is_boundary_case": false,
       "boundary_description": null
     },
@@ -902,13 +1590,26 @@
       "prediction_text": "The dinner I'm cooking tonight will taste good",
       "difficulty": "easy",
       "ground_truth": {
-        "verifiability_reasoning": "Taste quality is inherently subjective — 'good' depends on personal preference, cultural context, and individual palate. No tool can assess taste quality. The agent should create a post-dinner verification prompt. Future personal context: knowing the user's cooking skill level and dietary preferences could help the ReviewAgent ask whether 'good' means 'edible,' 'restaurant quality,' or 'family approved.'",
+        "verifiability_reasoning": "Taste quality is inherently subjective \u2014 'good' depends on personal preference, cultural context, and individual palate. No tool can assess taste quality. The agent should create a post-dinner verification prompt. Future personal context: knowing the user's cooking skill level and dietary preferences could help the ReviewAgent ask whether 'good' means 'edible,' 'restaurant quality,' or 'family approved.'",
         "date_derivation": "Implicit same-day: 'tonight' resolved to evening of current date.",
-        "verification_sources": ["user_self_report"],
+        "verification_sources": [
+          "user_self_report"
+        ],
         "objectivity_assessment": "subjective",
-        "verification_criteria": ["User reports the dinner tasted good after eating"],
-        "verification_steps": ["Extract timing: tonight, dinner", "Schedule verification prompt for tonight at 9pm (after dinner)", "Send prompt: 'You predicted dinner would taste good tonight. How was it? (good/not good)'", "Record the assessment with timestamp"],
-        "verification_timing": "Scheduled prompt: send verification question tonight at approximately 8-9pm, after dinner is cooked and eaten."
+        "verification_criteria": [
+          "User reports the dinner tasted good after eating"
+        ],
+        "verification_steps": [
+          "Extract timing: tonight, dinner",
+          "Schedule verification prompt for tonight at 9pm (after dinner)",
+          "Send prompt: 'You predicted dinner would taste good tonight. How was it? (good/not good)'",
+          "Record the assessment with timestamp"
+        ],
+        "verification_timing": "Scheduled prompt: send verification question tonight at approximately 8-9pm, after dinner is cooked and eaten.",
+        "expected_verification_criteria": [
+          "The user assesses the dinner they cook tonight as tasting good"
+        ],
+        "expected_verification_method": "Ask the user after dinner for their taste assessment. Taste is a subjective sensory experience that only the person eating can evaluate \u2014 no tool applies."
       },
       "dimension_tags": {
         "domain": "food",
@@ -916,9 +1617,13 @@
         "time_horizon": "minutes-to-hours",
         "persona": "chef"
       },
-      "tool_manifest_config": {"tools": []},
+      "tool_manifest_config": {
+        "tools": []
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+        "categorizer": {
+          "expected_category": "human_only"
+        }
       },
       "evaluation_rubric": "Categorizer must identify taste as subjective and human_only. VB should describe a post-dinner self-report prompt.",
       "is_boundary_case": false,
@@ -931,11 +1636,25 @@
       "ground_truth": {
         "verifiability_reasoning": "Toy destruction is a physical event that requires direct observation. While 'destroy' has a somewhat subjective threshold (chewed vs shredded vs completely demolished), the core observation requires physical presence with the pet. No pet monitoring API tracks toy destruction events. Even with a pet camera, determining 'destroyed' requires human judgment. Future personal context: knowing the dog's breed, size, and toy destruction history would help the agent assess whether clarification is needed about what 'destroy' means.",
         "date_derivation": "Relative window: 'within an hour' from when the toy is given.",
-        "verification_sources": ["direct_physical_observation", "user_report"],
+        "verification_sources": [
+          "direct_physical_observation",
+          "user_report"
+        ],
         "objectivity_assessment": "mixed",
-        "verification_criteria": ["User reports the dog destroyed the toy within one hour of receiving it"],
-        "verification_steps": ["Extract timeframe: within an hour of giving the toy", "Schedule verification prompt for 1 hour after prediction is made", "Send prompt: 'It has been about an hour. Did your dog destroy the new toy? (yes, destroyed / no, still intact / partially chewed)'", "Record the observation with timestamp"],
-        "verification_timing": "Scheduled prompt: send verification question approximately 1 hour after the prediction is made, matching the predicted timeframe."
+        "verification_criteria": [
+          "User reports the dog destroyed the toy within one hour of receiving it"
+        ],
+        "verification_steps": [
+          "Extract timeframe: within an hour of giving the toy",
+          "Schedule verification prompt for 1 hour after prediction is made",
+          "Send prompt: 'It has been about an hour. Did your dog destroy the new toy? (yes, destroyed / no, still intact / partially chewed)'",
+          "Record the observation with timestamp"
+        ],
+        "verification_timing": "Scheduled prompt: send verification question approximately 1 hour after the prediction is made, matching the predicted timeframe.",
+        "expected_verification_criteria": [
+          "The user's dog physically destroys (tears apart, breaks, renders unusable) the new toy within one hour of receiving it"
+        ],
+        "expected_verification_method": "Requires direct physical observation of the dog's interaction with the toy over the next hour. Ask the user to report the toy's condition after one hour. No tool can remotely observe pet behavior."
       },
       "dimension_tags": {
         "domain": "personal",
@@ -943,9 +1662,13 @@
         "time_horizon": "minutes-to-hours",
         "persona": "pet_owner"
       },
-      "tool_manifest_config": {"tools": []},
+      "tool_manifest_config": {
+        "tools": []
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+        "categorizer": {
+          "expected_category": "human_only"
+        }
       },
       "evaluation_rubric": "Categorizer should identify this as human_only due to physical observation requirement and subjective 'destroy' threshold. VB should describe a timed observation prompt.",
       "is_boundary_case": false,
@@ -958,11 +1681,26 @@
       "ground_truth": {
         "verifiability_reasoning": "Completing a game level is an objective event tracked by the game itself. However, no external API tracks individual gaming progress across arbitrary games. The data exists within the game but is not externally accessible. Verification requires the user confirming or showing their game state. Future personal context: knowing what game the user plays and their gaming habits would help the ReviewAgent ask targeted questions and schedule verification appropriately.",
         "date_derivation": "Implicit same-day: 'tonight' resolved to evening of current date.",
-        "verification_sources": ["user_self_report", "game_state_observation"],
+        "verification_sources": [
+          "user_self_report",
+          "game_state_observation"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["User confirms they completed the game level before going to bed tonight"],
-        "verification_steps": ["Extract timing: tonight", "Schedule verification prompt for late evening (11pm)", "Send prompt: 'Did you beat the game level tonight? (yes/no/didn't play)'", "If 'didn't play', mark as unverifiable (not false)", "Record the response with timestamp"],
-        "verification_timing": "Scheduled prompt: send verification question late tonight (e.g., 11pm) after the user's gaming session."
+        "verification_criteria": [
+          "User confirms they completed the game level before going to bed tonight"
+        ],
+        "verification_steps": [
+          "Extract timing: tonight",
+          "Schedule verification prompt for late evening (11pm)",
+          "Send prompt: 'Did you beat the game level tonight? (yes/no/didn't play)'",
+          "If 'didn't play', mark as unverifiable (not false)",
+          "Record the response with timestamp"
+        ],
+        "verification_timing": "Scheduled prompt: send verification question late tonight (e.g., 11pm) after the user's gaming session.",
+        "expected_verification_criteria": [
+          "The user successfully completes (beats/passes) the video game level they are attempting tonight"
+        ],
+        "expected_verification_method": "Ask the user after their gaming session whether they beat the level. This is a personal activity outcome that only the user can report \u2014 no external data source tracks individual gaming progress."
       },
       "dimension_tags": {
         "domain": "entertainment",
@@ -970,11 +1708,15 @@
         "time_horizon": "minutes-to-hours",
         "persona": "gamer"
       },
-      "tool_manifest_config": {"tools": []},
-      "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+      "tool_manifest_config": {
+        "tools": []
       },
-      "evaluation_rubric": "Categorizer should identify this as human_only — the data exists in the game but is not externally accessible. VB should describe a user self-report verification plan.",
+      "expected_per_agent_outputs": {
+        "categorizer": {
+          "expected_category": "human_only"
+        }
+      },
+      "evaluation_rubric": "Categorizer should identify this as human_only \u2014 the data exists in the game but is not externally accessible. VB should describe a user self-report verification plan.",
       "is_boundary_case": false,
       "boundary_description": null
     },
@@ -985,11 +1727,26 @@
       "ground_truth": {
         "verifiability_reasoning": "Exam pass rates are objective, calculable numbers. However, the data is private educational records (FERPA-protected in the US). No public API provides individual class exam results. The teacher has access to the data but no external tool can verify this. Verification requires the teacher reporting the outcome after grading. Future personal context: knowing the teacher's school, subject, class size, and grading timeline would help the agent schedule verification at the right time.",
         "date_derivation": "Implicit future: 'the final exam' timing depends on the academic calendar, likely weeks to months away.",
-        "verification_sources": ["user_self_report", "private_educational_records"],
+        "verification_sources": [
+          "user_self_report",
+          "private_educational_records"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["Teacher reports that 80% or more of their students passed the final exam"],
-        "verification_steps": ["Determine final exam date from context (if not specified, ask during clarification)", "Schedule verification prompt for 1 week after the exam date (allowing grading time)", "Send prompt: 'Final exam grades should be in. What percentage of your students passed? ____%'", "Compare the reported percentage against the 80% threshold", "Record the result: verified true if >= 80%, verified false if < 80%"],
-        "verification_timing": "Scheduled prompt: send verification question 1 week after the final exam date, allowing time for grading to complete."
+        "verification_criteria": [
+          "Teacher reports that 80% or more of their students passed the final exam"
+        ],
+        "verification_steps": [
+          "Determine final exam date from context (if not specified, ask during clarification)",
+          "Schedule verification prompt for 1 week after the exam date (allowing grading time)",
+          "Send prompt: 'Final exam grades should be in. What percentage of your students passed? ____%'",
+          "Compare the reported percentage against the 80% threshold",
+          "Record the result: verified true if >= 80%, verified false if < 80%"
+        ],
+        "verification_timing": "Scheduled prompt: send verification question 1 week after the final exam date, allowing time for grading to complete.",
+        "expected_verification_criteria": [
+          "At least 80% of the user's students achieve a passing grade on the final exam"
+        ],
+        "expected_verification_method": "Ask the user after grades are finalized for the pass rate. Student grades are private educational records (FERPA-protected) not accessible through any public API. The user (as instructor) has access to this data."
       },
       "dimension_tags": {
         "domain": "work",
@@ -997,9 +1754,13 @@
         "time_horizon": "weeks-to-months",
         "persona": "teacher"
       },
-      "tool_manifest_config": {"tools": []},
+      "tool_manifest_config": {
+        "tools": []
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+        "categorizer": {
+          "expected_category": "human_only"
+        }
       },
       "evaluation_rubric": "Categorizer should identify this as human_only because the data is private educational records, not because it's subjective. VB should describe a post-grading verification prompt with the 80% threshold.",
       "is_boundary_case": false,
@@ -1012,11 +1773,25 @@
       "ground_truth": {
         "verifiability_reasoning": "A sale is an objective transaction event (it either happens or it doesn't). However, individual art sales at gallery shows are private commercial transactions not tracked by any public API. Gallery sales records are private business data. Verification requires the artist or gallery confirming the sale. Future personal context: knowing the artist's gallery, show dates, and price range would help the agent schedule verification and ask relevant clarification questions.",
         "date_derivation": "Relative deadline: 'next month' resolved to end of the following calendar month.",
-        "verification_sources": ["user_self_report", "private_gallery_sales_records"],
+        "verification_sources": [
+          "user_self_report",
+          "private_gallery_sales_records"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["Artist confirms the painting sold during the gallery show"],
-        "verification_steps": ["Determine gallery show dates from context (if not specified, ask during clarification)", "Schedule verification prompt for the day after the show ends", "Send prompt: 'The gallery show is over. Did your painting sell? (yes/no)'", "Record the outcome with timestamp"],
-        "verification_timing": "Scheduled prompt: send verification question the day after the gallery show ends."
+        "verification_criteria": [
+          "Artist confirms the painting sold during the gallery show"
+        ],
+        "verification_steps": [
+          "Determine gallery show dates from context (if not specified, ask during clarification)",
+          "Schedule verification prompt for the day after the show ends",
+          "Send prompt: 'The gallery show is over. Did your painting sell? (yes/no)'",
+          "Record the outcome with timestamp"
+        ],
+        "verification_timing": "Scheduled prompt: send verification question the day after the gallery show ends.",
+        "expected_verification_criteria": [
+          "The specified painting is sold (purchased by a buyer) during the gallery show next month"
+        ],
+        "expected_verification_method": "Ask the user after the gallery show whether the painting sold. Gallery sales are private commercial transactions \u2014 no public API tracks individual artwork sales at local galleries."
       },
       "dimension_tags": {
         "domain": "entertainment",
@@ -1024,9 +1799,13 @@
         "time_horizon": "weeks-to-months",
         "persona": "artist"
       },
-      "tool_manifest_config": {"tools": []},
+      "tool_manifest_config": {
+        "tools": []
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+        "categorizer": {
+          "expected_category": "human_only"
+        }
       },
       "evaluation_rubric": "Categorizer should identify this as human_only because gallery sales are private transactions. VB should describe a post-show verification prompt.",
       "is_boundary_case": false,
@@ -1037,13 +1816,28 @@
       "prediction_text": "I'll PR in the marathon on Saturday",
       "difficulty": "medium",
       "ground_truth": {
-        "verifiability_reasoning": "A personal record (PR) is an objective comparison — finish time vs previous best. Marathon results are often publicly posted by race organizers. However, the PR comparison requires knowing the runner's previous best time, which is private personal data. Even with race results APIs, the PR determination requires personal context that no external tool has. Future personal context: knowing the runner's previous PR, training history, and target race would make this much more precisely verifiable — the agent could even check public race results and compare automatically.",
+        "verifiability_reasoning": "A personal record (PR) is an objective comparison \u2014 finish time vs previous best. Marathon results are often publicly posted by race organizers. However, the PR comparison requires knowing the runner's previous best time, which is private personal data. Even with race results APIs, the PR determination requires personal context that no external tool has. Future personal context: knowing the runner's previous PR, training history, and target race would make this much more precisely verifiable \u2014 the agent could even check public race results and compare automatically.",
         "date_derivation": "Explicit day: 'Saturday' resolved to next upcoming Saturday.",
-        "verification_sources": ["user_self_report", "race_results_combined_with_personal_history"],
+        "verification_sources": [
+          "user_self_report",
+          "race_results_combined_with_personal_history"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["User's marathon finish time on Saturday is faster than their previous personal best"],
-        "verification_steps": ["Extract race day: Saturday", "Schedule verification prompt for Saturday at 6pm (after typical marathon finish, allowing time to check results)", "Send prompt: 'How did the marathon go? Did you set a new personal record? (yes, new PR / no, didn't PR / didn't finish)'", "If 'yes, new PR', optionally ask for the time to record", "Record the outcome with timestamp"],
-        "verification_timing": "Scheduled prompt: send verification question Saturday evening after the marathon, allowing time for the runner to finish and check results."
+        "verification_criteria": [
+          "User's marathon finish time on Saturday is faster than their previous personal best"
+        ],
+        "verification_steps": [
+          "Extract race day: Saturday",
+          "Schedule verification prompt for Saturday at 6pm (after typical marathon finish, allowing time to check results)",
+          "Send prompt: 'How did the marathon go? Did you set a new personal record? (yes, new PR / no, didn't PR / didn't finish)'",
+          "If 'yes, new PR', optionally ask for the time to record",
+          "Record the outcome with timestamp"
+        ],
+        "verification_timing": "Scheduled prompt: send verification question Saturday evening after the marathon, allowing time for the runner to finish and check results.",
+        "expected_verification_criteria": [
+          "The user's official marathon finish time on Saturday is faster than their previous personal record"
+        ],
+        "expected_verification_method": "After the marathon, check official race results (many marathons publish results online) for the user's finish time. Compare against their stated PR. Requires knowing the user's name and previous PR. Partially automatable if race results are published online, but PR comparison requires personal data from the user."
       },
       "dimension_tags": {
         "domain": "personal",
@@ -1051,9 +1845,13 @@
         "time_horizon": "days",
         "persona": "athlete"
       },
-      "tool_manifest_config": {"tools": []},
+      "tool_manifest_config": {
+        "tools": []
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+        "categorizer": {
+          "expected_category": "human_only"
+        }
       },
       "evaluation_rubric": "Categorizer should identify this as human_only because PR comparison requires private personal data (previous best time). VB should describe a post-race verification prompt. Note: with personal context feature, this could shift toward automatable if the system knows the runner's PR and can check public race results.",
       "is_boundary_case": false,
@@ -1064,13 +1862,26 @@
       "prediction_text": "I bet the sun rises tomorrow",
       "difficulty": "easy",
       "ground_truth": {
-        "verifiability_reasoning": "Despite the casual 'I bet' framing, the underlying claim is identical to base-001 — sunrise is an astronomical certainty verifiable through pure reasoning. The colloquial phrasing should not change the categorization. The parser's job is to extract the intent ('sun will rise tomorrow') from the casual framing. Category does not depend on tool manifest — pure reasoning suffices.",
+        "verifiability_reasoning": "Despite the casual 'I bet' framing, the underlying claim is identical to base-001 \u2014 sunrise is an astronomical certainty verifiable through pure reasoning. The colloquial phrasing should not change the categorization. The parser's job is to extract the intent ('sun will rise tomorrow') from the casual framing. Category does not depend on tool manifest \u2014 pure reasoning suffices.",
         "date_derivation": "Relative date: 'tomorrow' resolved against current date.",
-        "verification_sources": ["astronomical_calculations", "earth_rotation_knowledge"],
+        "verification_sources": [
+          "astronomical_calculations",
+          "earth_rotation_knowledge"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["Sun rises tomorrow at the user's location"],
-        "verification_steps": ["Extract the core claim: sun will rise tomorrow", "Confirm via astronomical knowledge that sunrise will occur", "Ignore the 'I bet' framing — it's colloquial, not a wager"],
-        "verification_timing": "Immediate — same as base-001, astronomical certainty regardless of casual framing."
+        "verification_criteria": [
+          "Sun rises tomorrow at the user's location"
+        ],
+        "verification_steps": [
+          "Extract the core claim: sun will rise tomorrow",
+          "Confirm via astronomical knowledge that sunrise will occur",
+          "Ignore the 'I bet' framing \u2014 it's colloquial, not a wager"
+        ],
+        "verification_timing": "Immediate \u2014 same as base-001, astronomical certainty regardless of casual framing.",
+        "expected_verification_criteria": [
+          "The sun appears above the horizon on the date following the prediction date at the user's location"
+        ],
+        "expected_verification_method": "Confirm via astronomical calculations based on Earth's rotation. Deterministic from orbital mechanics \u2014 no external data source needed. Note: 'I bet' is framing language; the factual claim is simply that the sun will rise."
       },
       "dimension_tags": {
         "domain": "nature",
@@ -1078,9 +1889,13 @@
         "time_horizon": "days",
         "persona": "commuter"
       },
-      "tool_manifest_config": {"tools": []},
+      "tool_manifest_config": {
+        "tools": []
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "auto_verifiable"}
+        "categorizer": {
+          "expected_category": "auto_verifiable"
+        }
       },
       "evaluation_rubric": "Categorizer should NOT be distracted by 'I bet' framing. Should identify the core astronomical claim and classify as auto_verifiable. Parser should extract 'sun will rise tomorrow' as the prediction statement.",
       "is_boundary_case": true,
@@ -1091,13 +1906,26 @@
       "prediction_text": "My code will compile on the first try",
       "difficulty": "medium",
       "ground_truth": {
-        "verifiability_reasoning": "Code compilation is an objective, binary event (compiles or doesn't). If a CI/CD tool were registered, this could be auto_verifiable — the tool could run the compiler and check. Without a CI tool, the developer must try and report the outcome. The boundary: this is objective and theoretically automatable, but without the right tool it falls to human_only. Category depends on tool manifest: without CI/CD tool → human_only; with CI/CD tool → auto_verifiable.",
+        "verifiability_reasoning": "Code compilation is an objective, binary event (compiles or doesn't). If a CI/CD tool were registered, this could be auto_verifiable \u2014 the tool could run the compiler and check. Without a CI tool, the developer must try and report the outcome. The boundary: this is objective and theoretically automatable, but without the right tool it falls to human_only. Category depends on tool manifest: without CI/CD tool \u2192 human_only; with CI/CD tool \u2192 auto_verifiable.",
         "date_derivation": "Implicit near-future: 'first try' implies the next compilation attempt.",
-        "verification_sources": ["user_self_report", "compiler_output"],
+        "verification_sources": [
+          "user_self_report",
+          "compiler_output"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["The user's code compiles without errors on the first attempt"],
-        "verification_steps": ["Schedule a verification prompt for after the user's next coding session", "Ask the user: did your code compile on the first try?", "Record their response as the verification outcome"],
-        "verification_timing": "Scheduled prompt: send verification question after the user's next coding session, likely within hours."
+        "verification_criteria": [
+          "The user's code compiles without errors on the first attempt"
+        ],
+        "verification_steps": [
+          "Schedule a verification prompt for after the user's next coding session",
+          "Ask the user: did your code compile on the first try?",
+          "Record their response as the verification outcome"
+        ],
+        "verification_timing": "Scheduled prompt: send verification question after the user's next coding session, likely within hours.",
+        "expected_verification_criteria": [
+          "The user's code compiles without errors on the first attempt"
+        ],
+        "expected_verification_method": "Ask the user after they attempt compilation whether it succeeded on the first try. This is a personal development activity outcome that only the user can observe in real-time."
       },
       "dimension_tags": {
         "domain": "tech",
@@ -1105,9 +1933,13 @@
         "time_horizon": "minutes-to-hours",
         "persona": "entrepreneur"
       },
-      "tool_manifest_config": {"tools": []},
+      "tool_manifest_config": {
+        "tools": []
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+        "categorizer": {
+          "expected_category": "human_only"
+        }
       },
       "evaluation_rubric": "Categorizer should recognize compilation as objective but note no CI/CD tool is available. Should classify as human_only without the tool. The boundary is that this COULD be auto_verifiable with the right tool.",
       "is_boundary_case": true,
@@ -1118,13 +1950,26 @@
       "prediction_text": "It'll be nice out this weekend",
       "difficulty": "medium",
       "ground_truth": {
-        "verifiability_reasoning": "'Nice' is subjective — it means different things to different people (sunny? warm? no rain? mild breeze?). Without clarification, this is human_only because the verification criteria are undefined. The ReviewAgent should catch this ambiguity and ask what 'nice' means. After clarification (e.g., 'above 70°F and sunny'), it could shift to auto_verifiable with web_search. The boundary: subjective framing on an objectively verifiable domain (weather).",
+        "verifiability_reasoning": "'Nice' is subjective \u2014 it means different things to different people (sunny? warm? no rain? mild breeze?). Without clarification, this is human_only because the verification criteria are undefined. The ReviewAgent should catch this ambiguity and ask what 'nice' means. After clarification (e.g., 'above 70\u00b0F and sunny'), it could shift to auto_verifiable with web_search. The boundary: subjective framing on an objectively verifiable domain (weather).",
         "date_derivation": "Relative date: 'this weekend' resolved to upcoming Saturday/Sunday.",
-        "verification_sources": ["user_self_report_without_clarification", "weather_services_after_clarification"],
+        "verification_sources": [
+          "user_self_report_without_clarification",
+          "weather_services_after_clarification"
+        ],
         "objectivity_assessment": "subjective",
-        "verification_criteria": ["User reports the weather was 'nice' this weekend (subjective without clarification)"],
-        "verification_steps": ["Identify that 'nice' is subjective and needs clarification", "If clarified to specific criteria: use weather verification", "If not clarified: schedule a post-weekend user self-report prompt"],
-        "verification_timing": "Scheduled prompt: send verification question Sunday evening after the weekend has passed."
+        "verification_criteria": [
+          "User reports the weather was 'nice' this weekend (subjective without clarification)"
+        ],
+        "verification_steps": [
+          "Identify that 'nice' is subjective and needs clarification",
+          "If clarified to specific criteria: use weather verification",
+          "If not clarified: schedule a post-weekend user self-report prompt"
+        ],
+        "verification_timing": "Scheduled prompt: send verification question Sunday evening after the weekend has passed.",
+        "expected_verification_criteria": [
+          "The user subjectively assesses the weekend weather as 'nice'"
+        ],
+        "expected_verification_method": "Ask the user after the weekend for their weather assessment. While weather data is publicly available, 'nice' is a subjective judgment \u2014 what constitutes nice weather varies by person. The prediction's intent is subjective satisfaction, not an objective weather metric."
       },
       "dimension_tags": {
         "domain": "weather",
@@ -1132,11 +1977,24 @@
         "time_horizon": "days",
         "persona": "gardener"
       },
-      "tool_manifest_config": {"tools": [{"name": "web_search", "description": "Search the web", "capabilities": ["current_weather", "forecasts"]}]},
-      "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+      "tool_manifest_config": {
+        "tools": [
+          {
+            "name": "web_search",
+            "description": "Search the web",
+            "capabilities": [
+              "current_weather",
+              "forecasts"
+            ]
+          }
+        ]
       },
-      "evaluation_rubric": "Categorizer should identify 'nice' as subjective despite weather being an objectively measurable domain. Should NOT classify as auto_verifiable just because web_search has weather capabilities — 'nice' has no objective definition. ReviewAgent should flag the ambiguity.",
+      "expected_per_agent_outputs": {
+        "categorizer": {
+          "expected_category": "human_only"
+        }
+      },
+      "evaluation_rubric": "Categorizer should identify 'nice' as subjective despite weather being an objectively measurable domain. Should NOT classify as auto_verifiable just because web_search has weather capabilities \u2014 'nice' has no objective definition. ReviewAgent should flag the ambiguity.",
       "is_boundary_case": true,
       "boundary_description": "Subjective framing ('nice') on an objectively verifiable domain (weather). Tests whether the categorizer recognizes that subjective criteria override tool availability."
     },
@@ -1145,13 +2003,26 @@
       "prediction_text": "The restaurant we're going to tonight has at least 4 stars on Google",
       "difficulty": "hard",
       "ground_truth": {
-        "verifiability_reasoning": "Google restaurant ratings are objective, publicly accessible data that web_search could retrieve. However, 'the restaurant we're going to' requires personal context — the agent doesn't know which restaurant. Without knowing the restaurant name, the agent cannot formulate a search query. The boundary: the data is public and the tool exists, but personal context is needed to identify what to search for. Category depends on personal context: without context → human_only; with restaurant name → auto_verifiable via web_search.",
+        "verifiability_reasoning": "Google restaurant ratings are objective, publicly accessible data that web_search could retrieve. However, 'the restaurant we're going to' requires personal context \u2014 the agent doesn't know which restaurant. Without knowing the restaurant name, the agent cannot formulate a search query. The boundary: the data is public and the tool exists, but personal context is needed to identify what to search for. Category depends on personal context: without context \u2192 human_only; with restaurant name \u2192 auto_verifiable via web_search.",
         "date_derivation": "Implicit same-day: 'tonight' resolved to evening of current date.",
-        "verification_sources": ["google_restaurant_ratings", "web_search_tool_if_restaurant_known"],
+        "verification_sources": [
+          "google_restaurant_ratings",
+          "web_search_tool_if_restaurant_known"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["The specific restaurant has a Google rating of 4.0 stars or higher"],
-        "verification_steps": ["Identify which restaurant the user is going to (requires clarification or personal context)", "Search Google for the restaurant's rating", "Compare against 4-star threshold"],
-        "verification_timing": "Requires clarification first (which restaurant), then immediate check via web_search for Google rating."
+        "verification_criteria": [
+          "The specific restaurant has a Google rating of 4.0 stars or higher"
+        ],
+        "verification_steps": [
+          "Identify which restaurant the user is going to (requires clarification or personal context)",
+          "Search Google for the restaurant's rating",
+          "Compare against 4-star threshold"
+        ],
+        "verification_timing": "Requires clarification first (which restaurant), then immediate check via web_search for Google rating.",
+        "expected_verification_criteria": [
+          "The restaurant the user is visiting tonight has a Google Maps rating of 4.0 stars or higher at the time of verification"
+        ],
+        "expected_verification_method": "Search Google Maps for the restaurant (requires knowing which restaurant). Check the star rating. Google Maps ratings are publicly accessible via web search. However, the specific restaurant is not named \u2014 requires clarification from the user."
       },
       "dimension_tags": {
         "domain": "food",
@@ -1159,26 +2030,51 @@
         "time_horizon": "minutes-to-hours",
         "persona": "chef"
       },
-      "tool_manifest_config": {"tools": [{"name": "web_search", "description": "Search the web", "capabilities": ["reviews", "ratings"]}]},
+      "tool_manifest_config": {
+        "tools": [
+          {
+            "name": "web_search",
+            "description": "Search the web",
+            "capabilities": [
+              "reviews",
+              "ratings"
+            ]
+          }
+        ]
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+        "categorizer": {
+          "expected_category": "human_only"
+        }
       },
       "evaluation_rubric": "Categorizer should recognize that while Google ratings are public data, the agent can't verify without knowing WHICH restaurant. ReviewAgent should ask which restaurant. This tests the personal-context dependency boundary.",
       "is_boundary_case": true,
-      "boundary_description": "Public objective data (Google ratings) that requires personal context (which restaurant) to access. Tests whether the categorizer recognizes that tool availability alone isn't sufficient — you also need to know what to search for."
+      "boundary_description": "Public objective data (Google ratings) that requires personal context (which restaurant) to access. Tests whether the categorizer recognizes that tool availability alone isn't sufficient \u2014 you also need to know what to search for."
     },
     {
       "id": "base-044",
       "prediction_text": "My Fitbit will show I walked 10,000 steps today",
       "difficulty": "hard",
       "ground_truth": {
-        "verifiability_reasoning": "Step count is objective data tracked by a personal device. Fitbit has a well-documented API that could retrieve this data. The data is personal but objective — it's a number, not an opinion. The boundary: this is objective data with a known API, but the API requires personal authentication and the data is private. Under the current system without a Fitbit tool, this is automatable (the API exists, we just don't have the tool). It's NOT human_only because the data is objective and API-accessible — the privacy aspect affects access method, not verifiability category. Category depends on tool manifest: without Fitbit API → automatable; with Fitbit API → auto_verifiable.",
+        "verifiability_reasoning": "Step count is objective data tracked by a personal device. Fitbit has a well-documented API that could retrieve this data. The data is personal but objective \u2014 it's a number, not an opinion. The boundary: this is objective data with a known API, but the API requires personal authentication and the data is private. Under the current system without a Fitbit tool, this is automatable (the API exists, we just don't have the tool). It's NOT human_only because the data is objective and API-accessible \u2014 the privacy aspect affects access method, not verifiability category. Category depends on tool manifest: without Fitbit API \u2192 automatable; with Fitbit API \u2192 auto_verifiable.",
         "date_derivation": "Implicit same-day: 'today' resolved to current date, end of day.",
-        "verification_sources": ["fitbit_api", "personal_fitness_tracker_data"],
+        "verification_sources": [
+          "fitbit_api",
+          "personal_fitness_tracker_data"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["Fitbit step count for today shows 10,000 or more steps"],
-        "verification_steps": ["Query Fitbit API for today's step count (requires user authentication)", "Compare step count against 10,000 threshold"],
-        "verification_timing": "After tool registration: check Fitbit API at end of day for step count. Without tool: scheduled prompt at 10pm asking user to check their Fitbit."
+        "verification_criteria": [
+          "Fitbit step count for today shows 10,000 or more steps"
+        ],
+        "verification_steps": [
+          "Query Fitbit API for today's step count (requires user authentication)",
+          "Compare step count against 10,000 threshold"
+        ],
+        "verification_timing": "After tool registration: check Fitbit API at end of day for step count. Without tool: scheduled prompt at 10pm asking user to check their Fitbit.",
+        "expected_verification_criteria": [
+          "The user's Fitbit device records at least 10,000 steps for the current day"
+        ],
+        "expected_verification_method": "Check the user's Fitbit app or Fitbit API for today's step count. Requires authenticated access to the user's Fitbit account. No Fitbit API currently registered. Fallback: ask the user to check their Fitbit and report the step count."
       },
       "dimension_tags": {
         "domain": "health",
@@ -1186,11 +2082,15 @@
         "time_horizon": "minutes-to-hours",
         "persona": "athlete"
       },
-      "tool_manifest_config": {"tools": []},
-      "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "automatable"}
+      "tool_manifest_config": {
+        "tools": []
       },
-      "evaluation_rubric": "Categorizer should classify as automatable — Fitbit API exists but no tool registered. Should NOT classify as human_only just because the data is personal. The data is objective and API-accessible. Tests the 'personal but objective data' boundary.",
+      "expected_per_agent_outputs": {
+        "categorizer": {
+          "expected_category": "automatable"
+        }
+      },
+      "evaluation_rubric": "Categorizer should classify as automatable \u2014 Fitbit API exists but no tool registered. Should NOT classify as human_only just because the data is personal. The data is objective and API-accessible. Tests the 'personal but objective data' boundary.",
       "is_boundary_case": true,
       "boundary_description": "Personal device data (Fitbit steps) that is objective and API-accessible but private. Tests whether the categorizer correctly distinguishes between 'data is subjective' (human_only) and 'data is private but objective' (automatable with the right tool)."
     },
@@ -1199,13 +2099,28 @@
       "prediction_text": "The traffic on my commute tomorrow will be worse than today",
       "difficulty": "hard",
       "ground_truth": {
-        "verifiability_reasoning": "Traffic data is publicly available through services like Google Maps and Waze. 'Worse' can be objectively measured (longer travel time, lower average speed). However, 'my commute' requires personal context — the agent doesn't know the user's route, origin, or destination. Without personal context, the agent cannot query traffic data for the right route. The boundary: needs BOTH personal context (route) AND a traffic tool to be auto_verifiable. Without either, it's human_only. Category depends on personal context + tool manifest: without route context → human_only; with route context but no traffic tool → automatable; with both → auto_verifiable.",
+        "verifiability_reasoning": "Traffic data is publicly available through services like Google Maps and Waze. 'Worse' can be objectively measured (longer travel time, lower average speed). However, 'my commute' requires personal context \u2014 the agent doesn't know the user's route, origin, or destination. Without personal context, the agent cannot query traffic data for the right route. The boundary: needs BOTH personal context (route) AND a traffic tool to be auto_verifiable. Without either, it's human_only. Category depends on personal context + tool manifest: without route context \u2192 human_only; with route context but no traffic tool \u2192 automatable; with both \u2192 auto_verifiable.",
         "date_derivation": "Relative comparison: 'tomorrow' vs 'today', both resolved against current date.",
-        "verification_sources": ["traffic_data_services", "google_maps_api", "user_commute_context"],
+        "verification_sources": [
+          "traffic_data_services",
+          "google_maps_api",
+          "user_commute_context"
+        ],
         "objectivity_assessment": "objective",
-        "verification_criteria": ["Travel time or congestion level on the user's commute route is measurably worse tomorrow than today"],
-        "verification_steps": ["Identify the user's commute route (requires personal context)", "Measure today's commute conditions (travel time, congestion)", "Measure tomorrow's commute conditions on the same route", "Compare the two measurements"],
-        "verification_timing": "Requires clarification first (commute route), then compare traffic data for today vs tomorrow on that route."
+        "verification_criteria": [
+          "Travel time or congestion level on the user's commute route is measurably worse tomorrow than today"
+        ],
+        "verification_steps": [
+          "Identify the user's commute route (requires personal context)",
+          "Measure today's commute conditions (travel time, congestion)",
+          "Measure tomorrow's commute conditions on the same route",
+          "Compare the two measurements"
+        ],
+        "verification_timing": "Requires clarification first (commute route), then compare traffic data for today vs tomorrow on that route.",
+        "expected_verification_criteria": [
+          "The user's commute time tomorrow exceeds their commute time today"
+        ],
+        "expected_verification_method": "Requires the user to report both commute times (today and tomorrow). While traffic data is publicly available, the user's specific commute route and actual travel times are personal data. Partially automatable if the user's route is known and traffic APIs are available, but actual commute time requires user reporting."
       },
       "dimension_tags": {
         "domain": "travel",
@@ -1213,9 +2128,13 @@
         "time_horizon": "days",
         "persona": "commuter"
       },
-      "tool_manifest_config": {"tools": []},
+      "tool_manifest_config": {
+        "tools": []
+      },
       "expected_per_agent_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+        "categorizer": {
+          "expected_category": "human_only"
+        }
       },
       "evaluation_rubric": "Categorizer should recognize the compound dependency: needs personal context (route) AND traffic tool. Without the route, even a traffic tool can't help. ReviewAgent should ask about the commute route.",
       "is_boundary_case": true,
@@ -1231,7 +2150,9 @@
       "simulated_clarifications": [],
       "expected_clarification_topics": [],
       "expected_post_clarification_outputs": {
-        "categorizer": {"expected_category": "auto_verifiable"}
+        "categorizer": {
+          "expected_category": "auto_verifiable"
+        }
       },
       "evaluation_rubric": "Level 0 control: prediction is already perfectly specified. ReviewAgent should find no clarification needed. No ambiguity in location, time, or criteria."
     },
@@ -1243,7 +2164,9 @@
       "simulated_clarifications": [],
       "expected_clarification_topics": [],
       "expected_post_clarification_outputs": {
-        "categorizer": {"expected_category": "automatable"}
+        "categorizer": {
+          "expected_category": "automatable"
+        }
       },
       "evaluation_rubric": "Level 0 control: prediction has explicit crypto, price target, and deadline. ReviewAgent should find no clarification needed."
     },
@@ -1255,7 +2178,9 @@
       "simulated_clarifications": [],
       "expected_clarification_topics": [],
       "expected_post_clarification_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+        "categorizer": {
+          "expected_category": "human_only"
+        }
       },
       "evaluation_rubric": "Level 0 control: subjective prediction is as specific as it can be. ReviewAgent might ask what 'enjoy' means but the prediction is complete as stated."
     },
@@ -1267,7 +2192,9 @@
       "simulated_clarifications": [],
       "expected_clarification_topics": [],
       "expected_post_clarification_outputs": {
-        "categorizer": {"expected_category": "automatable"}
+        "categorizer": {
+          "expected_category": "automatable"
+        }
       },
       "evaluation_rubric": "Level 0 control: flight number, route, and date are all specified. ReviewAgent should find no clarification needed."
     },
@@ -1276,10 +2203,16 @@
       "fuzzy_text": "It'll rain somewhere tomorrow",
       "base_prediction_id": "base-005",
       "fuzziness_level": 1,
-      "simulated_clarifications": ["I mean in London, UK"],
-      "expected_clarification_topics": ["location"],
+      "simulated_clarifications": [
+        "I mean in London, UK"
+      ],
+      "expected_clarification_topics": [
+        "location"
+      ],
       "expected_post_clarification_outputs": {
-        "categorizer": {"expected_category": "auto_verifiable"}
+        "categorizer": {
+          "expected_category": "auto_verifiable"
+        }
       },
       "evaluation_rubric": "Level 1: missing location only. After clarification to London, converges to auto_verifiable with web_search."
     },
@@ -1288,34 +2221,53 @@
       "fuzzy_text": "The stock market will go up today",
       "base_prediction_id": "base-004",
       "fuzziness_level": 1,
-      "simulated_clarifications": ["I mean the S&P 500 will close higher than yesterday"],
-      "expected_clarification_topics": ["which_index"],
+      "simulated_clarifications": [
+        "I mean the S&P 500 will close higher than yesterday"
+      ],
+      "expected_clarification_topics": [
+        "which_index"
+      ],
       "expected_post_clarification_outputs": {
-        "categorizer": {"expected_category": "auto_verifiable"}
+        "categorizer": {
+          "expected_category": "auto_verifiable"
+        }
       },
-      "evaluation_rubric": "Level 1: missing which index. 'Stock market' is ambiguous — could be S&P 500, Dow, NASDAQ. After clarification, converges to auto_verifiable."
+      "evaluation_rubric": "Level 1: missing which index. 'Stock market' is ambiguous \u2014 could be S&P 500, Dow, NASDAQ. After clarification, converges to auto_verifiable."
     },
     {
       "id": "fuzzy-007",
       "fuzzy_text": "Tesla stock will be up by end of month",
       "base_prediction_id": "base-019",
       "fuzziness_level": 1,
-      "simulated_clarifications": ["I mean TSLA will close above $300 on the last trading day of March 2026"],
-      "expected_clarification_topics": ["price_threshold"],
+      "simulated_clarifications": [
+        "I mean TSLA will close above $300 on the last trading day of March 2026"
+      ],
+      "expected_clarification_topics": [
+        "price_threshold"
+      ],
       "expected_post_clarification_outputs": {
-        "categorizer": {"expected_category": "automatable"}
+        "categorizer": {
+          "expected_category": "automatable"
+        }
       },
-      "evaluation_rubric": "Level 1: missing specific price threshold. 'Up' is vague — up from what? By how much? After clarification with specific target, converges to automatable."
+      "evaluation_rubric": "Level 1: missing specific price threshold. 'Up' is vague \u2014 up from what? By how much? After clarification with specific target, converges to automatable."
     },
     {
       "id": "fuzzy-008",
       "fuzzy_text": "My package will come soon",
       "base_prediction_id": "base-022",
       "fuzziness_level": 1,
-      "simulated_clarifications": ["My Amazon order #123-4567890, I expect it by Friday"],
-      "expected_clarification_topics": ["which_package", "timeframe"],
+      "simulated_clarifications": [
+        "My Amazon order #123-4567890, I expect it by Friday"
+      ],
+      "expected_clarification_topics": [
+        "which_package",
+        "timeframe"
+      ],
       "expected_post_clarification_outputs": {
-        "categorizer": {"expected_category": "automatable"}
+        "categorizer": {
+          "expected_category": "automatable"
+        }
       },
       "evaluation_rubric": "Level 1: missing package identifier and deadline. After clarification with order number and date, converges to automatable."
     },
@@ -1324,46 +2276,77 @@
       "fuzzy_text": "The meeting will go great",
       "base_prediction_id": "base-028",
       "fuzziness_level": 1,
-      "simulated_clarifications": ["My team meeting tomorrow at 2pm, I mean it will go well in terms of productive discussion"],
-      "expected_clarification_topics": ["which_meeting", "when", "criteria_for_great"],
+      "simulated_clarifications": [
+        "My team meeting tomorrow at 2pm, I mean it will go well in terms of productive discussion"
+      ],
+      "expected_clarification_topics": [
+        "which_meeting",
+        "when",
+        "criteria_for_great"
+      ],
       "expected_post_clarification_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+        "categorizer": {
+          "expected_category": "human_only"
+        }
       },
-      "evaluation_rubric": "Level 1: missing which meeting and when. IMPORTANT: category stays human_only after clarification — 'go well' remains subjective even with specifics."
+      "evaluation_rubric": "Level 1: missing which meeting and when. IMPORTANT: category stays human_only after clarification \u2014 'go well' remains subjective even with specifics."
     },
     {
       "id": "fuzzy-010",
       "fuzzy_text": "I'll be happy tomorrow",
       "base_prediction_id": "base-030",
       "fuzziness_level": 1,
-      "simulated_clarifications": ["I mean I will feel happy when I wake up tomorrow morning"],
-      "expected_clarification_topics": ["timeframe", "context"],
+      "simulated_clarifications": [
+        "I mean I will feel happy when I wake up tomorrow morning"
+      ],
+      "expected_clarification_topics": [
+        "timeframe",
+        "context"
+      ],
       "expected_post_clarification_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+        "categorizer": {
+          "expected_category": "human_only"
+        }
       },
-      "evaluation_rubric": "Level 1: missing specific timeframe. IMPORTANT: category stays human_only — emotional predictions remain subjective regardless of specificity."
+      "evaluation_rubric": "Level 1: missing specific timeframe. IMPORTANT: category stays human_only \u2014 emotional predictions remain subjective regardless of specificity."
     },
     {
       "id": "fuzzy-011",
       "fuzzy_text": "Tom will wear that shirt",
       "base_prediction_id": "base-029",
       "fuzziness_level": 2,
-      "simulated_clarifications": ["Tom from my office, his blue shirt, to work on Monday"],
-      "expected_clarification_topics": ["which_person", "which_shirt", "when"],
+      "simulated_clarifications": [
+        "Tom from my office, his blue shirt, to work on Monday"
+      ],
+      "expected_clarification_topics": [
+        "which_person",
+        "which_shirt",
+        "when"
+      ],
       "expected_post_clarification_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+        "categorizer": {
+          "expected_category": "human_only"
+        }
       },
-      "evaluation_rubric": "Level 2: missing which Tom, which shirt, and when. IMPORTANT: category stays human_only — personal observation required regardless of specificity."
+      "evaluation_rubric": "Level 2: missing which Tom, which shirt, and when. IMPORTANT: category stays human_only \u2014 personal observation required regardless of specificity."
     },
     {
       "id": "fuzzy-012",
       "fuzzy_text": "The game will be good this weekend",
       "base_prediction_id": "base-018",
       "fuzziness_level": 2,
-      "simulated_clarifications": ["The Dominican Republic's next World Baseball Classic game, I think they'll win"],
-      "expected_clarification_topics": ["which_game", "which_sport", "what_good_means"],
+      "simulated_clarifications": [
+        "The Dominican Republic's next World Baseball Classic game, I think they'll win"
+      ],
+      "expected_clarification_topics": [
+        "which_game",
+        "which_sport",
+        "what_good_means"
+      ],
       "expected_post_clarification_outputs": {
-        "categorizer": {"expected_category": "automatable"}
+        "categorizer": {
+          "expected_category": "automatable"
+        }
       },
       "evaluation_rubric": "Level 2: missing which game, which sport, and what 'good' means. After clarification, shifts from subjective ('good') to objective (win/loss) and converges to automatable."
     },
@@ -1372,10 +2355,19 @@
       "fuzzy_text": "Gas prices will drop soon",
       "base_prediction_id": "base-020",
       "fuzziness_level": 2,
-      "simulated_clarifications": ["I mean the US national average for regular gasoline will be below $3.00 by June 2026"],
-      "expected_clarification_topics": ["which_fuel", "price_threshold", "timeframe", "location"],
+      "simulated_clarifications": [
+        "I mean the US national average for regular gasoline will be below $3.00 by June 2026"
+      ],
+      "expected_clarification_topics": [
+        "which_fuel",
+        "price_threshold",
+        "timeframe",
+        "location"
+      ],
       "expected_post_clarification_outputs": {
-        "categorizer": {"expected_category": "automatable"}
+        "categorizer": {
+          "expected_category": "automatable"
+        }
       },
       "evaluation_rubric": "Level 2: missing fuel type, price threshold, timeframe, and geographic scope. After clarification with specifics, converges to automatable."
     },
@@ -1384,46 +2376,78 @@
       "fuzzy_text": "My kid will love her present",
       "base_prediction_id": "base-032",
       "fuzziness_level": 2,
-      "simulated_clarifications": ["My daughter, for her birthday, the present I already bought"],
-      "expected_clarification_topics": ["which_child", "which_occasion", "which_present"],
+      "simulated_clarifications": [
+        "My daughter, for her birthday, the present I already bought"
+      ],
+      "expected_clarification_topics": [
+        "which_child",
+        "which_occasion",
+        "which_present"
+      ],
       "expected_post_clarification_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+        "categorizer": {
+          "expected_category": "human_only"
+        }
       },
-      "evaluation_rubric": "Level 2: missing which child, which occasion. IMPORTANT: category stays human_only — emotional response prediction remains subjective."
+      "evaluation_rubric": "Level 2: missing which child, which occasion. IMPORTANT: category stays human_only \u2014 emotional response prediction remains subjective."
     },
     {
       "id": "fuzzy-015",
       "fuzzy_text": "I'll crush it at the race",
       "base_prediction_id": "base-039",
       "fuzziness_level": 2,
-      "simulated_clarifications": ["I mean I'll set a personal record in the marathon on Saturday"],
-      "expected_clarification_topics": ["which_race", "what_crush_means", "when"],
+      "simulated_clarifications": [
+        "I mean I'll set a personal record in the marathon on Saturday"
+      ],
+      "expected_clarification_topics": [
+        "which_race",
+        "what_crush_means",
+        "when"
+      ],
       "expected_post_clarification_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+        "categorizer": {
+          "expected_category": "human_only"
+        }
       },
-      "evaluation_rubric": "Level 2: missing which race, what 'crush it' means, and when. IMPORTANT: category stays human_only — PR requires personal data."
+      "evaluation_rubric": "Level 2: missing which race, what 'crush it' means, and when. IMPORTANT: category stays human_only \u2014 PR requires personal data."
     },
     {
       "id": "fuzzy-016",
       "fuzzy_text": "Dinner's gonna slap tonight",
       "base_prediction_id": "base-034",
       "fuzziness_level": 3,
-      "simulated_clarifications": ["I mean the dinner I'm cooking tonight will taste good"],
-      "expected_clarification_topics": ["what_slap_means", "cooking_or_restaurant", "when"],
+      "simulated_clarifications": [
+        "I mean the dinner I'm cooking tonight will taste good"
+      ],
+      "expected_clarification_topics": [
+        "what_slap_means",
+        "cooking_or_restaurant",
+        "when"
+      ],
       "expected_post_clarification_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+        "categorizer": {
+          "expected_category": "human_only"
+        }
       },
-      "evaluation_rubric": "Level 3: slang ('slap' = taste good), implicit context (cooking vs restaurant). IMPORTANT: category stays human_only — taste is subjective."
+      "evaluation_rubric": "Level 3: slang ('slap' = taste good), implicit context (cooking vs restaurant). IMPORTANT: category stays human_only \u2014 taste is subjective."
     },
     {
       "id": "fuzzy-017",
       "fuzzy_text": "The crypto thing will moon soon",
       "base_prediction_id": "base-014",
       "fuzziness_level": 3,
-      "simulated_clarifications": ["I mean Bitcoin will exceed $150,000 USD by December 31, 2026"],
-      "expected_clarification_topics": ["cryptocurrency", "price_target", "timeframe"],
+      "simulated_clarifications": [
+        "I mean Bitcoin will exceed $150,000 USD by December 31, 2026"
+      ],
+      "expected_clarification_topics": [
+        "cryptocurrency",
+        "price_target",
+        "timeframe"
+      ],
       "expected_post_clarification_outputs": {
-        "categorizer": {"expected_category": "automatable"}
+        "categorizer": {
+          "expected_category": "automatable"
+        }
       },
       "evaluation_rubric": "Level 3: crypto slang ('moon' = price increase dramatically), vague subject ('the crypto thing'), vague timeframe ('soon'). After clarification, converges to automatable."
     },
@@ -1432,10 +2456,18 @@
       "fuzzy_text": "Weather's gonna be fire this weekend",
       "base_prediction_id": "base-042",
       "fuzziness_level": 3,
-      "simulated_clarifications": ["I mean it'll be nice out — sunny and above 75°F on Saturday and Sunday"],
-      "expected_clarification_topics": ["what_fire_means", "location", "specific_criteria"],
+      "simulated_clarifications": [
+        "I mean it'll be nice out \u2014 sunny and above 75\u00b0F on Saturday and Sunday"
+      ],
+      "expected_clarification_topics": [
+        "what_fire_means",
+        "location",
+        "specific_criteria"
+      ],
       "expected_post_clarification_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+        "categorizer": {
+          "expected_category": "human_only"
+        }
       },
       "evaluation_rubric": "Level 3: slang ('fire' = great/amazing), no location, subjective criteria. Even after partial clarification, 'nice' remains somewhat subjective. Boundary case fuzzy variant."
     },
@@ -1444,46 +2476,79 @@
       "fuzzy_text": "Fido's gonna wreck that thing in like no time",
       "base_prediction_id": "base-035",
       "fuzziness_level": 3,
-      "simulated_clarifications": ["My dog Fido will destroy his new toy within an hour"],
-      "expected_clarification_topics": ["who_fido_is", "what_thing", "what_wreck_means", "timeframe"],
+      "simulated_clarifications": [
+        "My dog Fido will destroy his new toy within an hour"
+      ],
+      "expected_clarification_topics": [
+        "who_fido_is",
+        "what_thing",
+        "what_wreck_means",
+        "timeframe"
+      ],
       "expected_post_clarification_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+        "categorizer": {
+          "expected_category": "human_only"
+        }
       },
-      "evaluation_rubric": "Level 3: informal language, implicit subject (pet), vague object ('that thing'), vague timeframe ('no time'). IMPORTANT: category stays human_only — physical observation required."
+      "evaluation_rubric": "Level 3: informal language, implicit subject (pet), vague object ('that thing'), vague timeframe ('no time'). IMPORTANT: category stays human_only \u2014 physical observation required."
     },
     {
       "id": "fuzzy-020",
       "fuzzy_text": "She's totally gonna text back quick",
       "base_prediction_id": "base-029",
       "fuzziness_level": 3,
-      "simulated_clarifications": ["My friend Sarah, I texted her about plans, I think she'll reply within an hour"],
-      "expected_clarification_topics": ["who_she_is", "what_context", "timeframe"],
+      "simulated_clarifications": [
+        "My friend Sarah, I texted her about plans, I think she'll reply within an hour"
+      ],
+      "expected_clarification_topics": [
+        "who_she_is",
+        "what_context",
+        "timeframe"
+      ],
       "expected_post_clarification_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+        "categorizer": {
+          "expected_category": "human_only"
+        }
       },
-      "evaluation_rubric": "Level 3: vague subject ('she'), informal language ('totally gonna'), vague timeframe ('quick'). After clarification, still human_only — personal communication behavior requires human observation."
+      "evaluation_rubric": "Level 3: vague subject ('she'), informal language ('totally gonna'), vague timeframe ('quick'). After clarification, still human_only \u2014 personal communication behavior requires human observation."
     },
     {
       "id": "fuzzy-021",
       "fuzzy_text": "That launch thing is happening any day now",
       "base_prediction_id": "base-026",
       "fuzziness_level": 3,
-      "simulated_clarifications": ["The next SpaceX Starship launch, I think it'll happen before May 1, 2026"],
-      "expected_clarification_topics": ["which_launch", "what_company", "timeframe"],
+      "simulated_clarifications": [
+        "The next SpaceX Starship launch, I think it'll happen before May 1, 2026"
+      ],
+      "expected_clarification_topics": [
+        "which_launch",
+        "what_company",
+        "timeframe"
+      ],
       "expected_post_clarification_outputs": {
-        "categorizer": {"expected_category": "automatable"}
+        "categorizer": {
+          "expected_category": "automatable"
+        }
       },
-      "evaluation_rubric": "Level 3: vague subject ('that launch thing'), vague timeframe ('any day now'). After clarification, converges to automatable — launch data exists but no tool registered."
+      "evaluation_rubric": "Level 3: vague subject ('that launch thing'), vague timeframe ('any day now'). After clarification, converges to automatable \u2014 launch data exists but no tool registered."
     },
     {
       "id": "fuzzy-022",
       "fuzzy_text": "The blossoms are gonna pop early this year",
       "base_prediction_id": "base-025",
       "fuzziness_level": 3,
-      "simulated_clarifications": ["The cherry blossoms in Washington DC, I think they'll reach peak bloom before April 10"],
-      "expected_clarification_topics": ["which_blossoms", "location", "what_early_means"],
+      "simulated_clarifications": [
+        "The cherry blossoms in Washington DC, I think they'll reach peak bloom before April 10"
+      ],
+      "expected_clarification_topics": [
+        "which_blossoms",
+        "location",
+        "what_early_means"
+      ],
       "expected_post_clarification_outputs": {
-        "categorizer": {"expected_category": "automatable"}
+        "categorizer": {
+          "expected_category": "automatable"
+        }
       },
       "evaluation_rubric": "Level 3: informal ('gonna pop'), vague subject ('the blossoms'), vague criteria ('early'). After clarification with specific location and date, converges to automatable."
     },
@@ -1492,12 +2557,20 @@
       "fuzzy_text": "My students are gonna nail it",
       "base_prediction_id": "base-037",
       "fuzziness_level": 2,
-      "simulated_clarifications": ["80% of my students will pass the final exam"],
-      "expected_clarification_topics": ["what_nail_means", "which_assessment", "what_threshold"],
+      "simulated_clarifications": [
+        "80% of my students will pass the final exam"
+      ],
+      "expected_clarification_topics": [
+        "what_nail_means",
+        "which_assessment",
+        "what_threshold"
+      ],
       "expected_post_clarification_outputs": {
-        "categorizer": {"expected_category": "human_only"}
+        "categorizer": {
+          "expected_category": "human_only"
+        }
       },
-      "evaluation_rubric": "Level 2: vague criteria ('nail it'), missing assessment type and threshold. IMPORTANT: category stays human_only — private educational data."
+      "evaluation_rubric": "Level 2: vague criteria ('nail it'), missing assessment type and threshold. IMPORTANT: category stays human_only \u2014 private educational data."
     }
   ]
 }

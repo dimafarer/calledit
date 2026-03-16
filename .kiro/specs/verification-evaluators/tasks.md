@@ -6,19 +6,19 @@ Add verification-quality measurement to CalledIt's eval framework: extend the go
 
 ## Tasks
 
-- [ ] 1. Golden Dataset V3 Schema Extension
-  - [ ] 1.1 Add v3 fields to `GroundTruthMetadata` dataclass and validation in `golden_dataset.py`
+- [x] 1. Golden Dataset V3 Schema Extension
+  - [x] 1.1 Add v3 fields to `GroundTruthMetadata` dataclass and validation in `golden_dataset.py`
     - Add `expected_verification_criteria: List[str]` and `expected_verification_method: str` to `GroundTruthMetadata`
     - Update `_validate_ground_truth()` to require both fields on base predictions: `expected_verification_criteria` must be a non-empty list of strings, `expected_verification_method` must be a non-empty string
     - Raise `ValueError` with prediction ID and field name when validation fails
     - Update `SUPPORTED_SCHEMA_VERSION` to `"3.0"`
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6_
 
-  - [ ] 1.2 Update serialization and dataset_to_dict in `golden_dataset.py`
+  - [x] 1.2 Update serialization and dataset_to_dict in `golden_dataset.py`
     - Update `_serialize_base()` to include `expected_verification_criteria` and `expected_verification_method` in the serialized `ground_truth` dict
     - _Requirements: 1.7_
 
-  - [ ] 1.3 Update `eval/validate_dataset.py` to validate v3 fields
+  - [x] 1.3 Update `eval/validate_dataset.py` to validate v3 fields
     - Add validation checks for `expected_verification_criteria` and `expected_verification_method` in the validation script
     - Report errors for any test case missing or having invalid v3 fields
     - _Requirements: 1.8_
@@ -36,8 +36,8 @@ Add verification-quality measurement to CalledIt's eval framework: extend the go
     - Test file: `backend/calledit-backend/tests/strands_make_call/test_verification_evaluators.py`
     - **Validates: Requirements 1.7**
 
-- [ ] 2. Golden Dataset V3 Content Population
-  - [ ] 2.1 Populate `expected_verification_criteria` and `expected_verification_method` for all 45 base predictions in `eval/golden_dataset.json`
+- [x] 2. Golden Dataset V3 Content Population
+  - [x] 2.1 Populate `expected_verification_criteria` and `expected_verification_method` for all 45 base predictions in `eval/golden_dataset.json`
     - Update `schema_version` and `dataset_version` to `"3.0"`
     - For each base prediction, add `expected_verification_criteria` (list of checkable true/false conditions capturing the factual claim without framing language) and `expected_verification_method` (concrete verification approach referencing specific data sources, tools, or observation methods)
     - Predictions with framing language: criteria must capture the underlying factual claim
@@ -45,18 +45,18 @@ Add verification-quality measurement to CalledIt's eval framework: extend the go
     - Predictions requiring human observation: method must describe the manual approach
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 3. Checkpoint — Validate dataset loads cleanly
+- [x] 3. Checkpoint — Validate dataset loads cleanly
   - Ensure all tests pass, ask the user if questions arise.
   - Run `_validate_ground_truth()` on the updated dataset to confirm all 45 base predictions pass v3 validation
 
-- [ ] 4. Add Strands Evals SDK dependency
-  - [ ] 4.1 Add `strands-agents-evals` to root `requirements.txt`
+- [x] 4. Add Strands Evals SDK dependency
+  - [x] 4.1 Add `strands-agents-evals` to root `requirements.txt`
     - Add `strands-agents-evals` as a development dependency in the root `requirements.txt`
     - Install via `/home/wsluser/projects/calledit/venv/bin/pip install -r requirements.txt`
     - _Requirements: 5.1_
 
-- [ ] 5. Implement IntentPreservation Evaluator
-  - [ ] 5.1 Create `evaluators/intent_preservation.py`
+- [x] 5. Implement IntentPreservation Evaluator
+  - [x] 5.1 Create `evaluators/intent_preservation.py`
     - Implement `evaluate_intent_preservation(prediction_text, vb_criteria, expected_criteria, judge_model)` function
     - Instantiate Strands Evals SDK `OutputEvaluator` with rubric string, model ID, and `include_inputs=True`
     - Rubric: score semantic equivalence between VB criteria and expected criteria, penalize framing language retention
@@ -78,8 +78,8 @@ Add verification-quality measurement to CalledIt's eval framework: extend the go
     - Test file: `backend/calledit-backend/tests/strands_make_call/test_verification_evaluators.py`
     - **Validates: Requirements 3.6**
 
-- [ ] 6. Implement CriteriaMethodAlignment Evaluator
-  - [ ] 6.1 Create `evaluators/criteria_method_alignment.py`
+- [x] 6. Implement CriteriaMethodAlignment Evaluator
+  - [x] 6.1 Create `evaluators/criteria_method_alignment.py`
     - Implement `evaluate_criteria_method_alignment(vb_criteria, vb_method, expected_method, judge_model)` function
     - Instantiate Strands Evals SDK `OutputEvaluator` with rubric string, model ID, and `include_inputs=True`
     - Rubric: score whether method provides realistic, actionable plan to verify criteria; penalize "ask the user" as primary approach when public sources exist
@@ -101,31 +101,31 @@ Add verification-quality measurement to CalledIt's eval framework: extend the go
     - Test file: `backend/calledit-backend/tests/strands_make_call/test_verification_evaluators.py`
     - **Validates: Requirements 4.6**
 
-- [ ] 7. Recalibrate ReasoningQuality VB Rubric
-  - [ ] 7.1 Update `verification_builder` rubric in `evaluators/reasoning_quality.py`
+- [x] 7. Recalibrate ReasoningQuality VB Rubric
+  - [x] 7.1 Update `verification_builder` rubric in `evaluators/reasoning_quality.py`
     - Replace the current `verification_builder` entry in `JUDGE_PROMPTS` with a rubric focused on whether the verification plan would succeed
     - New scoring anchors: 1.0 = specific data sources and timing; 0.7 = correct approach but vague sources; 0.4 = generic plan; 0.0 = plan would fail
     - Leave `categorizer` and `review` rubrics unchanged
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 5.5_
 
-- [ ] 8. Checkpoint — Evaluators ready
+- [x] 8. Checkpoint — Evaluators ready
   - Ensure all tests pass, ask the user if questions arise.
   - Verify both new evaluator modules import cleanly and existing evaluators still work
 
-- [ ] 9. Eval Runner Integration
-  - [ ] 9.1 Update `_evaluate_base_prediction()` in `eval_runner.py` to invoke new evaluators
+- [-] 9. Eval Runner Integration
+  - [x] 9.1 Update `_evaluate_base_prediction()` in `eval_runner.py` to invoke new evaluators
     - When `use_judge=True`, invoke `evaluate_intent_preservation()` with `prediction_text`, VB criteria from result, and `ground_truth.expected_verification_criteria`
     - When `use_judge=True`, invoke `evaluate_criteria_method_alignment()` with VB criteria from result, VB method from result, and `ground_truth.expected_verification_method`
     - Store results in `scores["IntentPreservation"]` and `scores["CriteriaMethodAlignment"]`
     - Write judge reasoning to DDB reasoning store for both evaluators (same pattern as existing ReasoningQuality writes)
     - _Requirements: 7.1, 7.2, 7.3, 7.5_
 
-  - [ ] 9.2 Update `_aggregate_report()` in `eval_runner.py` to compute verification quality averages
+  - [x] 9.2 Update `_aggregate_report()` in `eval_runner.py` to compute verification quality averages
     - Compute average `IntentPreservation` and `CriteriaMethodAlignment` scores across all test cases
     - Include in report under `verification_quality_aggregates` with keys `intent_preservation_avg` and `criteria_method_alignment_avg`
     - _Requirements: 7.4, 7.6_
 
-  - [ ] 9.3 Update `print_report()` in `eval_runner.py` to display new scores
+  - [x] 9.3 Update `print_report()` in `eval_runner.py` to display new scores
     - Display IntentPreservation and CriteriaMethodAlignment average scores in console output
     - _Requirements: 7.7_
 
@@ -141,24 +141,24 @@ Add verification-quality measurement to CalledIt's eval framework: extend the go
     - Test file: `backend/calledit-backend/tests/strands_make_call/test_verification_evaluators.py`
     - **Validates: Requirements 7.4, 7.6**
 
-- [ ] 10. Dashboard Updates
-  - [ ] 10.1 Update heatmap `_is_judge_evaluator()` in `eval/dashboard/pages/heatmap.py`
+- [-] 10. Dashboard Updates
+  - [x] 10.1 Update heatmap `_is_judge_evaluator()` in `eval/dashboard/pages/heatmap.py`
     - Update `_is_judge_evaluator()` to recognize `IntentPreservation` and `CriteriaMethodAlignment` as judge evaluators (right side of deterministic/judge separator)
     - The heatmap already dynamically discovers evaluator columns from `evaluator_scores` keys, so no matrix changes needed
     - _Requirements: 8.2_
 
-  - [ ] 10.2 Update trends page in `eval/dashboard/pages/trends.py`
+  - [x] 10.2 Update trends page in `eval/dashboard/pages/trends.py`
     - Add IntentPreservation and CriteriaMethodAlignment average score trend lines sourced from `verification_quality_aggregates` in run summaries
     - Handle runs that predate the new evaluators (skip missing metrics gracefully)
     - _Requirements: 8.1_
 
-  - [ ] 10.3 Update reasoning explorer in `eval/dashboard/pages/reasoning_explorer.py`
+  - [x] 10.3 Update reasoning explorer in `eval/dashboard/pages/reasoning_explorer.py`
     - Display IntentPreservation and CriteriaMethodAlignment judge reasoning when drilling into a test case
     - Source from DDB `judge_reasoning#<test_case_id>#IntentPreservation` and `judge_reasoning#<test_case_id>#CriteriaMethodAlignment` records
     - Show "No reasoning available" when records don't exist for older runs
     - _Requirements: 8.3_
 
-  - [ ] 10.4 Update data loader in `eval/dashboard/data_loader.py` for backward compatibility
+  - [x] 10.4 Update data loader in `eval/dashboard/data_loader.py` for backward compatibility
     - Ensure `_normalize_test_result()` and `_normalize_run_summary()` handle runs with and without new evaluator scores without raising exceptions
     - Missing scores render as "N/A" in dashboard, not 0 or error
     - _Requirements: 8.4, 8.5_
@@ -175,7 +175,7 @@ Add verification-quality measurement to CalledIt's eval framework: extend the go
     - Test file: `backend/calledit-backend/tests/strands_make_call/test_verification_evaluators.py`
     - **Validates: Requirements 8.5**
 
-- [ ] 11. Final checkpoint — Full integration
+- [x] 11. Final checkpoint — Full integration
   - Ensure all tests pass, ask the user if questions arise.
   - Verify existing evaluators (`CategoryMatch`, `JSONValidity`, `ClarificationQuality`, `Convergence`, `ReasoningQuality` for categorizer/review) remain unchanged and functional
 

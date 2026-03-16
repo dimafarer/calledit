@@ -115,3 +115,34 @@ def render(runs: list[dict]):
             hovermode="x unified",
         )
         st.plotly_chart(fig_cat, use_container_width=True)
+
+    # --- Verification quality chart (v3 evaluators) ---
+    ip_values = [
+        r.get("verification_quality_aggregates", {}).get("intent_preservation_avg")
+        for r in sorted_runs
+    ]
+    cma_values = [
+        r.get("verification_quality_aggregates", {}).get("criteria_method_alignment_avg")
+        for r in sorted_runs
+    ]
+    # Only show if at least one run has verification quality data
+    if any(v is not None for v in ip_values + cma_values):
+        fig_vq = go.Figure()
+        fig_vq.add_trace(go.Scatter(
+            x=timestamps, y=ip_values,
+            mode="lines+markers", name="IntentPreservation",
+            connectgaps=True,
+        ))
+        fig_vq.add_trace(go.Scatter(
+            x=timestamps, y=cma_values,
+            mode="lines+markers", name="CriteriaMethodAlignment",
+            connectgaps=True,
+        ))
+        fig_vq.update_layout(
+            title="Verification Quality Over Time",
+            xaxis_title="Run",
+            yaxis_title="Average Score",
+            yaxis=dict(range=[0, 1.05]),
+            hovermode="x unified",
+        )
+        st.plotly_chart(fig_vq, use_container_width=True)

@@ -91,6 +91,39 @@ def _evaluate_base_prediction(
         except Exception as e:
             logger.warning(f"Judge evaluator failed: {e}")
 
+        # V3: Verification-centric evaluators (Strands Evals SDK)
+        try:
+            from evaluators.intent_preservation import evaluate_intent_preservation
+            from evaluators.criteria_method_alignment import evaluate_criteria_method_alignment
+            import json as _json
+
+            # Extract VB output — may be a dict or JSON string
+            vb_output = result.get("verification_builder", {})
+            if isinstance(vb_output, str):
+                try:
+                    vb_output = _json.loads(vb_output)
+                except _json.JSONDecodeError:
+                    vb_output = {}
+
+            vb_method = vb_output.get("verification_method", {})
+            vb_criteria = vb_method.get("criteria", [])
+
+            # Ground truth v3 fields
+            gt = bp.ground_truth
+            expected_criteria = gt.expected_verification_criteria
+            expected_method = gt.expected_verification_method
+
+            if expected_criteria:
+                scores["IntentPreservation"] = evaluate_intent_preservation(
+                    bp.prediction_text, vb_criteria, expected_criteria
+                )
+            if expected_method:
+                scores["CriteriaMethodAlignment"] = evaluate_criteria_method_alignment(
+                    vb_criteria, vb_method, expected_method
+                )
+        except Exception as e:
+            logger.warning(f"Verification evaluators failed: {e}")
+
     return scores
 
 
@@ -176,6 +209,23 @@ def _aggregate_report(test_results: list, manifest: dict,
     total = len(test_results) if test_results else 1
     overall_pass_rate = passed / total
 
+    # V3: Verification quality averages
+    ip_scores = []
+    cma_scores = []
+    for tr in test_results:
+        scores = tr.get("evaluator_scores", {})
+        ip = scores.get("IntentPreservation", {})
+        if isinstance(ip, dict) and "score" in ip:
+            ip_scores.append(ip["score"])
+        cma = scores.get("CriteriaMethodAlignment", {})
+        if isinstance(cma, dict) and "score" in cma:
+            cma_scores.append(cma["score"])
+
+    verification_quality_aggregates = {
+        "intent_preservation_avg": sum(ip_scores) / len(ip_scores) if ip_scores else None,
+        "criteria_method_alignment_avg": sum(cma_scores) / len(cma_scores) if cma_scores else None,
+    }
+
     return {
         "timestamp": timestamp,
         "schema_version": schema_version,
@@ -185,6 +235,7 @@ def _aggregate_report(test_results: list, manifest: dict,
         "per_test_case_scores": test_results,
         "per_agent_aggregates": per_agent_aggregates,
         "per_category_accuracy": per_category_accuracy,
+        "verification_quality_aggregates": verification_quality_aggregates,
         "overall_pass_rate": round(overall_pass_rate, 4),
         "total_tests": len(test_results),
         "passed": passed,
@@ -397,6 +448,17 @@ def print_report(report: dict):
     print(f"\nPer-agent JSON validity:")
     for agent, metrics in report.get("per_agent_aggregates", {}).items():
         print(f"  {agent}: {metrics.get('json_validity_avg', 0):.0%}")
+
+    # V3: Verification quality averages
+    vqa = report.get("verification_quality_aggregates", {})
+    ip_avg = vqa.get("intent_preservation_avg")
+    cma_avg = vqa.get("criteria_method_alignment_avg")
+    if ip_avg is not None or cma_avg is not None:
+        print(f"\nVerification quality:")
+        if ip_avg is not None:
+            print(f"  IntentPreservation avg: {ip_avg:.2f}")
+        if cma_avg is not None:
+            print(f"  CriteriaMethodAlignment avg: {cma_avg:.2f}")
 
     # Show failures
     failures = [tr for tr in report.get("per_test_case_scores", []) if tr.get("error")]

@@ -39,6 +39,19 @@ def render(run_detail: dict, loader: EvalDataLoader):
     if score_rows:
         st.table(score_rows)
 
+    # Verification evaluator reasoning (embedded in scores, not DDB)
+    verification_evaluators = ["IntentPreservation", "CriteriaMethodAlignment"]
+    ve_found = False
+    for ve_name in verification_evaluators:
+        ve_score = scores.get(ve_name, {})
+        if isinstance(ve_score, dict) and "judge_reasoning" in ve_score:
+            if not ve_found:
+                st.subheader("Verification Evaluator Reasoning")
+                ve_found = True
+            with st.expander(f"🔍 {ve_name} (score: {ve_score.get('score', '?')})", expanded=False):
+                st.markdown(f"**Model:** {ve_score.get('judge_model', '?')}")
+                st.text(ve_score.get("judge_reasoning", ""))
+
     # Agent outputs (DDB only)
     st.subheader("Agent Outputs")
     if not loader.is_ddb_available():
