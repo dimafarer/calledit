@@ -135,6 +135,13 @@ Spec 2 (vb-prompt-iteration): Iterate on VB prompt using new evaluators. Depends
 ### Decision 46: Judge Rubric Recalibration
 The current ReasoningQuality judge may be optimizing for essay quality rather than verification executability. The question "is the reasoning well-written?" should become "would this verification plan succeed at verifying the prediction?" This is a rubric change, not a code change — and maps naturally to Strands `OutputEvaluator` with a targeted rubric.
 
+### Decision 47: Vague Predictions — Operationalize vs Acknowledge
+Two types of vague predictions require different VB behavior:
+1. **Operationalizable vague terms** ("nice weather", "taste good", "go well"): The VB should auto-fill reasonable measurable thresholds for round 1 (e.g., 60-80°F, sunny, low wind for "nice weather") and the ReviewAgent should ask clarification questions to validate those assumptions ("Do you consider 60°F a nice day? Is sunshine important to you?"). The golden dataset expected_verification_criteria should reflect the operationalized version, not "ask the user."
+2. **Truly subjective / unobservable** ("feel happy", "enjoy the movie"): No external proxy exists. The VB should keep these human_only and the ReviewAgent should ask questions that might lead to a verifiable reformulation ("What would make you feel happy? Getting 8 hours of sleep?"). The golden dataset expected_verification_criteria should reflect the self-report approach.
+
+The IntentPreservation evaluator rubric was updated to reward operationalization of vague terms rather than penalizing it. The golden dataset ground truth for operationalizable predictions (starting with base-042) was updated to expect measurable conditions.
+
 ## What the Next Agent Should Do
 
 1. Execute `.kiro/specs/verification-evaluators/` — the verification-centric evaluators spec

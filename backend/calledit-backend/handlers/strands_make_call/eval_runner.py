@@ -97,15 +97,14 @@ def _evaluate_base_prediction(
             from evaluators.criteria_method_alignment import evaluate_criteria_method_alignment
             import json as _json
 
-            # Extract VB output — may be a dict or JSON string
-            vb_output = result.get("verification_builder", {})
-            if isinstance(vb_output, str):
+            # The result dict IS the pipeline output — VB fields are at top level
+            # (same as how reasoning_quality.py accesses result.get("verification_method"))
+            vb_method = result.get("verification_method", {})
+            if isinstance(vb_method, str):
                 try:
-                    vb_output = _json.loads(vb_output)
+                    vb_method = _json.loads(vb_method)
                 except _json.JSONDecodeError:
-                    vb_output = {}
-
-            vb_method = vb_output.get("verification_method", {})
+                    vb_method = {}
             vb_criteria = vb_method.get("criteria", [])
 
             # Ground truth v3 fields
@@ -117,10 +116,12 @@ def _evaluate_base_prediction(
                 scores["IntentPreservation"] = evaluate_intent_preservation(
                     bp.prediction_text, vb_criteria, expected_criteria
                 )
+                logger.info(f"IntentPreservation for {bp.id}: {scores['IntentPreservation'].get('score', '?')}")
             if expected_method:
                 scores["CriteriaMethodAlignment"] = evaluate_criteria_method_alignment(
                     vb_criteria, vb_method, expected_method
                 )
+                logger.info(f"CriteriaMethodAlignment for {bp.id}: {scores['CriteriaMethodAlignment'].get('score', '?')}")
         except Exception as e:
             logger.warning(f"Verification evaluators failed: {e}")
 

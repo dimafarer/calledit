@@ -24,13 +24,18 @@ Key principles:
 - Framing language ("I bet", "I think", "I predict") is NOT intent.
   "I bet the sun rises tomorrow" → intent is "the sun will rise tomorrow"
 - The criteria should be checkable true/false conditions, not opinions
-- The criteria must preserve the factual claim without adding or losing meaning
+- The criteria must preserve the factual claim without losing meaning
+- IMPORTANT: When a prediction uses vague or subjective language ("nice weather",
+  "taste good", "go well"), the criteria SHOULD operationalize it into measurable
+  conditions (e.g., temperature ranges, specific observable outcomes). This is
+  intent preservation through clarification, not intent distortion. The VB's job
+  is to make vague predictions verifiable.
 - Compare the actual criteria against the expected criteria for semantic equivalence
 
 Scoring:
-- 1.0: Criteria captures the factual claim accurately, strips framing, matches expected criteria
-- 0.8: Criteria captures the core claim but minor wording differences from expected
-- 0.5: Criteria partially captures intent but includes framing language or misses nuance
+- 1.0: Criteria captures the claim accurately, strips framing, operationalizes vague terms into measurable conditions
+- 0.8: Criteria captures the core claim with minor differences from expected
+- 0.5: Criteria partially captures intent but misses key nuance or is too literal
 - 0.3: Criteria captures a related but different claim than what the user predicted
 - 0.0: Criteria misrepresents the prediction or is completely wrong
 """

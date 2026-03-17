@@ -116,6 +116,66 @@
       "overall_pass_rate": 0.3529,
       "total_tests": 68,
       "passed": 24
+    },
+    {
+      "timestamp": "2026-03-16T21:41:28Z",
+      "eval_run_id": "51b4c2ae-d76f-4f06-a862-3e4e74324338",
+      "prompt_version_manifest": {
+        "parser": "1",
+        "categorizer": "2",
+        "vb": "1",
+        "review": "1"
+      },
+      "dataset_version": "3.0",
+      "per_agent_aggregates": {
+        "parser": {
+          "json_validity_avg": 0.9705882352941176
+        },
+        "categorizer": {
+          "json_validity_avg": 1.0
+        },
+        "vb": {
+          "json_validity_avg": 1.0
+        }
+      },
+      "per_category_accuracy": {
+        "auto_verifiable": 1.0,
+        "automatable": 0.8571428571428571,
+        "human_only": 1.0
+      },
+      "overall_pass_rate": 0.3382,
+      "total_tests": 68,
+      "passed": 23
+    },
+    {
+      "timestamp": "2026-03-16T23:50:28Z",
+      "eval_run_id": "c09a55bb-baed-4b19-9860-38b6a3bcacfe",
+      "prompt_version_manifest": {
+        "parser": "1",
+        "categorizer": "1",
+        "vb": "1",
+        "review": "1"
+      },
+      "dataset_version": "3.0",
+      "per_agent_aggregates": {
+        "parser": {
+          "json_validity_avg": 0.9705882352941176
+        },
+        "categorizer": {
+          "json_validity_avg": 1.0
+        },
+        "vb": {
+          "json_validity_avg": 1.0
+        }
+      },
+      "per_category_accuracy": {
+        "auto_verifiable": 1.0,
+        "automatable": 0.8571428571428571,
+        "human_only": 0.8235294117647058
+      },
+      "overall_pass_rate": 0.3382,
+      "total_tests": 68,
+      "passed": 23
     }
   ]
 }

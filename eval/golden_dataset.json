@@ -1967,9 +1967,10 @@
         ],
         "verification_timing": "Scheduled prompt: send verification question Sunday evening after the weekend has passed.",
         "expected_verification_criteria": [
-          "The user subjectively assesses the weekend weather as 'nice'"
+          "Weekend weather conditions meet reasonable 'nice weather' thresholds: temperature between 60-80°F, precipitation probability below 30%, and wind speed below 15 mph",
+          "If user has stated personal preferences for 'nice weather', use those thresholds instead of defaults"
         ],
-        "expected_verification_method": "Ask the user after the weekend for their weather assessment. While weather data is publicly available, 'nice' is a subjective judgment \u2014 what constitutes nice weather varies by person. The prediction's intent is subjective satisfaction, not an objective weather metric."
+        "expected_verification_method": "Check weather forecast or actual conditions for the weekend using a weather service. Apply default 'nice weather' thresholds (moderate temperature, low precipitation, low wind) or user-specified preferences if available. The VB should operationalize 'nice' into measurable conditions rather than leaving it as a subjective assessment."
       },
       "dimension_tags": {
         "domain": "weather",
