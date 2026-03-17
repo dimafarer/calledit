@@ -187,6 +187,50 @@ Resources:
                 - Measurable and objective
                 - Realistic and achievable
 
+                HANDLING VAGUE OR SUBJECTIVE PREDICTIONS:
+
+                When a prediction uses vague language ("nice weather", "go well", "taste good"),
+                apply the appropriate strategy:
+
+                Track 1 — Operationalize (when external proxies exist):
+                Convert the vague term into specific, measurable conditions with default thresholds.
+                State your assumptions explicitly in the criteria.
+                Flag assumptions for the ReviewAgent to validate via clarification questions.
+
+                  Example: "It'll be nice out this weekend"
+                  → criteria: ["Temperature between 60-80°F, precipitation probability below 30%,
+                     and wind speed under 15 mph on Saturday and Sunday
+                     (assuming 'nice' means warm, dry, and calm — ReviewAgent should validate
+                     these thresholds with the user)"]
+                  → source: ["weather forecast service (e.g., weather.gov, OpenWeatherMap)"]
+                  → steps: ["Query weather forecast for the user's location for Saturday and Sunday",
+                     "Check temperature, precipitation probability, and wind speed against thresholds",
+                     "All three conditions must be met on at least one of the two days"]
+
+                Track 2 — Self-report (when no external proxy exists):
+                For truly subjective internal states (emotions, taste, enjoyment), use a structured
+                self-report plan with specific timing and a concrete yes/no prompt.
+
+                  Example: "I will feel happy when I wake up tomorrow morning"
+                  → criteria: ["User self-reports feeling happy upon waking tomorrow morning"]
+                  → source: ["user self-report"]
+                  → steps: ["Schedule verification prompt for tomorrow at 8am",
+                     "Send prompt: 'You predicted you would feel happy when you woke up. Are you feeling happy? (yes/no)'",
+                     "Record the self-assessment as the verification outcome"]
+
+                SPECIFICITY MATCHING:
+
+                Your criteria must match the specificity of the original prediction:
+                - Do NOT add conditions the prediction did not state.
+                  Bad: prediction says "after 6pm" → criteria says "before or after 6pm"
+                - Do NOT omit conditions the prediction did state.
+                  Bad: prediction says "at least 70°F" → criteria drops the 70°F threshold
+                - Preserve directional claims exactly.
+
+                  Example: "The S&P 500 will close higher today"
+                  → criteria: ["S&P 500 closing price today > S&P 500 closing price yesterday"]
+                  NOT: ["S&P 500 closing price today differs from yesterday"]
+
                 IMPORTANT: All three fields (source, criteria, steps) must be lists, not single strings.
 
                 Return ONLY the raw JSON object. Do not wrap in markdown code blocks. Do not include any text before or after the JSON.
@@ -210,6 +254,13 @@ Resources:
     Properties:
       PromptArn: !GetAtt VBPrompt.Arn
       Description: "v1 — initial migration from hardcoded VERIFICATION_BUILDER_SYSTEM_PROMPT"
+
+  VBPromptVersionV2:
+    Type: AWS::Bedrock::PromptVersion
+    DependsOn: VBPromptVersion
+    Properties:
+      PromptArn: !GetAtt VBPrompt.Arn
+      Description: "v2 — operationalization instructions and specificity matching"
 
   # =========================================================================
   # REVIEW PROMPT
@@ -250,6 +301,22 @@ Resources:
                 - Would additional context change the verifiability category?
                 - What specific user information would be most helpful?
 
+                OPERATIONALIZATION VALIDATION:
+
+                When the Verification Builder has operationalized a vague term (converted it into
+                measurable conditions with assumed thresholds), you MUST:
+
+                1. Identify each operationalization assumption (e.g., "assuming 'nice weather' means 60-80°F")
+                2. Generate specific clarification questions that validate those assumptions:
+                   - Good: "Do you consider 60°F a nice day, or is your threshold higher?"
+                   - Bad: "Can you be more specific about what you mean?"
+                3. For truly subjective predictions, ask questions that could lead to verifiable
+                   reformulations:
+                   - "What would make the meeting 'go well' for you — decisions made? No conflicts?
+                     Finishing on time?"
+                   - "What does 'enjoy' mean for you with movies — entertainment value? Emotional
+                     impact? Not falling asleep?"
+
                 Return ONLY the raw JSON object. Do not wrap in markdown code blocks. Do not include any text before or after the JSON.
 
                 {
@@ -268,6 +335,13 @@ Resources:
     Properties:
       PromptArn: !GetAtt ReviewPrompt.Arn
       Description: "v1 — initial migration from hardcoded REVIEW_SYSTEM_PROMPT"
+
+  ReviewPromptVersionV2:
+    Type: AWS::Bedrock::PromptVersion
+    DependsOn: ReviewPromptVersion
+    Properties:
+      PromptArn: !GetAtt ReviewPrompt.Arn
+      Description: "v2 — operationalization validation questions"
 
 Outputs:
   ParserPromptId:

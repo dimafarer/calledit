@@ -121,3 +121,4 @@ qchats/
 # Eval reports (regenerable, accumulate with each run)
 # Keep score_history.json and charts/ tracked for portfolio
 eval/reports/
+backend/calledit-backend/handlers/strands_make_call/eval/reports/

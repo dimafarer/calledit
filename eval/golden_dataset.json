@@ -1,6 +1,6 @@
 {
   "schema_version": "3.0",
-  "dataset_version": "3.0",
+  "dataset_version": "3.1",
   "metadata": {
     "expected_base_count": 45,
     "expected_fuzzy_count": 23
@@ -1291,9 +1291,9 @@
         ],
         "verification_timing": "Scheduled prompt: send verification question at approximately 10-11pm on the evening of the movie, after the user has had time to watch and reflect.",
         "expected_verification_criteria": [
-          "The user reports a positive subjective experience after watching the movie they see tonight"
+          "User self-reports a positive experience after watching the movie tonight, answering 'yes' to: 'Did you enjoy the movie?' prompted within 30 minutes of the movie ending"
         ],
-        "expected_verification_method": "Ask the user after the movie whether they enjoyed it. This is a subjective assessment that only the user can provide \u2014 no tool or data source can determine personal enjoyment."
+        "expected_verification_method": "Schedule a self-report prompt for approximately 30 minutes after the estimated movie end time. Ask: 'You predicted you would enjoy the movie. Did you enjoy it? (yes/no)'. Enjoyment is a subjective internal state \u2014 only the viewer can assess it."
       },
       "dimension_tags": {
         "domain": "entertainment",
@@ -1337,9 +1337,9 @@
         ],
         "verification_timing": "Scheduled prompt: send verification question at 3pm tomorrow (1 hour after the 2pm meeting ends, allowing time for reflection).",
         "expected_verification_criteria": [
-          "The user assesses their team meeting at 2pm tomorrow as having gone well"
+          "The team meeting at 2pm tomorrow results in at least one concrete decision or action item, no unresolved conflicts requiring follow-up, and the user assesses it as productive (assuming 'go well' means productive outcomes \u2014 ReviewAgent should validate what 'well' means to this user)"
         ],
-        "expected_verification_method": "Ask the user after the meeting for their assessment. 'Going well' is a subjective judgment that only the meeting participant can evaluate \u2014 no external data source applies."
+        "expected_verification_method": "Prompt the user after the meeting (approximately 3pm tomorrow) to report: (1) were concrete decisions or action items produced? (2) were there unresolved conflicts? (3) overall, did it feel productive? Combines observable meeting outcomes with participant assessment."
       },
       "dimension_tags": {
         "domain": "work",
@@ -1427,9 +1427,9 @@
         ],
         "verification_timing": "Scheduled prompt: send verification question tomorrow morning at 8am, shortly after typical wake-up time.",
         "expected_verification_criteria": [
-          "The user reports feeling happy upon waking tomorrow morning"
+          "User self-reports feeling happy upon waking tomorrow morning, answering 'yes' to: 'Are you feeling happy this morning?' prompted at approximately 8am"
         ],
-        "expected_verification_method": "Ask the user tomorrow morning about their emotional state. Happiness is a subjective internal experience that only the user can report \u2014 no external measurement applies."
+        "expected_verification_method": "Schedule a self-report prompt for tomorrow at 8am. Ask: 'You predicted you would feel happy when you woke up. Are you feeling happy? (yes/no)'. Happiness is a subjective internal state \u2014 no external measurement applies."
       },
       "dimension_tags": {
         "domain": "personal",
@@ -1517,9 +1517,9 @@
         ],
         "verification_timing": "Scheduled prompt: send verification question the day after the birthday, giving time for the gift to be opened and the reaction observed.",
         "expected_verification_criteria": [
-          "The user's daughter expresses positive reaction (joy, excitement, gratitude) upon receiving her birthday present"
+          "The user reports that their daughter expressed clear positive reaction (joy, excitement, or enthusiastic gratitude) upon receiving the birthday present, answering 'yes' to: 'Did your daughter love the present?'"
         ],
-        "expected_verification_method": "Requires direct observation of the daughter's reaction at the time of gift-giving. Ask the user to report the daughter's response. Subjective assessment of another person's emotional reaction."
+        "expected_verification_method": "Prompt the user the day after the birthday to report the daughter's reaction. Ask: 'Did your daughter love the birthday present? (yes/no)'. This requires the user's observation and interpretation of another person's emotional response \u2014 no tool can assess this."
       },
       "dimension_tags": {
         "domain": "personal",
@@ -1607,9 +1607,9 @@
         ],
         "verification_timing": "Scheduled prompt: send verification question tonight at approximately 8-9pm, after dinner is cooked and eaten.",
         "expected_verification_criteria": [
-          "The user assesses the dinner they cook tonight as tasting good"
+          "User self-reports that the dinner tasted good after eating, answering 'yes' to: 'Did the dinner taste good?' prompted after the meal"
         ],
-        "expected_verification_method": "Ask the user after dinner for their taste assessment. Taste is a subjective sensory experience that only the person eating can evaluate \u2014 no tool applies."
+        "expected_verification_method": "Schedule a self-report prompt for tonight at approximately 9pm (after dinner). Ask: 'You predicted dinner would taste good. Did it? (yes/no)'. Taste is an inherently personal sensory experience \u2014 no external tool can assess it."
       },
       "dimension_tags": {
         "domain": "food",
@@ -1698,9 +1698,9 @@
         ],
         "verification_timing": "Scheduled prompt: send verification question late tonight (e.g., 11pm) after the user's gaming session.",
         "expected_verification_criteria": [
-          "The user successfully completes (beats/passes) the video game level they are attempting tonight"
+          "The user successfully completes (advances past) the video game level they are currently attempting, confirmed by the user reporting 'yes' to level completion before going to bed tonight"
         ],
-        "expected_verification_method": "Ask the user after their gaming session whether they beat the level. This is a personal activity outcome that only the user can report \u2014 no external data source tracks individual gaming progress."
+        "expected_verification_method": "Prompt the user late tonight (approximately 11pm) to report: 'Did you beat the game level tonight? (yes/no/didn't play)'. Level completion is a binary objective outcome tracked by the game itself, but not externally accessible \u2014 requires user confirmation."
       },
       "dimension_tags": {
         "domain": "entertainment",
@@ -1923,9 +1923,9 @@
         ],
         "verification_timing": "Scheduled prompt: send verification question after the user's next coding session, likely within hours.",
         "expected_verification_criteria": [
-          "The user's code compiles without errors on the first attempt"
+          "The user's code compiles without errors on the first compilation attempt, confirmed by the user reporting 'yes' to: 'Did your code compile on the first try?'"
         ],
-        "expected_verification_method": "Ask the user after they attempt compilation whether it succeeded on the first try. This is a personal development activity outcome that only the user can observe in real-time."
+        "expected_verification_method": "Prompt the user after their next coding session to report: 'Did your code compile on the first try? (yes/no)'. Compilation success is a binary objective outcome, but without a CI/CD tool in the tool manifest, it requires user self-report."
       },
       "dimension_tags": {
         "domain": "tech",
@@ -1967,7 +1967,7 @@
         ],
         "verification_timing": "Scheduled prompt: send verification question Sunday evening after the weekend has passed.",
         "expected_verification_criteria": [
-          "Weekend weather conditions meet reasonable 'nice weather' thresholds: temperature between 60-80°F, precipitation probability below 30%, and wind speed below 15 mph",
+          "Weekend weather conditions meet reasonable 'nice weather' thresholds: temperature between 60-80\u00b0F, precipitation probability below 30%, and wind speed below 15 mph",
           "If user has stated personal preferences for 'nice weather', use those thresholds instead of defaults"
         ],
         "expected_verification_method": "Check weather forecast or actual conditions for the weekend using a weather service. Apply default 'nice weather' thresholds (moderate temperature, low precipitation, low wind) or user-specified preferences if available. The VB should operationalize 'nice' into measurable conditions rather than leaving it as a subjective assessment."
