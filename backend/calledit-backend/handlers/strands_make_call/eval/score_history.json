@@ -424,6 +424,36 @@
       "overall_pass_rate": 0.2941,
       "total_tests": 68,
       "passed": 20
+    },
+    {
+      "timestamp": "2026-03-18T16:01:01Z",
+      "eval_run_id": "11a58560-e8f6-473d-afbf-6c71e08dead3",
+      "prompt_version_manifest": {
+        "parser": "1",
+        "categorizer": "2",
+        "vb": "2",
+        "review": "2"
+      },
+      "dataset_version": "3.1",
+      "per_agent_aggregates": {
+        "parser": {
+          "json_validity_avg": 0.9019607843137255
+        },
+        "categorizer": {
+          "json_validity_avg": 1.0
+        },
+        "vb": {
+          "json_validity_avg": 1.0
+        }
+      },
+      "per_category_accuracy": {
+        "auto_verifiable": 0.7142857142857143,
+        "automatable": 0.7857142857142857,
+        "human_only": 0.8235294117647058
+      },
+      "overall_pass_rate": 0.1618,
+      "total_tests": 68,
+      "passed": 11
     }
   ]
 }
