@@ -136,11 +136,34 @@ class EvalDataLoader:
         """Load all run summaries sorted by timestamp descending.
 
         Merges DDB and local sources, deduplicating by timestamp.
+        Local data enriches DDB records when DDB is missing fields
+        (e.g., architecture, vb_centric_score added after initial DDB writes).
         """
         ddb_runs = self._load_runs_from_ddb() or []
         local_runs = self._load_runs_from_local()
 
-        # Merge: use timestamp as dedup key, DDB wins on conflict
+        # Build local lookup by timestamp for enrichment
+        local_by_ts = {r.get("timestamp", ""): r for r in local_runs}
+
+        # Enrich DDB records with local data for fields DDB may be missing
+        enrich_fields = [
+            "architecture", "model_config", "vb_centric_score",
+            "verification_quality_aggregates", "per_agent_aggregates",
+        ]
+        for ddb_run in ddb_runs:
+            ts = ddb_run.get("timestamp", "")
+            local_run = local_by_ts.get(ts)
+            if local_run:
+                for field in enrich_fields:
+                    ddb_val = ddb_run.get(field)
+                    local_val = local_run.get(field)
+                    # Use local value when DDB has default/empty value
+                    if field == "architecture" and ddb_val == "serial" and local_val and local_val != "serial":
+                        ddb_run[field] = local_val
+                    elif ddb_val in (None, {}, "") and local_val not in (None, {}, ""):
+                        ddb_run[field] = local_val
+
+        # Add local-only runs (not in DDB)
         seen_timestamps = {r.get("timestamp", "") for r in ddb_runs}
         for lr in local_runs:
             if lr.get("timestamp", "") not in seen_timestamps:

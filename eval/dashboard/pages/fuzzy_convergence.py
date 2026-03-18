@@ -100,7 +100,7 @@ def render(run_detail: dict):
         yaxis_title="Average Score",
         yaxis=dict(range=[0, 1.05]),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     # Per-category grouping
     categories = sorted(set(r["category"] for r in rows))

@@ -71,7 +71,7 @@ def render(runs: list[dict], architecture_filter: str = "all"):
             yaxis=dict(range=[0, 1.05]),
             hovermode="x unified",
         )
-        st.plotly_chart(fig_vb, use_container_width=True)
+        st.plotly_chart(fig_vb, width="stretch")
 
     # --- Overall pass rate line chart ---
     fig_overall = go.Figure()
@@ -120,7 +120,7 @@ def render(runs: list[dict], architecture_filter: str = "all"):
         yaxis=dict(range=[0, 1.05], tickformat=".0%"),
         hovermode="x unified",
     )
-    st.plotly_chart(fig_overall, use_container_width=True)
+    st.plotly_chart(fig_overall, width="stretch")
 
     # --- Per-category accuracy chart ---
     categories = set()
@@ -150,7 +150,7 @@ def render(runs: list[dict], architecture_filter: str = "all"):
             yaxis=dict(range=[0, 1.05], tickformat=".0%"),
             hovermode="x unified",
         )
-        st.plotly_chart(fig_cat, use_container_width=True)
+        st.plotly_chart(fig_cat, width="stretch")
 
     # --- Final-Output Evaluators chart (IntentPreservation, CriteriaMethodAlignment) ---
     ip_values = [
@@ -180,7 +180,7 @@ def render(runs: list[dict], architecture_filter: str = "all"):
             yaxis=dict(range=[0, 1.05]),
             hovermode="x unified",
         )
-        st.plotly_chart(fig_fo, use_container_width=True)
+        st.plotly_chart(fig_fo, width="stretch")
 
     # --- Per-Agent & Cross-Pipeline Evaluators chart ---
     per_agent_judges = [
@@ -225,4 +225,4 @@ def render(runs: list[dict], architecture_filter: str = "all"):
             yaxis=dict(range=[0, 1.05]),
             hovermode="x unified",
         )
-        st.plotly_chart(fig_pa, use_container_width=True)
+        st.plotly_chart(fig_pa, width="stretch")

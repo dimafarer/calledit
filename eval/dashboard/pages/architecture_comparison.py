@@ -175,7 +175,7 @@ def _render_evaluator_comparison(
         height=450,
         legend=dict(orientation="h", yanchor="bottom", y=1.12, xanchor="center", x=0.5),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def _render_per_agent_scores(
@@ -258,7 +258,7 @@ def _render_category_accuracy(
         height=400,
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def _render_execution_time(

@@ -159,7 +159,7 @@ def _render_heatmap(
         margin=dict(b=80),
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def render(run_detail: dict, comparison_detail: dict = None):

@@ -38,14 +38,16 @@ Captures what each backend architecture is good at, what it struggles with, and 
 ### Weaknesses
 - JSON formatting discipline — parser JSON validity 90% vs serial's ~100%. The single agent sometimes wraps JSON in markdown fences, adds commentary, or produces slightly malformed output
 - Category routing less precise — auto_verifiable dropped from 100% to 71%. The single agent doesn't route as cleanly when handling all four tasks
-- Overall pass rate much lower (16% vs 40%) — driven by structural/formatting failures, not reasoning quality
+- Overall pass rate much lower (16% vs 29%) — driven by structural/formatting failures, not reasoning quality
 - Slower execution — one long conversation vs parallel-ish agent calls
+- ClarificationRelevance is the biggest failure source — 23/68 predictions fail. The single agent produces generic review questions instead of targeting the Verification Builder's specific operationalization assumptions. This is the single biggest score drag.
+- ReasoningQuality on categorizer reasoning — 11 failures. The categorizer step reasoning is weaker when done as one turn in a conversation vs a dedicated agent.
 
 ### Prompt Needs
-- Stronger JSON output discipline: "Return ONLY raw JSON, no markdown fences, no commentary"
-- Explicit output schema validation instructions for each conversation turn
-- Consider a JSON repair step after each turn (parse, validate, fix) rather than relying on the model to get it right
+- Strongest impact: tighten the review/clarification turn instructions — "questions must target specific assumptions the Verification Builder made when operationalizing vague terms, not generic clarifications"
+- JSON output discipline: "Return ONLY raw JSON, no markdown fences, no commentary"
 - Category routing instructions need to be as precise as the dedicated categorizer's prompt
+- Consider a JSON repair step after each turn rather than relying on the model
 
 ### Key Metrics (Run 13 — first full single run)
 - Pass rate: 16% | IP: 0.80 | CMA: 0.77 | Verification-Builder-centric: 0.50
@@ -62,7 +64,23 @@ Backlog item 2. Expected to test collaborative multi-round processing. The Pipel
 ## Cross-Architecture Observations
 
 ### The Reasoning vs Formatting Tradeoff
-The single agent reasons better (CMA +0.04) but formats worse (JSON validity -10%, category accuracy -29%). This suggests the serial graph's advantage isn't in reasoning quality — it's in structural discipline. Each serial agent has a narrow, focused prompt that produces clean output. The single agent has a broader prompt that produces better reasoning but less disciplined formatting.
+The single agent reasons better (CMA +0.02) but formats worse (JSON validity -10%, category accuracy -29%). This suggests the serial graph's advantage isn't in reasoning quality — it's in structural discipline. Each serial agent has a narrow, focused prompt that produces clean output. The single agent has a broader prompt that produces better reasoning but less disciplined formatting.
+
+### The Clarification Quality Gap
+The single backend's biggest failure source is ClarificationRelevance (23/68 failures). The single agent produces generic review questions rather than questions targeting the Verification Builder's specific operationalization assumptions. This is likely because the review turn in the single conversation doesn't have the same focused prompt as the dedicated ReviewAgent in the serial graph. Fixing this one evaluator would have the largest impact on the single backend's overall score.
+
+### Single Backend Failure Profile (Run 13)
+Ranked by failure count:
+- ClarificationRelevance: 23 — generic review questions (prompt fix, highest impact)
+- R1_ClarificationQuality: 18 — keyword-based check catching same issue
+- ReasoningQuality_categorizer: 11 — weak categorizer reasoning
+- CategoryMatch: 10 — wrong category labels
+- ReasoningQuality_review: 9 — review reasoning quality
+- IntentExtraction: 7 — parser intent extraction issues
+- JSONValidity_parser: 6 — JSON formatting issues
+- CriteriaMethodAlignment: 4 — method quality (relatively few failures)
+- IntentPreservation: 3 — intent preservation (relatively few failures)
+- PipelineCoherence: 2 — minimal silo problem (as expected)
 
 ### Implication for Prompt Strategy
 - Serial prompts should focus on coherence (building on predecessors) — the formatting is already good
