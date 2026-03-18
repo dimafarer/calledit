@@ -172,7 +172,7 @@ Extract the prediction and parse the verification date."""
     return prompt
 
 
-def _create_test_graph(tool_manifest: str = "") -> Any:
+def _create_test_graph(tool_manifest: str = "", model_id: str = None) -> Any:
     """
     Create a fresh prediction graph instance. NOT a singleton — each call
     creates new agents, allowing different prompt versions per invocation.
@@ -180,14 +180,15 @@ def _create_test_graph(tool_manifest: str = "") -> Any:
     Args:
         tool_manifest: Tool manifest string for the categorizer.
                        Empty string = pure reasoning mode.
+        model_id: Optional model override for all agents. If None, uses default.
 
     Returns:
         Compiled Strands graph ready for synchronous execution.
     """
-    parser = create_parser_agent()
-    categorizer = create_categorizer_agent(tool_manifest)
-    vb = create_verification_builder_agent()
-    review = create_review_agent()
+    parser = create_parser_agent(model_id=model_id)
+    categorizer = create_categorizer_agent(tool_manifest, model_id=model_id)
+    vb = create_verification_builder_agent(model_id=model_id)
+    review = create_review_agent(model_id=model_id)
 
     builder = GraphBuilder()
     builder.add_node(parser, "parser")
@@ -211,6 +212,7 @@ def run_test_graph(
     round_num: int = 1,
     clarifications: Optional[List[str]] = None,
     prev_outputs: Optional[Dict[str, Any]] = None,
+    model_id: str = None,
 ) -> Dict[str, Any]:
     """
     Execute the prediction graph synchronously and return parsed results.
@@ -225,6 +227,7 @@ def run_test_graph(
         round_num: Round number (1 = initial, 2+ = refinement).
         clarifications: List of user clarification strings (round 2+).
         prev_outputs: Dict of previous agent outputs (round 2+).
+        model_id: Optional model override for all agents. If None, uses default.
 
     Returns:
         Dict with all parsed agent outputs:
@@ -252,8 +255,8 @@ def run_test_graph(
         prev_outputs=prev_outputs,
     )
 
-    # Create a fresh graph (not a singleton)
-    graph = _create_test_graph(tool_manifest)
+    # Create a fresh graph (not a singleton), with optional model override
+    graph = _create_test_graph(tool_manifest, model_id=model_id)
 
     # Initialize OTEL and create graph-level trace span
     # Prompt versions come from prompt_client (recorded during agent creation)

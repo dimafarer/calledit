@@ -1,0 +1,442 @@
+# CalledIt Decision Log
+
+A consolidated record of all architectural, technical, and process decisions made across the project. Each decision references the project update where it was originally documented for full context.
+
+---
+
+## Decision 1: Drop Backward Compatibility on the Wire Protocol
+**Source:** [Project Update 01](project-updates/01-project-update-v2-architecture-planning.md)
+**Date:** March 6, 2026
+
+Clean break on the WebSocket protocol. New message types (`prediction_ready`, `review_ready`) only. Old types (`call_response`, `review_complete`, `improvement_questions`, `improved_response`) removed entirely. The only true backward compatibility constraint is the DynamoDB save format, since existing predictions must remain queryable. This is a demo/educational project with no external API consumers — keeping old types alive creates two code paths and confuses future readers.
+
+---
+
+## Decision 2: Identified and Addressed Additional Architectural Debt
+**Source:** [Project Update 01](project-updates/01-project-update-v2-architecture-planning.md)
+**Date:** March 6, 2026
+
+Deep code review after initial requirements found 5 issues worth fixing immediately: broken `review_agent.py` import of deleted `error_handling` module, dead `*_node_function()` code in all agent files, 120 lines of regex JSON extraction, response building split across two files, and no separate `improve_call.py` file despite architecture diagrams referencing it. Added as Requirements 11-13 in the original combined spec.
+
+---
+
+## Decision 3: Split Into Two Specs
+**Source:** [Project Update 01](project-updates/01-project-update-v2-architecture-planning.md)
+**Date:** March 6, 2026
+
+Split the combined 13-requirement spec into Spec 1 (v2 Cleanup & Foundation — 5 requirements, all refactoring) and Spec 2 (v2 Unified Graph with Stateful Refinement — 9 requirements, new behavior). Confidence went from ~65% for one spec to ~90% for two focused specs. If Spec 2 goes sideways, you're debugging against clean code.
+
+---
+
+## Decision 4: Prompt-First Approach to JSON Parsing Cleanup
+**Source:** [Project Update 01](project-updates/01-project-update-v2-architecture-planning.md)
+**Date:** March 6, 2026
+
+The defensive JSON parsing (120 lines of regex) exists because agents were returning malformed output. Fix the root cause first: (1) harden prompts with explicit "Return ONLY raw JSON" instructions, (2) build a prompt testing harness to validate clean output, (3) only then remove the defensive parsing. Defensive code often exists for a reason — fix the cause, prove the fix, then remove the defense.
+
+---
+
+## Decision 5: Strands Documentation Review via Kiro Power
+**Source:** [Project Update 01](project-updates/01-project-update-v2-architecture-planning.md)
+**Date:** March 6, 2026
+
+Reviewing Strands Graph docs during spec creation (not during coding) surfaced two critical findings: (1) default edge behavior is "any one" not "all" — ReviewAgent would fire before pipeline completes without conditional edges, (2) Graph doesn't support mid-execution message sending — need `stream_async` with `multiagent_node_stop` events. These would have caused significant debugging time if discovered during implementation.
+
+---
+
+## Decision 6: Model Upgrade from Claude 3.5 Sonnet to Claude Sonnet 4
+**Source:** [Project Update 01](project-updates/01-project-update-v2-architecture-planning.md)
+**Date:** March 6, 2026
+
+Upgraded all four agents from `anthropic.claude-3-5-sonnet-20241022-v2:0` to `us.anthropic.claude-sonnet-4-20250514-v1:0`. Better instruction following (relevant to JSON output problem), same Sonnet tier (similar latency/cost), current Strands default. Done before prompt hardening so validation runs against the production model.
+
+---
+
+## Decision 7: Simplified Graph Topology — Single Edge, No Conditional Edges
+**Source:** [Project Update 01](project-updates/01-project-update-v2-architecture-planning.md)
+**Date:** March 6, 2026
+
+The conditional edge approach was overengineered. The pipeline is sequential (Parser → Categorizer → VB), so when VB completes, all three have already completed by definition. ReviewAgent only needs a single edge from `verification_builder`. The "any one dependency" concern only applies to multiple independent branches feeding one node. Graph is now 4 simple edges, no conditions — the idiomatic Strands pattern.
+
+---
+
+## Decision 8: Frontend-as-Session Is a Feature, Not a Compromise
+**Source:** [Project Update 01](project-updates/01-project-update-v2-architecture-planning.md)
+**Date:** March 6, 2026
+
+The frontend holds session state (round number, accumulated clarifications, latest agent outputs). The Lambda is stateless. DynamoDB stores only the final prediction. This is a deliberate architectural choice: the data is the user's own prediction text being refined (not sensitive), realistically 1-2 rounds max, a few KB of state, backend stays simple and stateless, any Lambda instance can handle any round.
+
+---
+
+## Decision 9: ReviewAgent Sub-Section Names
+**Source:** [Project Update 02](project-updates/02-project-update-frontend-v2-alignment.md)
+**Date:** March 9, 2026
+
+The ReviewAgent returns dot-notation section names (`verification_method.source`) instead of top-level names (`verification_method`). This is actually better — more specific improvement suggestions. Frontend handles both patterns with `startsWith` matching and question aggregation. If the prompt changes section names, `startsWith` handles it gracefully.
+
+---
+
+## Decision 10: Single-Push vs Two-Push Delivery
+**Source:** [Project Update 02](project-updates/02-project-update-frontend-v2-alignment.md)
+**Date:** March 9, 2026
+
+The ReviewAgent completes quickly after the pipeline (2-4 seconds). The two-push design (prediction_ready then review_ready) was built to avoid making the user wait. If review time is consistently fast, single-push at graph completion would be simpler. Future consideration — two-push is working and educationally interesting as a Strands streaming pattern.
+
+---
+
+## Decision 11: Skip Connect/Disconnect for SnapStart
+**Source:** [Project Update 03](project-updates/03-project-update-snapstart.md)
+**Date:** March 9, 2026
+
+Initially skipped SnapStart for ConnectFunction/DisconnectFunction (imports only `json`, risk > benefit). **Reversed in Decision 16.**
+
+---
+
+## Decision 12: Provisioned Concurrency Not Needed
+**Source:** [Project Update 03](project-updates/03-project-update-snapstart.md)
+**Date:** March 9, 2026
+
+SnapStart restore at 444ms (82% improvement from 2,441ms baseline) is sufficient. $0 additional cost vs ~$39/month for Provisioned Concurrency. Clear winner for a demo project.
+
+---
+
+## Decision 13–15: (Reserved / Implicit in Updates 03-04)
+
+---
+
+## Decision 16: Add SnapStart to WebSocket Lifecycle Functions
+**Source:** [Project Update 03](project-updates/03-project-update-snapstart.md)
+**Date:** March 13, 2026
+
+Reversed Decision 11. Added SnapStart to ConnectFunction and DisconnectFunction for stack consistency. SAM template only — no handler code changes. All 8 Lambda functions now have SnapStart enabled.
+
+---
+
+## Decision 17: DependsOn Required for All Alias References
+**Source:** [Project Update 03](project-updates/03-project-update-snapstart.md)
+**Date:** March 13, 2026
+
+First deploy failed because CloudFormation created alias permission before alias existed. Fix: added `DependsOn: {FunctionName}Aliaslive` to all alias-referencing resources, including retroactive fix for MakeCallStreamFunction.
+
+---
+
+## Decision 18: Simplify to 3 Verifiability Categories
+**Source:** [Project Update 04](project-updates/04-project-update-category-simplification.md)
+**Date:** March 13, 2026
+
+Simplified from 5 categories to 3: `auto_verifiable` (system can verify now with current tools), `automatable` (verifiable in principle, work queue for future tool-finding agent), `human_only` (requires subjective judgment or inaccessible information). Every new tool graduates predictions from `automatable` to `auto_verifiable`.
+
+---
+
+## Decision 19: Tool Registry in DynamoDB
+**Source:** [Project Update 04](project-updates/04-project-update-category-simplification.md)
+**Date:** March 13, 2026
+
+Tool records stored in DynamoDB (`calledit-db`) with PK `TOOL#{tool_id}`, SK `METADATA`. Fields: name, description, capabilities, input/output schema, status, added_date. Categorizer reads registry at runtime to determine if a prediction is `auto_verifiable` vs `automatable`.
+
+---
+
+## Decision 20: Web Search as First Registered Tool
+**Source:** [Project Update 04](project-updates/04-project-update-category-simplification.md)
+**Date:** March 13, 2026
+
+Custom `@tool` using Python `requests` + DuckDuckGo Instant Answer API. Serves as the test case for the entire tool registration workflow: create tool → register in DDB → wire into verification agent → re-categorize predictions.
+
+---
+
+## Decision 21: Re-categorization Runs Full Pipeline
+**Source:** [Project Update 04](project-updates/04-project-update-category-simplification.md)
+**Date:** March 13, 2026
+
+When a tool is added, `automatable` predictions get re-run through the full graph (parser → categorizer → VB → review), not just the categorizer. The verification_method also needs updating when the category changes.
+
+---
+
+## Decision 22: Upgrade Verification Agent to Sonnet 4
+**Source:** [Project Update 04](project-updates/04-project-update-category-simplification.md)
+**Date:** March 13, 2026
+
+Upgraded verification agent from `claude-3-sonnet-20241022` to `us.anthropic.claude-sonnet-4-20250514-v1:0` for consistency with all prediction pipeline agents and better instruction following.
+
+---
+
+## Decision 23: AgentCore Evaluations — USE
+**Source:** [Project Update 05](project-updates/05-project-update-eval-strategy.md)
+**Date:** March 13, 2026
+
+Despite preview risk (confidence 5/10), high differentiation value. Purpose-built for evaluating agents with span-level analysis, custom evaluators, online + on-demand evaluation. Being among the first to integrate with a real multi-agent Strands graph is a portfolio differentiator. Fallback: OTEL traces + CloudWatch + custom harness.
+
+---
+
+## Decision 24: Skip Bedrock Evaluations
+**Source:** [Project Update 05](project-updates/05-project-update-eval-strategy.md)
+**Date:** March 13, 2026
+
+Designed for single model input/output pairs, not multi-agent chains. Redundant with AgentCore Evaluations. BYOI means we still run the graph ourselves.
+
+---
+
+## Decision 25: Skip Bedrock Guardrails / Contextual Grounding
+**Source:** [Project Update 05](project-updates/05-project-update-eval-strategy.md)
+**Date:** March 13, 2026
+
+Core problem is classification accuracy, not hallucination. Agents return structured JSON, not prose. Contextual grounding expects prose against source documents — wrong problem shape.
+
+---
+
+## Decision 26: Skip SageMaker Clarify / FMEval
+**Source:** [Project Update 05](project-updates/05-project-update-eval-strategy.md)
+**Date:** March 13, 2026
+
+Heavyweight platform for ML teams, single-model focus, overkill for ~25 test cases. AgentCore Evaluations subsumes FMEval's relevant capabilities.
+
+---
+
+## Decision 27: Opus 4.6 as Judge Model
+**Source:** [Project Update 06](project-updates/06-project-update-eval-framework-execution.md)
+**Date:** March 14, 2026
+
+Different model generation than agents (Sonnet 4) — avoids self-evaluation bias. Model ID: `us.anthropic.claude-opus-4-6-v1` (without `:0` suffix). Dev-time tool, not production — latency/cost not a constraint.
+
+---
+
+## Decision 28: CloudFormation for Prompt Management
+**Source:** [Project Update 06](project-updates/06-project-update-eval-framework-execution.md)
+**Date:** March 14, 2026
+
+IaC ensures reproducibility and auditability. Separate stack (`calledit-prompts`) from SAM backend — prompts are shared infrastructure. Template at `infrastructure/prompt-management/template.yaml`. Future: when dev/prod stacks split, both read from the same prompt stack.
+
+---
+
+## Decision 29: Local Eval Results (Not DynamoDB — Yet)
+**Source:** [Project Update 06](project-updates/06-project-update-eval-framework-execution.md)
+**Date:** March 14, 2026
+
+`score_history.json` tracked in git (portfolio evidence). `eval/reports/` gitignored (large, regenerable). Charts tracked in git (visual portfolio evidence). Will move to DynamoDB/S3 when building the AgentCore eval stack.
+
+---
+
+## Decision 30: Two-Tier Evaluator Strategy Validated
+**Source:** [Project Update 06](project-updates/06-project-update-eval-framework-execution.md)
+**Date:** March 14, 2026
+
+Tier 1 (deterministic) catches structural regressions fast and cheap. Tier 2 (LLM-as-judge) catches nuanced quality issues. The 80% → 30% pass rate drop when adding the judge proves the judge adds real signal. ReviewAgent prompt is the primary improvement target based on judge data.
+
+---
+
+## Decision 31: Ground Truth Metadata Per Prediction
+**Source:** [Project Update 07](project-updates/07-project-update-golden-dataset-design.md)
+**Date:** March 14, 2026
+
+Each prediction captures WHY it's that category through structured metadata: verifiability_reasoning, date_derivation, verification_sources, objectivity_assessment, verification_criteria, verification_steps. When categories evolve, expected labels are re-derived from ground truth rather than manually re-tagging 50+ test cases.
+
+---
+
+## Decision 32: Clean Break from V1 Dataset
+**Source:** [Project Update 07](project-updates/07-project-update-golden-dataset-design.md)
+**Date:** March 14, 2026
+
+V2 dataset replaces v1 entirely. V2 loader only supports `schema_version: "2.0"`. V1 archived to `eval/golden_dataset_v1_archived.json`. Comparing scores across v1/v2 is apples-to-oranges anyway. Clean break means simpler loader, stronger validation, less maintenance.
+
+---
+
+## Decision 33: Future 4-Category System
+**Source:** [Project Update 07](project-updates/07-project-update-golden-dataset-design.md)
+**Date:** March 14, 2026
+
+Proposed future categories: `current_agent_verifiable`, `agent_verifiable_with_known_tool`, `assumed_agent_verifiable_with_tool_build`, `human_only`. The model's natural reasoning already aligns more with 4 categories than 3. Ground truth metadata makes this migration a re-derivation exercise, not a re-authoring exercise.
+
+---
+
+## Decision 34: DynamoDB for Eval Reasoning Capture
+**Source:** [Project Update 07](project-updates/07-project-update-golden-dataset-design.md)
+**Date:** March 14, 2026
+
+New table `calledit-eval-reasoning` stores full model reasoning traces during eval runs. Fire-and-forget pattern — DDB failures never block eval execution. TTL of 90 days. PAY_PER_REQUEST billing.
+
+---
+
+## Decision 35: Lightweight Expected Outputs
+**Source:** [Project Update 07](project-updates/07-project-update-golden-dataset-design.md)
+**Date:** March 14, 2026
+
+Only `expected_category` is required per prediction. Parser, VB, and review expected outputs are optional rubric guidance for the LLM-as-judge. Makes maintaining 50+ predictions practical.
+
+---
+
+## Decision 36: Fuzziness Level 0 (Control Cases)
+**Source:** [Project Update 07](project-updates/07-project-update-golden-dataset-design.md)
+**Date:** March 14, 2026
+
+Added Level 0 — perfectly specified predictions used as controls where the ReviewAgent should find no clarification needed. Levels: 0 (control), 1 (missing one detail), 2 (missing multiple details), 3 (highly ambiguous).
+
+---
+
+## Decision 37: Cross-Agent Coherence as First-Class Concern
+**Source:** [Project Update 07](project-updates/07-project-update-golden-dataset-design.md)
+**Date:** March 14, 2026
+
+Parser date extraction, categorizer verifiability judgment, and VB methods/sources/criteria/steps should tell a consistent story. At least 5 "coherence anchor" predictions have complete expected outputs for all 4 agents.
+
+---
+
+## Decision 38: Storage — Git Now, S3 Later
+**Source:** [Project Update 07](project-updates/07-project-update-golden-dataset-design.md)
+**Date:** March 14, 2026
+
+Keep golden dataset in git with explicit `dataset_version` field. Move to private S3 bucket (with versioning, encryption, public access blocked) when dataset exceeds ~100 test cases.
+
+---
+
+## Decision 39: Deploy DDB Table Before Judge Run
+**Source:** [Project Update 08](project-updates/08-project-update-eval-insights-and-architecture-flexibility.md)
+**Date:** March 15, 2026
+
+The judge run produces the most valuable DDB data (full reasoning traces). Running without the table loses that data permanently. Deployed `calledit-eval-reasoning` table via SAM before Run 2.
+
+---
+
+## Decision 40: Architecture Flexibility as Dashboard Requirement
+**Source:** [Project Update 08](project-updates/08-project-update-eval-insights-and-architecture-flexibility.md)
+**Date:** March 15, 2026
+
+Dashboard should include an "architecture" dimension so eval runs can be compared across serial graph, swarm, and single-agent backends. Eval report schema needs `architecture` and `model_config` fields.
+
+---
+
+## Decision 41: Eval Framework as Portfolio Centerpiece
+**Source:** [Project Update 08](project-updates/08-project-update-eval-insights-and-architecture-flexibility.md)
+**Date:** March 15, 2026
+
+The eval suite — golden dataset with ground truth, multi-tier evaluators, DDB reasoning capture, architecture-agnostic scoring, and a visual dashboard — is the transferable skill set. Even if a single Opus 4.6 agent outperforms the multi-agent graph, the eval framework that proved it is the valuable artifact.
+
+---
+
+## Decision 42: Categorizer Prompt Needs Nuance, Not Just Expansion
+**Source:** [Project Update 08](project-updates/08-project-update-eval-insights-and-architecture-flexibility.md)
+**Date:** March 15, 2026
+
+Simply expanding the human_only definition isn't enough. The categorizer needs to distinguish between "private data that no API can access" (human_only) and "personal data that a known API could access with authentication" (automatable). The 4-category system would handle this naturally. For now, the prompt needs more precise language.
+
+---
+
+## Decision 43: Integrate Strands Evals SDK Into Eval Suite
+**Source:** [Project Update 08](project-updates/08-project-update-eval-insights-and-architecture-flexibility.md)
+**Date:** March 15, 2026
+
+Use the SDK over custom code wherever equivalent functionality exists. Replace hand-rolled LLM judge with `OutputEvaluator`, add `TrajectoryEvaluator` for inter-agent coherence, wrap golden dataset entries as `Case` objects. Keep custom code only for DDB persistence, prompt version manifests, architecture comparison, dataset versioning, fuzzy round evaluation, and visual dashboard.
+
+---
+
+## Decision 44: Verification Criteria Is the Primary Eval Target, Not Categorization
+**Source:** [Project Update 08](project-updates/08-project-update-eval-insights-and-architecture-flexibility.md) / [Project Update 09](project-updates/09-project-update-dashboard-v1-and-eval-reframe.md)
+**Date:** March 15-16, 2026
+
+Category labels downgraded to helpful routing hints. The real success metric: does the verification builder produce verification criteria that a verification agent can use to determine true/false at the right time? Eval priorities reframed: (1) verification criteria quality — PRIMARY, (2) verification method quality — SECONDARY, (3) category accuracy — TERTIARY.
+
+---
+
+## Decision 45: Two-Spec Approach for Eval Reframe
+**Source:** [Project Update 09](project-updates/09-project-update-dashboard-v1-and-eval-reframe.md)
+**Date:** March 16, 2026
+
+Spec 1 (verification-evaluators): Golden dataset v3 + new evaluators + Strands Evals SDK integration. Must come first — can't improve what you can't measure. Spec 2 (vb-prompt-iteration): Iterate on VB prompt using new evaluators. Depends on Spec 1.
+
+---
+
+## Decision 46: Judge Rubric Recalibration
+**Source:** [Project Update 09](project-updates/09-project-update-dashboard-v1-and-eval-reframe.md)
+**Date:** March 16, 2026
+
+The question "is the reasoning well-written?" should become "would this verification plan succeed at verifying the prediction?" This is a rubric change mapping naturally to Strands `OutputEvaluator` with a targeted rubric.
+
+---
+
+## Decision 47: Vague Predictions — Operationalize vs Acknowledge
+**Source:** [Project Update 09](project-updates/09-project-update-dashboard-v1-and-eval-reframe.md)
+**Date:** March 16, 2026
+
+Two types: (1) Operationalizable vague terms ("nice weather") — VB should auto-fill reasonable measurable thresholds, ReviewAgent validates assumptions. (2) Truly subjective ("feel happy") — no external proxy exists, VB keeps human_only, ReviewAgent asks questions that might lead to verifiable reformulation. IntentPreservation evaluator rubric rewards operationalization.
+
+---
+
+## Decision 48: Per-Agent Evaluators
+**Source:** [Project Update 10](project-updates/10-project-update-vb-iteration-and-architecture-vision.md)
+**Date:** March 17, 2026
+
+Each agent should have at least one evaluator that asks "did this agent do its specific job in service of the two system goals?" Priority: ClarificationRelevance (ReviewAgent), then IntentExtraction (Parser). Both use Strands Evals SDK OutputEvaluator.
+
+---
+
+## Decision 49: Architecture Backend Abstraction
+**Source:** [Project Update 10](project-updates/10-project-update-vb-iteration-and-architecture-vision.md)
+**Date:** March 17, 2026
+
+Add a `--backend serial|swarm|single` flag to the eval runner. Each backend implements the same output contract. The eval framework scores all architectures identically. Enables data-driven architecture comparison.
+
+---
+
+## Decision 50: Isolated Single-Variable Testing as Standard Practice
+**Source:** [Project Update 10](project-updates/10-project-update-vb-iteration-and-architecture-vision.md)
+**Date:** March 17, 2026
+
+Every eval iteration should change exactly one variable (prompt, dataset, or architecture) per run. This is now the standard methodology for all future prompt and architecture experiments.
+
+
+---
+
+## Decision 51: CategorizationJustification Evaluator — VB-Centric Routing Assessment
+**Source:** [Project Update 10](project-updates/10-project-update-vb-iteration-and-architecture-vision.md)
+**Date:** March 17, 2026
+
+The Categorizer's evaluation shifts from "did it pick the right label?" (CategoryMatch) to "did its routing decision enable the VB to produce the best possible verification plan?" The LLM judge sees parser output, categorizer output, tool manifest, AND VB output — assessing downstream impact. CategoryMatch remains as a cheap deterministic check but is no longer weighted in the primary pass rate.
+
+---
+
+## Decision 52: PipelineCoherence Evaluator — Quantifying the Silo Problem
+**Source:** [Project Update 10](project-updates/10-project-update-vb-iteration-and-architecture-vision.md)
+**Date:** March 17, 2026
+
+A cross-agent LLM judge that sees all 4 outputs together and scores whether each agent built on the previous agent's work. Directly addresses the silo problem from Update 08. Critical for architecture comparison — quantifies whether the single-agent backend produces more coherent output than the serial graph.
+
+---
+
+## Decision 53: VB-Centric Composite Score
+**Source:** [Project Update 10](project-updates/10-project-update-vb-iteration-and-architecture-vision.md)
+**Date:** March 17, 2026
+
+The eval report computes a "VB-centric score" — a weighted composite where IntentPreservation and CriteriaMethodAlignment have the highest weight, and other evaluators are weighted by how directly they impact VB output quality. Replaces the old overall pass rate as the primary metric.
+
+---
+
+## Decision 54: Consolidated Decision Log
+**Source:** [Project Update 10](project-updates/10-project-update-vb-iteration-and-architecture-vision.md)
+**Date:** March 17, 2026
+
+Created `docs/project-updates/decision-log.md` containing all decisions extracted from all project updates. Future agents can read this one file instead of scanning all project updates to understand the decision history.
+
+
+---
+
+## Decision 55: Pluggable Backend with Flexible Output Contract
+**Source:** [Project Update 10](project-updates/10-project-update-vb-iteration-and-architecture-vision.md)
+**Date:** March 17, 2026
+
+Backends are extensible — any architecture (2-agent, 5-agent, etc.) can be added by dropping a module in `backends/`. The output contract requires `final_output` (verification criteria + method, what evaluators actually score) and optional `agent_outputs` (whatever agents the backend produces). Per-agent evaluators only run when their target agent key exists in the output. The eval framework never needs to change when experimenting with new architectures.
+
+
+---
+
+## Decision 56: Single Backend Uses Same Prompts via Prompt Management
+**Source:** [Project Update 10](project-updates/10-project-update-vb-iteration-and-architecture-vision.md)
+**Date:** March 18, 2026
+
+The single backend creates one agent that receives the same 4 prompts from Bedrock Prompt Management as sequential conversation turns. The agent maintains its own context across turns — no silo problem by design. This is a fairer comparison than a single mega-prompt because the only variable is context propagation (graph-managed vs natural conversation).
+
+---
+
+## Decision 57: Tools Should Be Architecture-Agnostic (Future)
+**Source:** [Project Update 10](project-updates/10-project-update-vb-iteration-and-architecture-vision.md)
+**Date:** March 18, 2026
+
+Currently tools (web_search, parse_relative_date) are imported from agent-specific modules. They should live as MCP tools or A2A services so any backend architecture can use them without coupling to specific agent code. Future spec when the eval framework proves which architecture works best.

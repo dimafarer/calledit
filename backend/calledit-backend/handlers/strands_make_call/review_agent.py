@@ -111,12 +111,12 @@ Return ONLY the raw JSON object. Do not wrap in markdown code blocks. Do not inc
 # improvable sections. It doesn't have "previous output" to refine — it
 # always analyzes fresh. Each round produces a new set of reviewable sections
 # based on the current pipeline output.
-def create_review_agent() -> Agent:
+def create_review_agent(model_id: str = None) -> Agent:
     """
     Create the Review Agent with explicit configuration.
 
-    Fetches the system prompt from Bedrock Prompt Management if available,
-    falls back to the bundled REVIEW_SYSTEM_PROMPT constant if not.
+    Args:
+        model_id: Optional model override. If None, uses default Sonnet 4.
 
     Returns:
         Configured Review Agent (strands.Agent instance)
@@ -129,7 +129,7 @@ def create_review_agent() -> Agent:
         system_prompt = REVIEW_SYSTEM_PROMPT
 
     agent = Agent(
-        model="us.anthropic.claude-sonnet-4-20250514-v1:0",
+        model=model_id or "us.anthropic.claude-sonnet-4-20250514-v1:0",
         system_prompt=system_prompt
     )
 

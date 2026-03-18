@@ -139,12 +139,15 @@ Always return the complete JSON output, whether confirmed or updated.
 """
 
 
-def create_parser_agent() -> Agent:
+def create_parser_agent(model_id: str = None) -> Agent:
     """
     Create the Parser Agent with explicit configuration.
     
     Fetches the system prompt from Bedrock Prompt Management if available,
     falls back to the bundled PARSER_SYSTEM_PROMPT constant if not.
+    
+    Args:
+        model_id: Optional model override. If None, uses default Sonnet 4.
     
     Returns:
         Configured Parser Agent
@@ -157,7 +160,7 @@ def create_parser_agent() -> Agent:
         system_prompt = PARSER_SYSTEM_PROMPT
 
     agent = Agent(
-        model="us.anthropic.claude-sonnet-4-20250514-v1:0",
+        model=model_id or "us.anthropic.claude-sonnet-4-20250514-v1:0",
         tools=[current_time, parse_relative_date],
         system_prompt=system_prompt
     )

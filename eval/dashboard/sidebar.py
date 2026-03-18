@@ -29,6 +29,7 @@ def render(runs: list[dict]) -> dict:
                 "layer": "all",
                 "category": "all",
                 "dataset_version": "all",
+                "architecture": "all",
                 "page": "Trends",
             }
 
@@ -68,6 +69,13 @@ def render(runs: list[dict]) -> dict:
             "Dataset version", version_options, key="filter_dataset_version"
         )
 
+        # Architecture filter from available architectures
+        architectures = sorted(set(r.get("architecture", "serial") for r in runs))
+        arch_options = ["all"] + [a for a in architectures if a]
+        architecture = st.selectbox(
+            "Architecture", arch_options, key="filter_architecture"
+        )
+
         st.divider()
 
         # Page navigation
@@ -90,5 +98,6 @@ def render(runs: list[dict]) -> dict:
         "layer": layer,
         "category": category,
         "dataset_version": dataset_version,
+        "architecture": architecture,
         "page": page,
     }

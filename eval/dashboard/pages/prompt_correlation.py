@@ -35,6 +35,19 @@ def render(run_a: dict, run_b: dict, runs: list[dict]):
             "Dataset versions differ between runs — score comparisons may not be meaningful."
         )
 
+    # Architecture comparison warning
+    arch_a = summary_a.get("architecture", "serial")
+    arch_b = summary_b.get("architecture", "serial")
+    if arch_a != arch_b:
+        st.warning(
+            f"Comparing different architectures ({arch_a} vs {arch_b}) — "
+            f"score differences may reflect architecture effects, not just prompt changes."
+        )
+
+    # Architecture labels
+    st.subheader("Architecture")
+    st.markdown(f"Run A: **{arch_a}** | Run B: **{arch_b}**")
+
     # Prompt version diff
     st.subheader("Prompt Changes")
     changed = comparison.get("changed_prompts", {})

@@ -5,7 +5,15 @@ import streamlit as st
 
 
 def _is_judge_evaluator(name: str) -> bool:
-    return "ReasoningQuality" in name or name in ("IntentPreservation", "CriteriaMethodAlignment")
+    """Check if an evaluator is an LLM judge (vs deterministic)."""
+    judge_names = {
+        "ReasoningQuality", "IntentPreservation", "CriteriaMethodAlignment",
+        "IntentExtraction", "CategorizationJustification",
+        "ClarificationRelevance", "PipelineCoherence",
+    }
+    # Handle agent-suffixed names like ReasoningQuality_categorizer
+    base_name = name.split("_")[0] if "_" in name else name
+    return base_name in judge_names or name in judge_names
 
 
 def _build_matrix(test_cases: list[dict]) -> tuple[list[str], list[str], list[list[float | None]]]:
@@ -16,10 +24,12 @@ def _build_matrix(test_cases: list[dict]) -> tuple[list[str], list[str], list[li
         Evaluators sorted: deterministic first, then judge, separated.
         Test cases sorted by ascending average score (worst first).
     """
-    # Collect all evaluator names
+    # Collect all evaluator names (exclude internal keys)
     all_evaluators = set()
     for tc in test_cases:
-        all_evaluators.update(tc.get("evaluator_scores", {}).keys())
+        for key in tc.get("evaluator_scores", {}).keys():
+            if not key.startswith("_"):
+                all_evaluators.add(key)
 
     # Split into deterministic and judge
     det = sorted(e for e in all_evaluators if not _is_judge_evaluator(e))

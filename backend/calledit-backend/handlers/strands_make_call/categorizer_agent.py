@@ -98,17 +98,13 @@ Always return the complete JSON output, whether confirmed or updated.
 """
 
 
-def create_categorizer_agent(tool_manifest: str = "") -> Agent:
+def create_categorizer_agent(tool_manifest: str = "", model_id: str = None) -> Agent:
     """
     Create the Categorizer Agent with explicit configuration.
     
-    Fetches the system prompt from Bedrock Prompt Management if available,
-    falls back to the bundled CATEGORIZER_SYSTEM_PROMPT constant if not.
-    The tool_manifest is injected as a variable in both paths.
-    
     Args:
         tool_manifest: Human-readable list of available tools and their capabilities.
-                       Empty string means no tools registered (pure reasoning mode).
+        model_id: Optional model override. If None, uses default Sonnet 4.
     
     Returns:
         Configured Categorizer Agent
@@ -126,7 +122,7 @@ def create_categorizer_agent(tool_manifest: str = "") -> Agent:
         system_prompt = CATEGORIZER_SYSTEM_PROMPT.format(tool_manifest=manifest_text)
 
     agent = Agent(
-        model="us.anthropic.claude-sonnet-4-20250514-v1:0",
+        model=model_id or "us.anthropic.claude-sonnet-4-20250514-v1:0",
         system_prompt=system_prompt
     )
     

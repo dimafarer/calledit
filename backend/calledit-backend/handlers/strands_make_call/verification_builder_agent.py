@@ -84,12 +84,12 @@ Always return the complete JSON output, whether confirmed or updated.
 """
 
 
-def create_verification_builder_agent() -> Agent:
+def create_verification_builder_agent(model_id: str = None) -> Agent:
     """
     Create the Verification Builder Agent with explicit configuration.
     
-    Fetches the system prompt from Bedrock Prompt Management if available,
-    falls back to the bundled VERIFICATION_BUILDER_SYSTEM_PROMPT constant if not.
+    Args:
+        model_id: Optional model override. If None, uses default Sonnet 4.
     
     Returns:
         Configured Verification Builder Agent
@@ -102,7 +102,7 @@ def create_verification_builder_agent() -> Agent:
         system_prompt = VERIFICATION_BUILDER_SYSTEM_PROMPT
 
     agent = Agent(
-        model="us.anthropic.claude-sonnet-4-20250514-v1:0",
+        model=model_id or "us.anthropic.claude-sonnet-4-20250514-v1:0",
         system_prompt=system_prompt
     )
     

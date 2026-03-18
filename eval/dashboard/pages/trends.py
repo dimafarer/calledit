@@ -37,6 +37,34 @@ def render(runs: list[dict]):
 
     timestamps = [r.get("timestamp", "") for r in sorted_runs]
     pass_rates = [r.get("overall_pass_rate", 0.0) for r in sorted_runs]
+    architectures = [r.get("architecture", "serial") for r in sorted_runs]
+
+    # --- Verification-Builder-centric score chart (primary metric) ---
+    vb_scores = [r.get("vb_centric_score") for r in sorted_runs]
+    if any(v is not None for v in vb_scores):
+        fig_vb = go.Figure()
+        fig_vb.add_trace(go.Scatter(
+            x=timestamps, y=vb_scores,
+            mode="lines+markers", name="VB-Centric Score",
+            connectgaps=True,
+            hovertemplate=(
+                "<b>%{x}</b><br>"
+                "VB-Centric Score: %{y:.2f}<br>"
+                "%{customdata}"
+                "<extra></extra>"
+            ),
+            customdata=[
+                f"Architecture: {a}" for a in architectures
+            ],
+        ))
+        fig_vb.update_layout(
+            title="Verification-Builder-Centric Score Over Time (Primary Metric)",
+            xaxis_title="Run",
+            yaxis_title="Composite Score",
+            yaxis=dict(range=[0, 1.05]),
+            hovermode="x unified",
+        )
+        st.plotly_chart(fig_vb, use_container_width=True)
 
     # --- Overall pass rate line chart ---
     fig_overall = go.Figure()
@@ -52,6 +80,7 @@ def render(runs: list[dict]):
             "<extra></extra>"
         ),
         customdata=[
+            f"Architecture: {r.get('architecture', 'serial')}<br>"
             f"Tests: {r.get('total_tests', 0)} | "
             f"Passed: {r.get('passed', 0)} | "
             f"Dataset: {r.get('dataset_version', '?')}<br>"

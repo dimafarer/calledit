@@ -21,6 +21,7 @@ applies convergence evaluator.
 import argparse
 import json
 import logging
+import sys
 import time
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
@@ -159,9 +160,142 @@ def _evaluate_fuzzy_prediction(
     return scores
 
 
+# --- Verification-Builder-centric evaluator weights ---
+EVALUATOR_WEIGHTS = {
+    # Primary — Verification Builder output quality
+    "IntentPreservation": 0.25,
+    "CriteriaMethodAlignment": 0.25,
+    # Secondary — upstream agent contribution to Verification Builder success
+    "IntentExtraction": 0.10,
+    "CategorizationJustification": 0.10,
+    "ClarificationRelevance": 0.10,
+    # Cross-pipeline — coherence
+    "PipelineCoherence": 0.15,
+    # Legacy deterministic (cheap regression catches)
+    "CategoryMatch": 0.025,
+    "JSONValidity": 0.025,
+}
+
+
+def compute_vb_centric_score(scores: dict) -> float:
+    """Weighted composite score centered on Verification Builder output quality.
+
+    Missing evaluators reduce the weight denominator, not the score.
+    Returns a value in [0.0, 1.0].
+    """
+    total_weight = 0.0
+    weighted_sum = 0.0
+    for evaluator, weight in EVALUATOR_WEIGHTS.items():
+        if evaluator in scores:
+            score_val = scores[evaluator]
+            # Handle both dict results and raw floats
+            if isinstance(score_val, dict):
+                score_val = score_val.get("score", 0.0)
+            weighted_sum += float(score_val) * weight
+            total_weight += weight
+    return weighted_sum / total_weight if total_weight > 0 else 0.0
+
+
+def _evaluate_with_judges(
+    output_contract: dict, bp: "BasePrediction", tool_manifest: str
+) -> dict:
+    """Run all applicable per-agent LLM judge evaluators.
+
+    Dispatches evaluators based on which agent keys exist in agent_outputs.
+    Final-output evaluators (IntentPreservation, CriteriaMethodAlignment)
+    are handled in _evaluate_base_prediction. This function handles the
+    NEW per-agent and cross-pipeline judges.
+    """
+    scores = {}
+    final = output_contract.get("final_output", {})
+    agents = output_contract.get("agent_outputs", {})
+    gt = bp.ground_truth
+    skipped = {}
+
+    # Extract Verification Builder criteria from final output
+    vb_method = final.get("verification_method", {})
+    if isinstance(vb_method, str):
+        try:
+            vb_method = json.loads(vb_method)
+        except json.JSONDecodeError:
+            vb_method = {}
+    vb_criteria = vb_method.get("criteria", []) if isinstance(vb_method, dict) else []
+
+    # --- Per-agent evaluators (only if agent key exists) ---
+    if "parser" in agents:
+        try:
+            from evaluators.intent_extraction import evaluate_intent_extraction
+            scores["IntentExtraction"] = evaluate_intent_extraction(
+                bp.prediction_text, agents["parser"],
+                gt.expected_verification_criteria or [],
+            )
+            logger.info(
+                f"IntentExtraction for {bp.id}: "
+                f"{scores['IntentExtraction'].get('score', '?')}"
+            )
+        except Exception as e:
+            logger.warning(f"IntentExtraction failed for {bp.id}: {e}")
+    else:
+        skipped["IntentExtraction"] = "No 'parser' key in agent_outputs"
+
+    if "categorizer" in agents:
+        try:
+            from evaluators.categorization_justification import (
+                evaluate_categorization_justification,
+            )
+            scores["CategorizationJustification"] = evaluate_categorization_justification(
+                agents.get("parser", {}), agents["categorizer"],
+                tool_manifest, final,
+            )
+            logger.info(
+                f"CategorizationJustification for {bp.id}: "
+                f"{scores['CategorizationJustification'].get('score', '?')}"
+            )
+        except Exception as e:
+            logger.warning(f"CategorizationJustification failed for {bp.id}: {e}")
+    else:
+        skipped["CategorizationJustification"] = "No 'categorizer' key in agent_outputs"
+
+    if "review" in agents:
+        try:
+            from evaluators.clarification_relevance import (
+                evaluate_clarification_relevance,
+            )
+            scores["ClarificationRelevance"] = evaluate_clarification_relevance(
+                bp.prediction_text, vb_criteria, agents["review"],
+            )
+            logger.info(
+                f"ClarificationRelevance for {bp.id}: "
+                f"{scores['ClarificationRelevance'].get('score', '?')}"
+            )
+        except Exception as e:
+            logger.warning(f"ClarificationRelevance failed for {bp.id}: {e}")
+    else:
+        skipped["ClarificationRelevance"] = "No 'review' key in agent_outputs"
+
+    # --- Cross-pipeline evaluator (always runs) ---
+    try:
+        from evaluators.pipeline_coherence import evaluate_pipeline_coherence
+        scores["PipelineCoherence"] = evaluate_pipeline_coherence(
+            bp.prediction_text, agents, final,
+        )
+        logger.info(
+            f"PipelineCoherence for {bp.id}: "
+            f"{scores['PipelineCoherence'].get('score', '?')}"
+        )
+    except Exception as e:
+        logger.warning(f"PipelineCoherence failed for {bp.id}: {e}")
+
+    # Store skipped info for reporting
+    if skipped:
+        scores["_skipped_evaluators"] = skipped
+
+    return scores
+
+
 def _aggregate_report(test_results: list, manifest: dict,
                       dataset_version: str = "", schema_version: str = "",
-                      eval_run_id: str = "") -> dict:
+                      eval_run_id: str = "", backend_meta: dict = None) -> dict:
     """Build the evaluation report from per-test-case results."""
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -227,12 +361,41 @@ def _aggregate_report(test_results: list, manifest: dict,
         "criteria_method_alignment_avg": sum(cma_scores) / len(cma_scores) if cma_scores else None,
     }
 
+    # Verification-Builder-centric composite score (per test case + aggregate)
+    vb_centric_scores = []
+    for tr in test_results:
+        scores = tr.get("evaluator_scores", {})
+        vb_score = compute_vb_centric_score(scores)
+        tr["vb_centric_score"] = round(vb_score, 4)
+        vb_centric_scores.append(vb_score)
+
+    vb_centric_avg = (
+        sum(vb_centric_scores) / len(vb_centric_scores)
+        if vb_centric_scores else 0.0
+    )
+
+    # Collect skipped evaluators across all test cases
+    all_skipped = {}
+    for tr in test_results:
+        skipped = tr.get("evaluator_scores", {}).get("_skipped_evaluators", {})
+        all_skipped.update(skipped)
+
     return {
         "timestamp": timestamp,
         "schema_version": schema_version,
         "dataset_version": dataset_version,
         "eval_run_id": eval_run_id,
         "prompt_version_manifest": manifest,
+        "architecture": backend_meta.get("name", "unknown") if backend_meta else "serial",
+        "model_config": backend_meta.get("model_config", {}) if backend_meta else {},
+        "vb_centric_score": round(vb_centric_avg, 4),
+        "evaluator_groups": {
+            "final_output": ["IntentPreservation", "CriteriaMethodAlignment"],
+            "per_agent": ["IntentExtraction", "CategorizationJustification", "ClarificationRelevance"],
+            "cross_pipeline": ["PipelineCoherence"],
+            "deterministic": ["CategoryMatch", "JSONValidity", "ClarificationQuality"],
+        },
+        "skipped_evaluators": all_skipped,
         "per_test_case_scores": test_results,
         "per_agent_aggregates": per_agent_aggregates,
         "per_category_accuracy": per_category_accuracy,
@@ -252,12 +415,32 @@ def run_on_demand_evaluation(
     filter_difficulty: str = None,
     dry_run: bool = False,
     use_judge: bool = False,
+    backend_name: str = "serial",
+    model_id: str = None,
 ) -> dict:
     """Run on-demand evaluation against the golden dataset.
+
+    Args:
+        backend_name: Name of the backend to use. Must match a module in backends/.
+        model_id: Model ID override for the backend. If None, backend uses its default.
 
     Returns:
         Report dict with per-test scores, aggregates, and prompt version manifest.
     """
+    # Resolve backend
+    from backends import discover_backends, validate_output_contract
+    backends = discover_backends()
+    if backend_name not in backends:
+        available = list(backends.keys())
+        raise ValueError(
+            f"Unknown backend '{backend_name}'. Available: {available}"
+        )
+    backend = backends[backend_name]
+    backend_meta = backend.metadata(model_id) if model_id else backend.metadata()
+    logger.info(f"Using backend: {backend_meta['name']} — {backend_meta.get('description', '')}")
+    if model_id:
+        logger.info(f"Model override: {model_id}")
+
     from test_prediction_graph import run_test_graph
     from prompt_client import get_prompt_version_manifest
 
@@ -300,10 +483,24 @@ def run_on_demand_evaluation(
         try:
             if isinstance(tc, BasePrediction):
                 manifest_str = _build_tool_manifest_from_config(tc.tool_manifest_config)
-                result = run_test_graph(tc.prediction_text, tool_manifest=manifest_str)
+                # Use the pluggable backend instead of run_test_graph directly
+                output_contract = backend.run(tc.prediction_text, manifest_str,
+                                              model_id=model_id)
+                # Validate the output contract
+                contract_errors = validate_output_contract(output_contract)
+                if contract_errors:
+                    raise RuntimeError(f"Backend output contract errors: {contract_errors}")
+                result = output_contract["final_output"]
                 if result.get("error"):
                     raise RuntimeError(result["error"])
                 scores = _evaluate_base_prediction(tc, result, use_judge)
+
+                # New per-agent judge evaluators (only when --judge is enabled)
+                if use_judge:
+                    agent_judge_scores = _evaluate_with_judges(
+                        output_contract, tc, manifest_str
+                    )
+                    scores.update(agent_judge_scores)
                 # V2: expected_category field path
                 expected_cat = tc.expected_per_agent_outputs.get(
                     "categorizer", {}
@@ -405,6 +602,7 @@ def run_on_demand_evaluation(
         dataset_version=dataset.dataset_version,
         schema_version=dataset.schema_version,
         eval_run_id=reasoning_store.eval_run_id if reasoning_store else "",
+        backend_meta=backend_meta,
     )
 
     # V2: Write run metadata to reasoning store
@@ -438,9 +636,14 @@ def print_report(report: dict):
 
     print(f"\n=== EVALUATION REPORT ===")
     print(f"Timestamp: {report['timestamp']}")
+    print(f"Architecture: {report.get('architecture', 'serial')}")
     print(f"Prompt versions: {json.dumps(report['prompt_version_manifest'])}")
     print(f"\nResults: {report['passed']}/{report['total_tests']} passed "
           f"({report['overall_pass_rate']:.0%})")
+
+    vb_score = report.get("vb_centric_score")
+    if vb_score is not None:
+        print(f"Verification-Builder-centric score: {vb_score:.2f}")
 
     print(f"\nPer-category accuracy:")
     for cat, acc in report.get("per_category_accuracy", {}).items():
@@ -468,6 +671,13 @@ def print_report(report: dict):
         for f in failures:
             print(f"  {f['test_case_id']}: {f['error']}")
 
+    # Show skipped evaluators
+    skipped = report.get("skipped_evaluators", {})
+    if skipped:
+        print(f"\nSkipped evaluators:")
+        for ev, reason in skipped.items():
+            print(f"  {ev}: {reason}")
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.WARNING)
@@ -480,7 +690,21 @@ if __name__ == "__main__":
     parser.add_argument("--dry-run", action="store_true", help="List cases without executing")
     parser.add_argument("--judge", action="store_true", help="Enable Tier 2 LLM-as-judge")
     parser.add_argument("--compare", action="store_true", help="Compare with previous eval run")
+    parser.add_argument("--backend", default="serial", help="Backend to use (default: serial). Use --list-backends to see available.")
+    parser.add_argument("--model", default=None, help="Model ID override for the backend (e.g., us.anthropic.claude-opus-4-6-v1). If not set, each backend uses its default.")
+    parser.add_argument("--list-backends", action="store_true", help="List available backends and exit")
     args = parser.parse_args()
+
+    # Handle --list-backends
+    if args.list_backends:
+        from backends import discover_backends
+        backends = discover_backends()
+        print(f"\n=== AVAILABLE BACKENDS ({len(backends)}) ===")
+        for name, mod in backends.items():
+            meta = mod.metadata()
+            print(f"\n  {name}: {meta.get('description', 'No description')}")
+            print(f"    Models: {json.dumps(meta.get('model_config', {}))}")
+        sys.exit(0)
 
     report = run_on_demand_evaluation(
         dataset_path=args.dataset,
@@ -490,6 +714,8 @@ if __name__ == "__main__":
         filter_difficulty=args.difficulty,
         dry_run=args.dry_run,
         use_judge=args.judge,
+        backend_name=args.backend,
+        model_id=args.model,
     )
     print_report(report)
 
