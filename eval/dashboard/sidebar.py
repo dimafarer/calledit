@@ -84,6 +84,7 @@ def render(runs: list[dict]) -> dict:
             [
                 "Trends",
                 "Heatmap",
+                "Architecture Comparison",
                 "Prompt Correlation",
                 "Reasoning Explorer",
                 "Coherence View",

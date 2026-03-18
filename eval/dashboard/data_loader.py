@@ -71,6 +71,10 @@ def _normalize_run_summary(raw: dict) -> dict:
     if isinstance(pca, dict):
         pca = {k: float(v) for k, v in pca.items()}
 
+    # Verification-Builder-centric composite score — None when absent (backward compat)
+    raw_vb = raw.get("vb_centric_score")
+    vb_centric_score = float(raw_vb) if raw_vb is not None else None
+
     return {
         "eval_run_id": raw.get("eval_run_id", ""),
         "timestamp": raw.get("timestamp", ""),
@@ -81,6 +85,7 @@ def _normalize_run_summary(raw: dict) -> dict:
         "per_agent_aggregates": raw.get("per_agent_aggregates", {}),
         "per_category_accuracy": pca,
         "verification_quality_aggregates": raw.get("verification_quality_aggregates", {}),
+        "vb_centric_score": vb_centric_score,
         "overall_pass_rate": float(raw.get("overall_pass_rate", raw.get("pass_rate", 0.0))),
         "total_tests": int(raw.get("total_tests", 0)),
         "passed": int(raw.get("passed", 0)),
@@ -101,6 +106,7 @@ def _normalize_test_result(raw: dict) -> dict:
         "evaluator_scores": _clamp_evaluator_scores(scores),
         "error": raw.get("error", ""),
         "duration_s": float(raw.get("duration_s", 0.0)),
+        "execution_time_ms": int(raw.get("execution_time_ms", 0)),
     }
 
 
@@ -381,6 +387,36 @@ class EvalDataLoader:
         dv_a = run_a.get("dataset_version", "")
         dv_b = run_b.get("dataset_version", "")
 
+        # Verification-Builder-centric score delta
+        vb_a = run_a.get("vb_centric_score")
+        vb_b = run_b.get("vb_centric_score")
+        if vb_a is not None and vb_b is not None:
+            vb_delta = round(float(vb_a) - float(vb_b), 4)
+        else:
+            vb_delta = None
+        vb_centric_delta = {
+            "current": float(vb_a) if vb_a is not None else None,
+            "previous": float(vb_b) if vb_b is not None else None,
+            "delta": vb_delta,
+        }
+
+        # Per-agent evaluator deltas — only for evaluators present in both runs
+        paa_a = run_a.get("per_agent_aggregates", {})
+        paa_b = run_b.get("per_agent_aggregates", {})
+        shared_evaluators = set(paa_a.keys()) & set(paa_b.keys())
+        per_agent_deltas = {}
+        for evaluator in shared_evaluators:
+            curr_val = paa_a[evaluator]
+            prev_val = paa_b[evaluator]
+            # Support both {"avg": float} dict and plain float values
+            curr_avg = float(curr_val.get("avg", 0.0) if isinstance(curr_val, dict) else curr_val)
+            prev_avg = float(prev_val.get("avg", 0.0) if isinstance(prev_val, dict) else prev_val)
+            per_agent_deltas[evaluator] = {
+                "current": curr_avg,
+                "previous": prev_avg,
+                "delta": round(curr_avg - prev_avg, 4),
+            }
+
         return {
             "overall_pass_rate": {
                 "current": rate_a,
@@ -392,4 +428,6 @@ class EvalDataLoader:
             "changed_prompts": changed_prompts,
             "dataset_version_mismatch": dv_a != dv_b,
             "has_regression": has_regression,
+            "vb_centric_delta": vb_centric_delta,
+            "per_agent_deltas": per_agent_deltas,
         }

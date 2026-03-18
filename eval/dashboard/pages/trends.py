@@ -24,13 +24,20 @@ def _prompt_change_annotations(runs: list[dict]) -> list[dict]:
     return annotations
 
 
-def render(runs: list[dict]):
+def render(runs: list[dict], architecture_filter: str = "all"):
     """Render trend charts from run summaries."""
     st.header("Trends")
 
     if not runs:
         st.info("No runs to display.")
         return
+
+    # Apply architecture filter
+    if architecture_filter != "all":
+        runs = [r for r in runs if r.get("architecture", "serial") == architecture_filter]
+        if not runs:
+            st.info(f"No runs with architecture '{architecture_filter}'.")
+            return
 
     # Sort chronologically for charting (oldest first)
     sorted_runs = sorted(runs, key=lambda r: r.get("timestamp", ""))
@@ -145,7 +152,7 @@ def render(runs: list[dict]):
         )
         st.plotly_chart(fig_cat, use_container_width=True)
 
-    # --- Verification quality chart (v3 evaluators) ---
+    # --- Final-Output Evaluators chart (IntentPreservation, CriteriaMethodAlignment) ---
     ip_values = [
         r.get("verification_quality_aggregates", {}).get("intent_preservation_avg")
         for r in sorted_runs
@@ -154,24 +161,68 @@ def render(runs: list[dict]):
         r.get("verification_quality_aggregates", {}).get("criteria_method_alignment_avg")
         for r in sorted_runs
     ]
-    # Only show if at least one run has verification quality data
     if any(v is not None for v in ip_values + cma_values):
-        fig_vq = go.Figure()
-        fig_vq.add_trace(go.Scatter(
+        fig_fo = go.Figure()
+        fig_fo.add_trace(go.Scatter(
             x=timestamps, y=ip_values,
             mode="lines+markers", name="IntentPreservation",
             connectgaps=True,
         ))
-        fig_vq.add_trace(go.Scatter(
+        fig_fo.add_trace(go.Scatter(
             x=timestamps, y=cma_values,
             mode="lines+markers", name="CriteriaMethodAlignment",
             connectgaps=True,
         ))
-        fig_vq.update_layout(
-            title="Verification Quality Over Time",
+        fig_fo.update_layout(
+            title="Final-Output Evaluators Over Time",
             xaxis_title="Run",
             yaxis_title="Average Score",
             yaxis=dict(range=[0, 1.05]),
             hovermode="x unified",
         )
-        st.plotly_chart(fig_vq, use_container_width=True)
+        st.plotly_chart(fig_fo, use_container_width=True)
+
+    # --- Per-Agent & Cross-Pipeline Evaluators chart ---
+    per_agent_judges = [
+        ("IntentExtraction", "intent_extraction_avg"),
+        ("CategorizationJustification", "categorization_justification_avg"),
+        ("ClarificationRelevance", "clarification_relevance_avg"),
+        ("PipelineCoherence", "pipeline_coherence_avg"),
+    ]
+
+    # Extract per-agent judge averages from per_agent_aggregates or
+    # verification_quality_aggregates (whichever has the data)
+    judge_traces = {}
+    for display_name, agg_key in per_agent_judges:
+        values = []
+        for r in sorted_runs:
+            pa = r.get("per_agent_aggregates", {})
+            vqa = r.get("verification_quality_aggregates", {})
+            # Check per_agent_aggregates first (keyed by evaluator name)
+            val = None
+            if display_name in pa:
+                avg = pa[display_name]
+                val = avg.get("avg") if isinstance(avg, dict) else avg
+            elif agg_key in vqa:
+                val = vqa[agg_key]
+            values.append(val)
+        judge_traces[display_name] = values
+
+    # Only show if at least one run has any per-agent judge data
+    all_values = [v for vals in judge_traces.values() for v in vals]
+    if any(v is not None for v in all_values):
+        fig_pa = go.Figure()
+        for name, values in judge_traces.items():
+            fig_pa.add_trace(go.Scatter(
+                x=timestamps, y=values,
+                mode="lines+markers", name=name,
+                connectgaps=True,
+            ))
+        fig_pa.update_layout(
+            title="Per-Agent & Cross-Pipeline Evaluators Over Time",
+            xaxis_title="Run",
+            yaxis_title="Average Score",
+            yaxis=dict(range=[0, 1.05]),
+            hovermode="x unified",
+        )
+        st.plotly_chart(fig_pa, use_container_width=True)
