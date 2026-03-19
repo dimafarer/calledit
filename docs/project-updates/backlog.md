@@ -172,3 +172,43 @@ The full eval report (including per-agent judge averages, evaluator groups, and 
 - Decision 20: Web search as first registered tool
 - Decision 57: Tools should be architecture-agnostic (future)
 - `docs/research/mcp-verification-pipeline.md` — full research doc
+
+---
+
+## 8. Evaluator Pipeline Review — Replace Deterministic with LLM Judges Where It Makes Sense
+
+**Source:** Architecture comparison analysis (March 18, 2026)
+**Priority:** High — consistency of measurement matters more than cost savings
+
+**Problem:** The evaluator pipeline has a mix of deterministic evaluators and LLM judges. The deterministic evaluators (CategoryMatch, JSONValidity, ClarificationQuality, Convergence) are cheap and fast but shallow — they check surface-level properties (label match, JSON parse, keyword presence, category match) without understanding whether the output is actually good. This creates inconsistent measurement: some dimensions are evaluated by reasoning, others by string matching.
+
+The data from Runs 13-14 shows that deterministic evaluators often pass test cases that LLM judges fail. The gap between deterministic and judge scores is where the real quality issues hide. Running fewer, more expensive runs with consistent LLM judge coverage across the board would produce more trustworthy data than many cheap runs with mixed measurement quality.
+
+**Current evaluators and proposed changes:**
+
+| Evaluator | Current Type | Proposed | Rationale |
+|---|---|---|---|
+| CategoryMatch | Deterministic | Keep as cheap regression check, add LLM judge version | CategorizationJustification already covers this better — CategoryMatch stays as a fast sanity check |
+| JSONValidity | Deterministic | Keep deterministic | This is genuinely a structural check — either it parses or it doesn't. LLM judge adds no value here. |
+| ClarificationQuality | Deterministic (keyword) | Replace with LLM judge | Keyword matching is too brittle. ClarificationRelevance (LLM judge) already exists and is better — retire ClarificationQuality entirely |
+| Convergence | Deterministic (category match) | Replace with LLM judge or embedding similarity | Current check is too shallow (category label match). Should measure whether round 2's verification plan actually converged toward the base prediction's intent. Embedding similarity for continuous score, LLM judge for rich assessment |
+| ReasoningQuality | LLM judge (generic) | Retire or refocus | Superseded by the targeted per-agent judges (IntentExtraction, CategorizationJustification, ClarificationRelevance). The generic "is the reasoning good?" question is less useful than "did this specific agent do its specific job?" |
+
+**What to do:**
+- Keep all deterministic evaluators running alongside LLM judges for now — don't retire anything yet
+- Use the Coherence View dashboard page to measure per-evaluator agreement rates between deterministic and LLM judges across multiple runs
+- When the data shows a deterministic evaluator agrees with its LLM judge counterpart 90%+ of the time, that deterministic evaluator is a trustworthy cheap proxy — use it for quick iteration runs, save the judge for milestone runs
+- When agreement is low (e.g., ClarificationQuality vs ClarificationRelevance), the deterministic evaluator is misleading and should be retired or replaced
+- Build a Convergence LLM judge that assesses whether clarification moved the verification plan toward the correct one (embedding similarity as fast score, LLM judge for rich assessment)
+- Keep JSONValidity as deterministic (it's genuinely structural)
+- The goal: a tiered run strategy based on data
+  - Quick runs: fast subset (~15 predictions) + deterministic only (5 min, near-free)
+  - Standard runs: full dataset + deterministic + only judges without a high-agreement proxy (30 min)
+  - Full runs: full dataset + all judges (60+ min, milestone comparisons only)
+- This connects to backlog item 3 (golden dataset fast eval subset) — both reduce run cost
+
+**References:**
+- Decision 30: Two-tier evaluator strategy validated
+- Decision 44: Verification criteria is the primary eval target
+- Decision 48: Per-agent evaluators
+- `docs/project-updates/architecture-insights.md` — shared failure profile showing deterministic/judge disagreements

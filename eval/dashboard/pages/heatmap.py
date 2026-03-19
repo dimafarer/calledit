@@ -1,67 +1,112 @@
-"""Heatmap page — per-test-case evaluator score matrix with evaluator grouping."""
+"""Heatmap page — per-test-case evaluator score matrix ordered by agent pipeline."""
 
 import plotly.graph_objects as go
 import streamlit as st
 
-# Evaluator group taxonomy — matches eval runner's evaluator_groups
-EVALUATOR_GROUPS = {
-    "Final-Output": ["IntentPreservation", "CriteriaMethodAlignment"],
-    "Per-Agent": ["IntentExtraction", "CategorizationJustification", "ClarificationRelevance"],
-    "Cross-Pipeline": ["PipelineCoherence"],
-    "Deterministic": [
-        "CategoryMatch", "JSONValidity", "ClarificationQuality", "Convergence",
-    ],
+# Pipeline-ordered evaluator groups: left to right follows the agent pipeline
+# Within each agent group, both LLM judges and deterministic evaluators are mixed
+PIPELINE_GROUPS = [
+    ("Parser", [
+        "IntentExtraction",          # LLM judge
+        "JSONValidity_parser",       # deterministic
+        "R1_JSONValidity_parser",    # deterministic (round 1)
+    ]),
+    ("Categorizer", [
+        "CategorizationJustification",       # LLM judge
+        "CategoryMatch",                     # deterministic
+        "ReasoningQuality_categorizer",      # LLM judge
+        "R2_CategoryMatch",                  # deterministic (round 2)
+        "R2_ReasoningQuality_categorizer",   # LLM judge (round 2)
+    ]),
+    ("Verification Builder", [
+        "IntentPreservation",                        # LLM judge
+        "CriteriaMethodAlignment",                   # LLM judge
+        "JSONValidity_vb",                           # deterministic
+        "ReasoningQuality_verification_builder",     # LLM judge
+        "R2_ReasoningQuality_verification_builder",  # LLM judge (round 2)
+    ]),
+    ("Review", [
+        "ClarificationRelevance",        # LLM judge
+        "ClarificationQuality",          # deterministic
+        "R1_ClarificationQuality",       # deterministic (round 1)
+        "ReasoningQuality_review",       # LLM judge
+    ]),
+    ("Cross-Pipeline", [
+        "PipelineCoherence",    # LLM judge
+        "Convergence",          # deterministic
+    ]),
+]
+
+# LLM judge evaluator names — used for label coloring
+LLM_JUDGES = {
+    "IntentExtraction", "CategorizationJustification",
+    "IntentPreservation", "CriteriaMethodAlignment",
+    "ClarificationRelevance", "PipelineCoherence",
+    "ReasoningQuality_categorizer", "ReasoningQuality_verification_builder",
+    "ReasoningQuality_review",
+    "R2_ReasoningQuality_categorizer", "R2_ReasoningQuality_verification_builder",
+    "ReasoningQuality",  # legacy
 }
 
-# Flat set of all known evaluator names for classification
-_ALL_KNOWN = {name for names in EVALUATOR_GROUPS.values() for name in names}
+# Evaluator descriptions — shown on hover
+EVALUATOR_DESCRIPTIONS = {
+    "IntentExtraction": "Did the parser extract the factual claim and resolve temporal refs? (10% weight — LLM judge)",
+    "JSONValidity_parser": "Is the parser output valid JSON? (2.5% weight — deterministic)",
+    "R1_JSONValidity_parser": "Round 1: Is the parser output valid JSON? (deterministic)",
+    "CategorizationJustification": "Does the routing decision set up the best verification plan? (10% weight — LLM judge)",
+    "CategoryMatch": "Did the categorizer pick the expected label? (2.5% weight — deterministic)",
+    "ReasoningQuality_categorizer": "Is the categorizer's reasoning sound? (LLM judge)",
+    "R2_CategoryMatch": "Round 2: Correct category after clarification? (deterministic)",
+    "R2_ReasoningQuality_categorizer": "Round 2: Categorizer reasoning quality (LLM judge)",
+    "IntentPreservation": "Does the verification plan capture the user's intent? (25% weight — LLM judge)",
+    "CriteriaMethodAlignment": "Does the method enable proving true/false? (25% weight — LLM judge)",
+    "JSONValidity_vb": "Is the Verification Builder output valid JSON? (deterministic)",
+    "ReasoningQuality_verification_builder": "Is the Verification Builder's reasoning sound? (LLM judge)",
+    "R2_ReasoningQuality_verification_builder": "Round 2: Verification Builder reasoning quality (LLM judge)",
+    "ClarificationRelevance": "Do review questions target specific assumptions? (10% weight — LLM judge)",
+    "ClarificationQuality": "Do review questions contain expected keywords? (deterministic)",
+    "R1_ClarificationQuality": "Round 1: Review question keyword check (deterministic)",
+    "ReasoningQuality_review": "Is the ReviewAgent's reasoning sound? (LLM judge)",
+    "PipelineCoherence": "Do agents build on each other's work? (15% weight — LLM judge)",
+    "Convergence": "Does round 2 converge toward the base prediction? (deterministic)",
+}
 
-# Judge evaluator names (non-deterministic)
-_JUDGE_NAMES = set(EVALUATOR_GROUPS["Final-Output"]
-                   + EVALUATOR_GROUPS["Per-Agent"]
-                   + EVALUATOR_GROUPS["Cross-Pipeline"])
-# Legacy judge name
-_JUDGE_NAMES.add("ReasoningQuality")
 
-
-def _classify_evaluator(name: str) -> str:
-    """Return the group label for an evaluator name."""
-    for group, members in EVALUATOR_GROUPS.items():
-        if name in members:
-            return group
-    # Handle agent-suffixed names like JSONValidity_parser
+def _is_judge(name: str) -> bool:
+    """Check if an evaluator is an LLM judge."""
+    if name in LLM_JUDGES:
+        return True
     base = name.split("_")[0] if "_" in name else name
-    for group, members in EVALUATOR_GROUPS.items():
-        if base in members:
-            return group
-    return "Other"
+    return base in LLM_JUDGES
 
 
 def _order_evaluators(evaluator_names: set[str]) -> tuple[list[str], list[tuple[str, int, int]]]:
-    """Order evaluators by group and return group boundary info.
+    """Order evaluators by pipeline stage, return group boundaries.
 
-    Returns:
-        (ordered_evaluators, group_boundaries)
-        group_boundaries: list of (group_label, start_idx, end_idx)
+    Evaluators not in the known pipeline groups go into an "Other" group at the end.
     """
-    grouped = {}
-    for name in evaluator_names:
-        group = _classify_evaluator(name)
-        grouped.setdefault(group, []).append(name)
+    # Build the known set for detecting unknowns
+    known = set()
+    for _, members in PIPELINE_GROUPS:
+        known.update(members)
 
-    # Sort within each group
-    for g in grouped:
-        grouped[g].sort()
-
-    # Order: Final-Output, Per-Agent, Cross-Pipeline, Deterministic, Other
-    group_order = ["Final-Output", "Per-Agent", "Cross-Pipeline", "Deterministic", "Other"]
     ordered = []
     boundaries = []
-    for g in group_order:
-        if g in grouped:
+
+    for group_label, members in PIPELINE_GROUPS:
+        # Only include members that actually appear in the data
+        present = [m for m in members if m in evaluator_names]
+        if present:
             start = len(ordered)
-            ordered.extend(grouped[g])
-            boundaries.append((g, start, len(ordered) - 1))
+            ordered.extend(present)
+            boundaries.append((group_label, start, len(ordered) - 1))
+
+    # Collect unknowns
+    unknowns = sorted(evaluator_names - known)
+    if unknowns:
+        start = len(ordered)
+        ordered.extend(unknowns)
+        boundaries.append(("Other", start, len(ordered) - 1))
 
     return ordered, boundaries
 
@@ -99,6 +144,21 @@ def _build_matrix(
     return tc_ids, matrix
 
 
+def _color_coded_labels(evaluators: list[str]) -> list[str]:
+    """Return evaluator labels with color coding via HTML.
+
+    LLM judges get blue labels, deterministic get gray.
+    Plotly supports basic HTML in tick labels.
+    """
+    labels = []
+    for ev in evaluators:
+        if _is_judge(ev):
+            labels.append(f"<span style='color:#1f77b4'>{ev}</span>")
+        else:
+            labels.append(f"<span style='color:#7f7f7f'>{ev}</span>")
+    return labels
+
+
 def _render_heatmap(
     test_cases: list[dict],
     evaluators: list[str],
@@ -112,9 +172,11 @@ def _render_heatmap(
         st.info("No test case data available.")
         return
 
+    colored_labels = _color_coded_labels(evaluators)
+
     fig = go.Figure(data=go.Heatmap(
         z=matrix,
-        x=evaluators,
+        x=colored_labels,
         y=tc_ids,
         colorscale=[
             [0.0, "rgb(220, 50, 50)"],
@@ -124,11 +186,15 @@ def _render_heatmap(
         zmin=0,
         zmax=1,
         hoverongaps=False,
-        hovertemplate="Test: %{y}<br>Evaluator: %{x}<br>Score: %{z:.2f}<extra></extra>",
+        customdata=[
+            [f"{ev} — {EVALUATOR_DESCRIPTIONS.get(ev, '')}" if ev in EVALUATOR_DESCRIPTIONS else ev for ev in evaluators]
+            for _ in tc_ids
+        ],
+        hovertemplate="Test: %{y}<br>%{customdata}<br>Score: %{z:.2f}<extra></extra>",
         colorbar=dict(title="Score"),
     ))
 
-    # Add vertical separators between groups
+    # Add vertical separators between pipeline groups
     for i in range(1, len(boundaries)):
         _, start, _ = boundaries[i]
         fig.add_vline(
@@ -138,7 +204,7 @@ def _render_heatmap(
             line_width=2,
         )
 
-    # Add group label annotations above the chart
+    # Add pipeline group labels above the chart
     for group_label, start, end in boundaries:
         mid = (start + end) / 2
         fig.add_annotation(
@@ -159,6 +225,13 @@ def _render_heatmap(
         margin=dict(b=80),
     )
 
+    # Legend for label colors
+    st.markdown(
+        "<span style='color:#1f77b4'>■</span> LLM Judge &nbsp;&nbsp; "
+        "<span style='color:#7f7f7f'>■</span> Deterministic",
+        unsafe_allow_html=True,
+    )
+
     st.plotly_chart(fig, width="stretch")
 
 
@@ -167,12 +240,7 @@ def render(run_detail: dict, comparison_detail: dict = None):
     st.header("Heatmap")
 
     # Architecture label
-    arch = "unknown"
-    if run_detail:
-        arch = run_detail.get("architecture", "serial")
-        # Try to get from test cases metadata if not at top level
-        if arch == "serial" and run_detail.get("test_cases"):
-            pass  # default is fine
+    arch = run_detail.get("architecture", "serial") if run_detail else "unknown"
     st.caption(f"Architecture: {arch}")
 
     test_cases = run_detail.get("test_cases", []) if run_detail else []

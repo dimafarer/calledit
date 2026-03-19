@@ -82,10 +82,14 @@ The eval framework is the transferable artifact:
 - Two-tier evaluator strategy (deterministic catches structure, LLM judge catches reasoning)
 - Verification Builder output as the primary eval target (not categorization)
 
-## Current State (March 18, 2026)
+## Current State (March 19, 2026)
 
-- Serial backend: 29% pass rate, IP 0.80, CMA 0.75
-- Single backend: 16% pass rate, IP 0.80, CMA 0.77 (better reasoning, worse formatting)
-- Architecture comparison dashboard built and ready for analysis
-- 7 backlog items: DDB migration, swarm backend, golden dataset review, eval runner resume, file cleanup, code review, MCP verification pipeline
-- MCP ecosystem research complete for verification tool integration
+- Serial backend: 25% pass rate, IP 0.78, CMA 0.75, Verification-Builder-centric 0.50 (Run 14, all 6 judges)
+- Single backend: 16% pass rate, IP 0.80, CMA 0.77, Verification-Builder-centric 0.50 (Run 13, all 6 judges)
+- Both architectures share the same primary bottleneck: ClarificationRelevance (25 and 23 failures respectively)
+- PipelineCoherence (silo problem) is minimal on both architectures (2 failures each)
+- Architecture comparison dashboard built with pipeline-ordered heatmap, color-coded evaluator labels, hover descriptions, and composite score weights
+- 14 eval runs completed across serial and single backends
+- Next: Review prompt v3 + single JSON discipline, then pivot to MCP verification pipeline implementation
+- 8 backlog items: DDB migration, swarm backend, golden dataset review, eval runner resume, file cleanup, code review, MCP verification pipeline, evaluator pipeline review
+- 60 architectural decisions documented in decision log

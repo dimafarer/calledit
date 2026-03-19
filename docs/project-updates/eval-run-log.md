@@ -109,3 +109,24 @@ After every eval run, append an entry with:
 4. What changed (exactly one variable per Decision 50)
 5. Insight (what the numbers tell us)
 6. Next (what to do based on the insight)
+
+## Run 14 — March 18, 20:35 ⭐ Serial re-run with all 6 judges
+- **Config:** dataset v3.1, prompts 1/2/2/2, judge, serial (full 68 predictions)
+- **Pass rate:** 25% | auto_v: 100% | auto_m: 71% | human: 94%
+- **IP:** 0.78 | **CMA:** 0.75 | **Verification-Builder-centric:** 0.50
+- **What changed:** Re-run of Run 9 config with all 6 per-agent judges (Run 9 only had 2 judges)
+- **Insight:**
+  - Pass rate dropped from Run 9's 40% to 25% — the 4 new per-agent judges are catching issues the old evaluators missed
+  - IP dropped slightly from 0.80 to 0.78 — model non-determinism, within noise range
+  - CMA improved slightly from 0.73 to 0.75 — also within noise range
+  - Verification-Builder-centric score: 0.50 (same as single backend Run 13)
+  - auto_verifiable still 100% — serial graph nails these consistently
+  - Now have true apples-to-apples comparison with Run 13 (single, same config, same judges)
+- **Comparison with Run 13 (single):**
+  - Pass rate: serial 25% vs single 16% — serial still wins on structural discipline
+  - IP: serial 0.78 vs single 0.80 — single slightly better at intent preservation
+  - CMA: serial 0.75 vs single 0.77 — single slightly better at method quality
+  - Verification-Builder-centric: both 0.50 — identical composite score
+  - auto_verifiable: serial 100% vs single 71% — serial much better at category routing
+  - PipelineCoherence data now available for serial — check report for silo problem quantification
+- **Next:** Run compare_runs.py with both full-judge reports to see per-evaluator failure breakdown on serial

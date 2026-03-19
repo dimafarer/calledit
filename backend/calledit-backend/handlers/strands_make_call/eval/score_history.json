@@ -546,6 +546,48 @@
         "intent_preservation_avg": 0.7966666666666667,
         "criteria_method_alignment_avg": 0.7673333333333333
       }
+    },
+    {
+      "timestamp": "2026-03-18T20:35:23Z",
+      "eval_run_id": "96cd60fd-0283-403a-9869-d4a15fe95920",
+      "prompt_version_manifest": {
+        "parser": "1",
+        "categorizer": "2",
+        "vb": "2",
+        "review": "2"
+      },
+      "dataset_version": "3.1",
+      "architecture": "serial",
+      "model_config": {
+        "parser": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+        "categorizer": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+        "verification_builder": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+        "review": "us.anthropic.claude-sonnet-4-20250514-v1:0"
+      },
+      "vb_centric_score": 0.503,
+      "per_agent_aggregates": {
+        "parser": {
+          "json_validity_avg": 0.9411764705882353
+        },
+        "categorizer": {
+          "json_validity_avg": 1.0
+        },
+        "vb": {
+          "json_validity_avg": 1.0
+        }
+      },
+      "per_category_accuracy": {
+        "auto_verifiable": 1.0,
+        "automatable": 0.7142857142857143,
+        "human_only": 0.9411764705882353
+      },
+      "verification_quality_aggregates": {
+        "intent_preservation_avg": 0.7811111111111111,
+        "criteria_method_alignment_avg": 0.7537777777777778
+      },
+      "overall_pass_rate": 0.25,
+      "total_tests": 68,
+      "passed": 17
     }
   ]
 }

@@ -47,6 +47,24 @@ def render(runs: list[dict], architecture_filter: str = "all"):
     architectures = [r.get("architecture", "serial") for r in sorted_runs]
 
     # --- Verification-Builder-centric score chart (primary metric) ---
+    # Show composite score weights as reference
+    with st.expander("Composite Score Weights"):
+        st.markdown(
+            "| Evaluator | Weight | Role |\n"
+            "|---|---|---|\n"
+            "| IntentPreservation | 25% | Does the verification plan capture the user's intent? |\n"
+            "| CriteriaMethodAlignment | 25% | Does the method enable proving true/false? |\n"
+            "| PipelineCoherence | 15% | Do agents build on each other's work? |\n"
+            "| IntentExtraction | 10% | Did the parser give the Verification Builder clean input? |\n"
+            "| CategorizationJustification | 10% | Did routing set up the best verification plan? |\n"
+            "| ClarificationRelevance | 10% | Do review questions target specific assumptions? |\n"
+            "| CategoryMatch | 2.5% | Correct category label (regression check) |\n"
+            "| JSONValidity | 2.5% | Valid JSON output (structural check) |\n"
+            "\n*The heatmap also shows per-round evaluators (R1\\_, R2\\_) and per-agent "
+            "ReasoningQuality variants that are not weighted in the composite score — "
+            "they provide diagnostic detail but don't affect the primary metric.*"
+        )
+
     vb_scores = [r.get("vb_centric_score") for r in sorted_runs]
     if any(v is not None for v in vb_scores):
         fig_vb = go.Figure()

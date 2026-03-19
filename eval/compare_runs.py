@@ -2,7 +2,7 @@
 import json
 import sys
 
-serial_path = "backend/calledit-backend/handlers/strands_make_call/eval/reports/eval-2026-03-18T03-06-13Z.json"
+serial_path = "backend/calledit-backend/handlers/strands_make_call/eval/reports/eval-2026-03-18T20-35-23Z.json"
 single_path = "backend/calledit-backend/handlers/strands_make_call/eval/reports/eval-2026-03-18T16-01-01Z.json"
 
 serial = json.load(open(serial_path))
@@ -36,4 +36,18 @@ for tc in single["per_test_case_scores"]:
             fails[ev] = fails.get(ev, 0) + 1
 
 for ev, count in sorted(fails.items(), key=lambda x: -x[1]):
+    print(f"  {ev}: {count} failures")
+
+
+print()
+print("=== SERIAL BACKEND FAILURE ANALYSIS ===")
+serial_fails = {}
+for tc in serial["per_test_case_scores"]:
+    for ev, val in tc.get("evaluator_scores", {}).items():
+        if ev.startswith("_"):
+            continue
+        if isinstance(val, dict) and "score" in val and float(val["score"]) < 0.5:
+            serial_fails[ev] = serial_fails.get(ev, 0) + 1
+
+for ev, count in sorted(serial_fails.items(), key=lambda x: -x[1]):
     print(f"  {ev}: {count} failures")

@@ -440,3 +440,28 @@ The single backend creates one agent that receives the same 4 prompts from Bedro
 **Date:** March 18, 2026
 
 Currently tools (web_search, parse_relative_date) are imported from agent-specific modules. They should live as MCP tools or A2A services so any backend architecture can use them without coupling to specific agent code. Future spec when the eval framework proves which architecture works best.
+
+
+---
+
+## Decision 58: Pipeline-Ordered Heatmap with Color-Coded Evaluator Labels
+**Source:** [Project Update 11](project-updates/11-project-update-comparative-dashboard-and-analysis.md)
+**Date:** March 18, 2026
+
+Heatmap columns reordered to follow the agent pipeline left to right (Parser → Categorizer → Verification Builder → Review → Cross-Pipeline). LLM judges and deterministic evaluators are mixed within each pipeline group. Labels are color-coded: blue for LLM judges, gray for deterministic. This makes the pipeline story visible — you can see which stage is the bottleneck without reading numbers.
+
+---
+
+## Decision 59: Combined Prompt Update Before Verification Pipeline Pivot
+**Source:** [Project Update 11](project-updates/11-project-update-comparative-dashboard-and-analysis.md)
+**Date:** March 18, 2026
+
+Breaking isolated single-variable testing (Decision 50) for one iteration. Combining Review prompt v3 (both architectures) + single backend JSON discipline (single only) into one update. Justified because the project is pivoting to verification pipeline implementation — need the best baseline before that shift, not incremental data points. Serial coherence instructions deferred because PipelineCoherence only has 2/68 failures.
+
+---
+
+## Decision 60: Keep Deterministic Evaluators Until Agreement Data Proves Proxies
+**Source:** [Project Update 11](project-updates/11-project-update-comparative-dashboard-and-analysis.md)
+**Date:** March 18, 2026
+
+Don't retire deterministic evaluators yet. Run both deterministic and LLM judges side by side, use the Coherence View to measure agreement rates. When a deterministic evaluator agrees with its LLM judge counterpart 90%+ of the time, it's a trustworthy cheap proxy for quick iteration runs. When agreement is low, the deterministic evaluator is misleading. This enables a tiered run strategy: quick (deterministic only), standard (deterministic + selective judges), full (all judges).
