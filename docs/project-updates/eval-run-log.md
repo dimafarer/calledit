@@ -130,3 +130,54 @@ After every eval run, append an entry with:
   - auto_verifiable: serial 100% vs single 71% — serial much better at category routing
   - PipelineCoherence data now available for serial — check report for silo problem quantification
 - **Next:** Run compare_runs.py with both full-judge reports to see per-evaluator failure breakdown on serial
+
+## Run 15 — March 19, 17:20 — Serial with Review v3
+- **Config:** dataset v3.1, prompts 1/2/2/3, judge, serial (full 68 predictions)
+- **Pass rate:** 38% | auto_v: 100% | auto_m: 71% | human: 94%
+- **IP:** 0.81 | **CMA:** 0.74 | **Verification-Builder-centric:** 0.53
+- **What changed:** Review prompt v3 (targeted questions referencing Verification Builder assumptions)
+- **Comparison with Run 14 (serial, review v2):**
+  - Pass rate: 25% → 38% (+13%) — significant improvement
+  - Verification-Builder-centric: 0.50 → 0.53 (+0.03)
+  - IP: 0.78 → 0.81 (+0.03)
+  - CMA: 0.75 → 0.74 (-0.01, within noise)
+  - Category accuracy unchanged (auto_v 100%, auto_m 71%, human 94%)
+  - Parser JSON validity: 94% → 97% (+3%)
+- **Insight:**
+  - Review v3 produced a 13% pass rate improvement — the biggest single-prompt gain in the project
+  - The improvement is almost entirely from ClarificationRelevance passing more test cases (the targeted questions work)
+  - IP improved slightly, CMA flat — review prompt doesn't directly affect Verification Builder output quality, as expected
+  - Verification-Builder-centric score moved modestly (+0.03) because ClarificationRelevance is only 10% weight
+  - Category accuracy unchanged — review prompt doesn't affect categorization
+- **Next:** Run single backend with same config (review v3) to see if the improvement transfers
+
+## Run 16 — March 19, 19:58 — Single with Review v3
+- **Config:** dataset v3.1, prompts 1/2/2/3, judge, single (full 68 predictions)
+- **Pass rate:** 37% | auto_v: 71% | auto_m: 93% | human: 88%
+- **IP:** 0.79 | **CMA:** 0.77 | **Verification-Builder-centric:** 0.52
+- **What changed:** Review prompt v3 on single backend (same prompt as Run 15 serial)
+- **Comparison with Run 13 (single, review v2):**
+  - Pass rate: 16% → 37% (+21%) — massive improvement, even bigger than serial's +13%
+  - Verification-Builder-centric: 0.50 → 0.52 (+0.02)
+  - IP: 0.80 → 0.79 (-0.01, noise)
+  - CMA: 0.77 → 0.77 (unchanged)
+  - auto_verifiable: 71% → 71% (unchanged)
+  - automatable: 79% → 93% (+14%) — big improvement
+  - human_only: 82% → 88% (+6%)
+  - Parser JSON validity: 90% → 94% (+4%)
+- **Comparison with Run 15 (serial, review v3) — architecture comparison:**
+  - Pass rate: serial 38% vs single 37% — essentially tied
+  - Verification-Builder-centric: serial 0.53 vs single 0.52 — essentially tied
+  - IP: serial 0.81 vs single 0.79 — serial slightly better
+  - CMA: serial 0.74 vs single 0.77 — single still better at method quality
+  - auto_verifiable: serial 100% vs single 71% — serial still wins on routing
+  - automatable: serial 71% vs single 93% — single now much better here
+  - Parser JSON validity: serial 97% vs single 94% — gap narrowing
+- **Insight:**
+  - Review v3 had an even bigger impact on single (+21%) than serial (+13%)
+  - The architectures are now essentially tied on pass rate and composite score
+  - Single's CMA advantage persists (0.77 vs 0.74) — better verification methods
+  - Serial's auto_verifiable advantage persists (100% vs 71%) — better category routing
+  - Single's automatable jumped from 79% to 93% — the review prompt was dragging this down
+  - The JSON validity gap is narrowing (94% vs 97%) even without architecture-specific fixes
+- **Next:** This is a good baseline for pivoting to verification pipeline implementation

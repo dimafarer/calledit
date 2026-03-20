@@ -212,3 +212,24 @@ The data from Runs 13-14 shows that deterministic evaluators often pass test cas
 - Decision 44: Verification criteria is the primary eval target
 - Decision 48: Per-agent evaluators
 - `docs/project-updates/architecture-insights.md` — shared failure profile showing deterministic/judge disagreements
+
+---
+
+## 9. Per-Architecture Prompt Management and Prompt Change Visualization
+
+**Source:** Architecture comparison analysis (March 19, 2026)
+**Priority:** Medium — needed as architectures diverge
+
+**Problem:** Currently all architectures share the same 4 prompts from Bedrock Prompt Management. As architectures diverge (serial may need coherence instructions, single may need stronger JSON discipline), they'll need separate prompt variants. Additionally, the dashboard shows prompt version numbers (e.g., "review v2 → v3") but not what actually changed in the prompt text. The eval run reports identify runs by timestamp, not by a semantic description of what was tested.
+
+**What to do:**
+- Support per-architecture prompt variants in Prompt Management (e.g., `calledit-review-serial`, `calledit-review-single`) when architectures need different instructions
+- Add prompt diff visualization to the dashboard — when comparing two runs with different prompt versions, show the actual text diff (or at least a summary of what changed)
+- Add a "run description" field to eval reports so runs can be labeled with semantic meaning (e.g., "review v3 — targeted clarification questions") instead of just timestamps
+- Track prompt augmentations — if any code adds instructions beyond what's in Prompt Management, that's an untracked change and should be flagged or moved into Prompt Management
+- The principle: Prompt Management is the single source of truth for all prompt text. No untracked augmentations in backend code.
+
+**References:**
+- Decision 28: CloudFormation for Prompt Management
+- Decision 50: Isolated single-variable testing
+- Decision 59: Combined prompt update before verification pipeline pivot

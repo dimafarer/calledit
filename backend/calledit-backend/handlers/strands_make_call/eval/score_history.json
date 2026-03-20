@@ -588,6 +588,87 @@
       "overall_pass_rate": 0.25,
       "total_tests": 68,
       "passed": 17
+    },
+    {
+      "timestamp": "2026-03-19T17:20:55Z",
+      "eval_run_id": "c05b6c3b-0671-49c5-9151-8dd19983f1ae",
+      "prompt_version_manifest": {
+        "parser": "1",
+        "categorizer": "2",
+        "vb": "2",
+        "review": "3"
+      },
+      "dataset_version": "3.1",
+      "architecture": "serial",
+      "model_config": {
+        "parser": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+        "categorizer": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+        "verification_builder": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+        "review": "us.anthropic.claude-sonnet-4-20250514-v1:0"
+      },
+      "vb_centric_score": 0.525,
+      "per_agent_aggregates": {
+        "parser": {
+          "json_validity_avg": 0.9705882352941176
+        },
+        "categorizer": {
+          "json_validity_avg": 1.0
+        },
+        "vb": {
+          "json_validity_avg": 1.0
+        }
+      },
+      "per_category_accuracy": {
+        "auto_verifiable": 1.0,
+        "automatable": 0.7142857142857143,
+        "human_only": 0.9411764705882353
+      },
+      "verification_quality_aggregates": {
+        "intent_preservation_avg": 0.8122222222222222,
+        "criteria_method_alignment_avg": 0.7388888888888889
+      },
+      "overall_pass_rate": 0.3824,
+      "total_tests": 68,
+      "passed": 26
+    },
+    {
+      "timestamp": "2026-03-19T19:58:49Z",
+      "eval_run_id": "3c79f31a-f012-4e5f-9ce4-ef7cbce762ff",
+      "prompt_version_manifest": {
+        "parser": "1",
+        "categorizer": "2",
+        "vb": "2",
+        "review": "3"
+      },
+      "dataset_version": "3.1",
+      "architecture": "single",
+      "model_config": {
+        "agent": "us.anthropic.claude-sonnet-4-20250514-v1:0"
+      },
+      "vb_centric_score": 0.5167,
+      "per_agent_aggregates": {
+        "parser": {
+          "json_validity_avg": 0.9411764705882353
+        },
+        "categorizer": {
+          "json_validity_avg": 1.0
+        },
+        "vb": {
+          "json_validity_avg": 1.0
+        }
+      },
+      "per_category_accuracy": {
+        "auto_verifiable": 0.7142857142857143,
+        "automatable": 0.9285714285714286,
+        "human_only": 0.8823529411764706
+      },
+      "verification_quality_aggregates": {
+        "intent_preservation_avg": 0.7922222222222222,
+        "criteria_method_alignment_avg": 0.7724444444444444
+      },
+      "overall_pass_rate": 0.3676,
+      "total_tests": 68,
+      "passed": 25
     }
   ]
 }

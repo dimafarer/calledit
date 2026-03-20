@@ -21,8 +21,8 @@ Captures what each backend architecture is good at, what it struggles with, and 
 - The Verification Builder prompt needs the parser's extracted intent AND the categorizer's routing reasoning as explicit context, not just the final output text
 - Consider passing structured data (not just text) between agents so downstream agents can reference specific fields
 
-### Key Metrics (Run 14 — serial with all 6 judges)
-- Pass rate: 25% | IP: 0.78 | CMA: 0.75 | Verification-Builder-centric: 0.50
+### Key Metrics (Run 15 — serial with review v3, all 6 judges)
+- Pass rate: 38% | IP: 0.81 | CMA: 0.74 | Verification-Builder-centric: 0.53
 - auto_v: 100% | auto_m: 71% | human: 94%
 
 ---
@@ -49,9 +49,9 @@ Captures what each backend architecture is good at, what it struggles with, and 
 - Category routing instructions need to be as precise as the dedicated categorizer's prompt
 - Consider a JSON repair step after each turn rather than relying on the model
 
-### Key Metrics (Run 13 — first full single run)
-- Pass rate: 16% | IP: 0.80 | CMA: 0.77 | Verification-Builder-centric: 0.50
-- auto_v: 71% | auto_m: 79% | human: 82%
+### Key Metrics (Run 16 — single with review v3, all 6 judges)
+- Pass rate: 37% | IP: 0.79 | CMA: 0.77 | Verification-Builder-centric: 0.52
+- auto_v: 71% | auto_m: 93% | human: 88%
 
 ---
 
