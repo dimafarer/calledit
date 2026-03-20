@@ -258,14 +258,10 @@ Resources:
 
   MakeCallStreamIntegration:
     Type: AWS::ApiGatewayV2::Integration
-    DependsOn: MakeCallStreamFunctionAliaslive
     Properties:
       ApiId: !Ref WebSocketApi
       IntegrationType: AWS_PROXY
-      # Use the alias ARN (not $LATEST) so invocations go through the published
-      # version with SnapStart enabled. ${MakeCallStreamFunction.Arn} resolves to
-      # $LATEST which bypasses SnapStart. The alias ARN includes :live suffix.
-      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MakeCallStreamFunction.Arn}:live/invocations
+      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MakeCallStreamFunction.Arn}/invocations
 
 
 
@@ -324,13 +320,13 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: handlers/strands_make_call/
-      Handler: strands_make_call_graph.lambda_handler  # Updated to use new 3-agent graph handler
+      Handler: strands_make_call_graph.lambda_handler
       Runtime: python3.12
       Timeout: 300  # 5 minutes
       MemorySize: 512
-      AutoPublishAlias: live
-      SnapStart:
-        ApplyOn: PublishedVersions
+      # SnapStart is not supported for container image Lambdas (Decision 66).
+      # Removed AutoPublishAlias and SnapStart in preparation for Docker switch.
+      # Cold starts will be ~2-5s slower but functional within the 300s timeout.
       Environment:
         Variables:
           PROMPT_VERSION_PARSER: "1"
@@ -405,165 +401,8 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*/*'
 
-  # Permission for API Gateway to invoke the alias (required for SnapStart).
-  # The integration URI points to :live alias, which needs its own permission
-  # separate from the unqualified function permission above.
-  MakeCallStreamFunctionAliasPermission:
-    Type: AWS::Lambda::Permission
-    DependsOn: MakeCallStreamFunctionAliaslive
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !Sub '${MakeCallStreamFunction}:live'
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*/*'
 
-
-
-
-
-  # Verification System Resources
-  VerificationFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub "${AWS::StackName}-verification"
-      CodeUri: handlers/verification/
-      Handler: app.lambda_handler
-      Runtime: python3.12
-      Timeout: 300
-      MemorySize: 512
-      AutoPublishAlias: live
-      SnapStart:
-        ApplyOn: PublishedVersions
-      Environment:
-        Variables:
-          DYNAMODB_TABLE: calledit-db
-          S3_BUCKET: !Ref VerificationLogsBucket
-          SNS_TOPIC_ARN: !Ref VerificationNotificationTopic
-      Policies:
-        - DynamoDBCrudPolicy:
-            TableName: calledit-db
-        - S3CrudPolicy:
-            BucketName: !Ref VerificationLogsBucket
-        - SNSPublishMessagePolicy:
-            TopicName: !GetAtt VerificationNotificationTopic.TopicName
-        - Statement:
-            - Effect: Allow
-              Action:
-                - 'bedrock:InvokeModel'
-                - 'bedrock:InvokeModelWithResponseStream'
-              Resource: '*'
-      Events:
-        ScheduledVerification:
-          Type: Schedule
-          Properties:
-            Schedule: 'rate(15 minutes)'  # Every 15 minutes
-            Description: Automated prediction verification every 15 minutes
-            Input: |
-              {
-                "source": "eventbridge",
-                "action": "verify_predictions",
-                "limit": null
-              }
-
-  # S3 Bucket for Verification Logs
-  VerificationLogsBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub "${AWS::StackName}-verification-logs-${AWS::AccountId}"
-      VersioningConfiguration:
-        Status: Enabled
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
-      BucketEncryption:
-        ServerSideEncryptionConfiguration:
-          - ServerSideEncryptionByDefault:
-              SSEAlgorithm: aws:kms
-              KMSMasterKeyID: alias/aws/s3
-            BucketKeyEnabled: true
-      ObjectLockEnabled: true
-      ObjectLockConfiguration:
-        ObjectLockEnabled: Enabled
-        Rule:
-          DefaultRetention:
-            Mode: GOVERNANCE
-            Days: 30
-      LifecycleConfiguration:
-        Rules:
-          - Id: DeleteOldLogs
-            Status: Enabled
-            ExpirationInDays: 90
-          - Id: TransitionToIA
-            Status: Enabled
-            Transitions:
-              - TransitionInDays: 30
-                StorageClass: STANDARD_IA
-
-  # SNS Topic for Verification Notifications
-  VerificationNotificationTopic:
-    Type: AWS::SNS::Topic
-    Properties:
-      TopicName: !Sub "${AWS::StackName}-verification-notifications"
-      DisplayName: CalledIt Verification Notifications
-      KmsMasterKeyId: alias/aws/sns
-
-
-
-
-
-  # Notification Management Function
-  NotificationManagementFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub "${AWS::StackName}-notification-management"
-      CodeUri: handlers/notification_management/
-      Handler: app.lambda_handler
-      Runtime: python3.12
-      Timeout: 30
-      AutoPublishAlias: live
-      SnapStart:
-        ApplyOn: PublishedVersions
-      Environment:
-        Variables:
-          SNS_TOPIC_ARN: !Ref VerificationNotificationTopic
-      Policies:
-        - SNSPublishMessagePolicy:
-            TopicName: !GetAtt VerificationNotificationTopic.TopicName
-        - Statement:
-            - Effect: Allow
-              Action:
-                - 'sns:Subscribe'
-                - 'sns:Unsubscribe'
-                - 'sns:ListSubscriptionsByTopic'
-              Resource: !Ref VerificationNotificationTopic
-      Events:
-        SubscribeNotifications:
-          Type: Api
-          Properties:
-            Path: /subscribe-notifications
-            Method: post
-            RestApiId: !Ref CallitAPI
-            Auth:
-              Authorizer: CognitoAuthorizer
-        UnsubscribeNotifications:
-          Type: Api
-          Properties:
-            Path: /unsubscribe-notifications
-            Method: post
-            RestApiId: !Ref CallitAPI
-            Auth:
-              Authorizer: CognitoAuthorizer
-        NotificationStatus:
-          Type: Api
-          Properties:
-            Path: /notification-status
-            Method: get
-            RestApiId: !Ref CallitAPI
-            Auth:
-              Authorizer: CognitoAuthorizer
-
+  # Eval Reasoning Store
   # Eval Reasoning Store — captures full model reasoning traces during eval runs
   EvalReasoningTable:
     Type: AWS::DynamoDB::Table
@@ -611,19 +450,6 @@ Outputs:
     Description: "WebSocket API endpoint URL"
     Value: !Sub "wss://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/${WebSocketStage}"
   
-  # Verification System Outputs
-  VerificationFunctionArn:
-    Description: ARN of the verification Lambda function
-    Value: !GetAtt VerificationFunction.Arn
-  
-  VerificationLogsBucket:
-    Description: Name of the S3 verification logs bucket
-    Value: !Ref VerificationLogsBucket
-  
-  VerificationNotificationTopic:
-    Description: ARN of the SNS notification topic
-    Value: !Ref VerificationNotificationTopic
-
   EvalReasoningTableName:
     Description: Name of the DynamoDB eval reasoning store table
     Value: !Ref EvalReasoningTable

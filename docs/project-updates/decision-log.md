@@ -491,3 +491,45 @@ The Verification-Builder-centric composite score weights (IP 25%, CMA 25%, etc.)
 
 The pre-graph v1 architecture may have produced better subjective results than the current v2 graph. The pluggable backend system (Decision 55) enables a data-driven comparison — drop a `backends/pregraph.py` module and run through the eval framework. Backlog item 10 tracks this.
 
+
+
+---
+
+## Decision 64: Split MCP Verification Foundation Into Two Specs
+**Source:** Spec planning session (March 20, 2026)
+**Date:** March 20, 2026
+
+The combined "mcp-verification-foundation" spec had 17 tasks — too large for reliable execution. Split into Spec A1 (verification-teardown-docker: infrastructure teardown + Docker Lambda) and Spec A2 (mcp-tool-integration: MCP Manager + tool-aware agents + Prompt Management). Same reasoning as Decision 3: smaller specs, higher confidence. A1 can be deployed and validated independently before A2 adds application logic.
+
+---
+
+## Decision 65: Docker Lambda for MCP Subprocess Support
+**Source:** Spec A1 design (March 20, 2026)
+**Date:** March 20, 2026
+
+MCP servers (fetch, brave-search, playwright) are npm packages invoked via `npx`, which requires Node.js. Lambda `python3.12` runtime doesn't include Node.js. Solution: switch MakeCallStreamFunction to `PackageType: Image` with a Dockerfile based on `public.ecr.aws/lambda/python:3.12` + Node.js LTS installed via binary tarball. This is a stepping stone toward AgentCore, which also deploys containerized agents.
+
+---
+
+## Decision 66: Accept SnapStart Loss on MakeCallStreamFunction
+**Source:** Spec A1 design (March 20, 2026)
+**Date:** March 20, 2026
+
+AWS Lambda SnapStart for Python only supports zip packages, not container images. Switching to Docker means losing SnapStart on MakeCallStreamFunction. Cold starts will be ~2-5s slower (agent creation + graph compilation). Accepted because: (1) the 300s timeout provides ample headroom, (2) MCP server subprocess startup in Spec A2 would invalidate the SnapStart snapshot anyway, (3) provisioned concurrency can mitigate if needed, (4) AgentCore migration is planned shortly after verification pipeline completion. Other functions (Connect, Disconnect) retain SnapStart since they stay as zip packages.
+
+---
+
+## Decision 67: Project Version Bump to v3
+**Source:** Spec planning session (March 20, 2026)
+**Date:** March 20, 2026
+
+The MCP verification pipeline is a backward-compatibility-breaking change (removes old verification system, changes Lambda packaging model, replaces tool registry pattern). Version bump: v1 = pre-graph architecture, v2 = unified 4-agent Strands Graph, v3 = MCP-powered verification pipeline with Docker Lambda. Version bump happens after Spec A2 completes (both infrastructure and application logic in place).
+
+---
+
+## Decision 68: AgentCore as Post-Verification Migration Target
+**Source:** Spec planning session (March 20, 2026)
+**Date:** March 20, 2026
+
+After the verification pipeline is implemented (Specs A1 + A2 + B), migrate the runtime to Amazon Bedrock AgentCore. The Docker Lambda infrastructure from Spec A1 is a stepping stone — AgentCore deploys containerized agents, so the container-based architecture transfers directly. The current SAM Lambda architecture was chosen for the class being taught (low cost for students), but the project now aims to demonstrate best-in-class agent architecture.
+

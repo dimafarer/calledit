@@ -66,6 +66,9 @@ Built 7-page comparative eval dashboard with architecture comparison, pipeline-o
 ### Update 12 (March 20): Production Prompt Management Wiring
 Discovered production was running stale v1 hardcoded prompts — Lambda lacked `bedrock-agent:GetPrompt` IAM permission and `PROMPT_VERSION_*` env vars. Added both to SAM template, pinned to eval-validated versions (parser 1, categorizer 2, VB 2, review 3). Updated all 4 fallback constants to match latest Prompt Management text. Deployed and confirmed new prompts are live. Categorizer now produces v2 reasoning but conservatively labels predictions without registered tools — verification pipeline is the fix.
 
+### Update 13 (March 20): Verification Pipeline Planning & Spec Split
+Planned the MCP verification pipeline build. Split the combined 17-task spec into Spec A1 (teardown + Docker Lambda) and Spec A2 (MCP Manager + tool-aware agents). Key tradeoff: Docker Lambda loses SnapStart (cold starts ~2-5s slower), accepted because MCP subprocess startup would invalidate SnapStart anyway and AgentCore migration is planned. Version bump to v3 planned after Spec A2. Eight new decisions (61-68) covering production prompts, composite weight grounding, spec split, Docker Lambda, SnapStart loss, v3 versioning, and AgentCore migration path.
+
 ## The Eval Framework (Portfolio Centerpiece)
 
 The eval framework is the transferable artifact:
@@ -97,7 +100,9 @@ The eval framework is the transferable artifact:
 - Serial routes better (100% vs 71% auto_verifiable), single reasons better (CMA 0.77 vs 0.74)
 - Review v3 was the biggest single-prompt improvement: +13% serial, +21% single
 - 16 eval runs completed, architecture comparison dashboard fully operational
-- 12 specs completed (latest: production prompt management wiring)
-- Next: MCP verification pipeline implementation, then eval framework recalibration
-- 11 backlog items: DDB migration, golden dataset review, swarm backend, eval runner resume, file cleanup, code review, MCP verification pipeline, evaluator pipeline review, per-architecture prompts, pre-graph backend eval, composite weight recalibration
-- 63 architectural decisions documented in decision log
+- 12 specs completed, 2 in progress (verification-teardown-docker designed, mcp-tool-integration planned)
+- Verification pipeline split into 4 specs: A1 (teardown + Docker), A2 (MCP integration), B (execution agent), C (eval integration)
+- Docker Lambda replaces zip packaging for MakeCallStreamFunction (SnapStart lost, acceptable tradeoff)
+- AgentCore migration planned after verification pipeline completion
+- Next immediate: generate tasks for Spec A1, execute teardown + Docker switch
+- 13 backlog items, 68 architectural decisions documented

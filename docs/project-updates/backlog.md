@@ -138,6 +138,11 @@ The full eval report (including per-agent judge averages, evaluator groups, and 
 **Source:** Architecture insight + MCP ecosystem research (March 18, 2026)
 **Priority:** High — this is the key enabler for the entire verification use case
 **Research:** See `docs/research/mcp-verification-pipeline.md` for full ecosystem analysis
+**Status:** Split into 4 specs (March 20, 2026):
+- Spec A1 (`verification-teardown-docker`): Old system teardown + Docker Lambda — DESIGNED, ready for tasks
+- Spec A2 (`mcp-tool-integration`): MCP Manager + tool-aware agents — requirements pending
+- Spec B: Verification execution agent — future
+- Spec C: Eval framework integration — future
 
 **Problem:** The Verification Builder currently writes verification plans (criteria, sources, steps) that describe how to verify a prediction, but there's no pipeline that actually executes those plans. The Verification Builder is guessing what tools might exist. Meanwhile, Decision 57 already flagged that tools should be architecture-agnostic.
 
@@ -273,3 +278,25 @@ The data from Runs 13-14 shows that deterministic evaluators often pass test cas
 - Decision 28: CloudFormation for Prompt Management
 - Decision 50: Isolated single-variable testing
 - Decision 59: Combined prompt update before verification pipeline pivot
+
+
+---
+
+## 13. Migrate Runtime to Amazon Bedrock AgentCore
+
+**Source:** Spec planning session (March 20, 2026)
+**Priority:** Medium — after verification pipeline is complete (Specs A1 + A2 + B)
+
+**Problem:** The current SAM Lambda architecture was chosen for the class being taught (low cost for students to deploy). Now the project aims to demonstrate best-in-class agent architecture. AgentCore is purpose-built for deploying and operating AI agents with built-in observability, scaling, and lifecycle management.
+
+**What to do:**
+- After the verification pipeline is implemented and validated, migrate MakeCallStreamFunction to AgentCore
+- The Docker Lambda infrastructure from Spec A1 is a stepping stone — AgentCore deploys containerized agents, so the container-based architecture transfers directly
+- Evaluate AgentCore's built-in observability vs the current CloudWatch + OTEL setup
+- Consider migrating the eval framework to use AgentCore Evaluations (Decision 23)
+
+**References:**
+- Decision 23: AgentCore Evaluations — USE
+- Decision 65: Docker Lambda for MCP subprocess support (stepping stone)
+- Decision 68: AgentCore as post-verification migration target
+
