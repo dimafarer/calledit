@@ -215,7 +215,47 @@ The data from Runs 13-14 shows that deterministic evaluators often pass test cas
 
 ---
 
-## 9. Per-Architecture Prompt Management and Prompt Change Visualization
+## 10. Pre-Graph (v1) Backend Through Eval Framework
+
+**Source:** Agent review session (March 20, 2026)
+**Priority:** Medium — validates whether the current graph architecture is actually an improvement
+
+**Problem:** The pre-graph v1 architecture (separate graph + standalone ReviewAgent + hardcoded HITL loop) may have produced better subjective results than the current v2 graph architecture. The pluggable backend system (Decision 55) was built exactly for this comparison — drop a `backends/pregraph.py` module that runs the old v1 logic with the same output contract, and the eval framework scores it identically against serial and single.
+
+**What to do:**
+- Create `backends/pregraph.py` implementing `run()` and `metadata()`
+- Wire the v1 prediction pipeline logic (pre-graph architecture) into the backend interface
+- Run through the eval framework with the same golden dataset and all 6 judges
+- Compare against serial (Run 15) and single (Run 16) baselines
+- This is a data-driven answer to "was v1 actually better?" rather than relying on subjective feel
+
+**References:**
+- Decision 49: Architecture backend abstraction
+- Decision 55: Pluggable backend with flexible output contract
+- Decision 41: Eval framework as portfolio centerpiece
+
+---
+
+## 11. Composite Score Weight Recalibration from Verification Outcome Data
+
+**Source:** Agent review session (March 20, 2026)
+**Priority:** Deferred — depends on verification pipeline implementation
+
+**Problem:** The current Verification-Builder-centric composite score weights (IP 25%, CMA 25%, PipelineCoherence 15%, IntentExtraction 10%, CategorizationJustification 10%, ClarificationRelevance 10%, CategoryMatch 2.5%, JSONValidity 2.5%) were a judgment call, not derived from data. The composite score is directionally useful but not a reliable optimization target.
+
+**What to do:**
+- After the verification pipeline is implemented and producing real verification outcomes (success/failure), correlate each evaluator's scores with actual verification success rates
+- Derive weights from the correlation data — evaluators that predict verification success get higher weight
+- Replace the judgment-based weights with empirically grounded ones
+- This turns the composite score from "what we think matters" into "what actually predicts success"
+
+**References:**
+- Decision 53: Verification-Builder-centric composite score
+- Backlog item 7: Verification pipeline via MCP tools (prerequisite)
+
+---
+
+## 12. Per-Architecture Prompt Management and Prompt Change Visualization
 
 **Source:** Architecture comparison analysis (March 19, 2026)
 **Priority:** Medium — needed as architectures diverge

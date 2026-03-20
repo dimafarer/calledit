@@ -83,7 +83,7 @@ classify as auto_verifiable. If no tool matches but one could plausibly exist, c
 as automatable. Only use human_only when the prediction is fundamentally subjective or
 requires personal observation no tool can provide.
 
-Return ONLY the raw JSON object. Do not wrap in markdown code blocks. Do not include any text before or after the JSON.
+Return ONLY the raw JSON object. No markdown code blocks, no backticks, no explanation text before or after the JSON. The first character of your response must be {{ and the last must be }}.
 
 {{
     "verifiable_category": "one of 3 categories above",

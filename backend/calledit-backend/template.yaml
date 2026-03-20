@@ -331,6 +331,12 @@ Resources:
       AutoPublishAlias: live
       SnapStart:
         ApplyOn: PublishedVersions
+      Environment:
+        Variables:
+          PROMPT_VERSION_PARSER: "1"
+          PROMPT_VERSION_CATEGORIZER: "2"
+          PROMPT_VERSION_VB: "2"
+          PROMPT_VERSION_REVIEW: "3"
       Policies:
         - DynamoDBCrudPolicy:
             TableName: calledit-db
@@ -342,6 +348,11 @@ Resources:
                 - 'bedrock:InvokeModel'
                 - 'bedrock:InvokeModelWithResponseStream'
                 - 'bedrock:ListFoundationModels'
+              Resource: '*'
+        - Statement:
+            - Effect: Allow
+              Action:
+                - 'bedrock-agent:GetPrompt'
               Resource: '*'
         - Statement:
             - Effect: Allow

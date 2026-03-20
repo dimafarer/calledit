@@ -123,7 +123,7 @@ TIME CONVERSIONS:
 
 IMPORTANT: Preserve the user's exact prediction text. Do not rephrase or add details.
 
-Return ONLY the raw JSON object. Do not wrap in markdown code blocks. Do not include any text before or after the JSON.
+Return ONLY the raw JSON object. No markdown code blocks, no backticks, no explanation text before or after the JSON. The first character of your response must be { and the last must be }.
 
 {
     "prediction_statement": "exact user text",

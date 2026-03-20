@@ -465,3 +465,29 @@ Breaking isolated single-variable testing (Decision 50) for one iteration. Combi
 **Date:** March 18, 2026
 
 Don't retire deterministic evaluators yet. Run both deterministic and LLM judges side by side, use the Coherence View to measure agreement rates. When a deterministic evaluator agrees with its LLM judge counterpart 90%+ of the time, it's a trustworthy cheap proxy for quick iteration runs. When agreement is low, the deterministic evaluator is misleading. This enables a tiered run strategy: quick (deterministic only), standard (deterministic + selective judges), full (all judges).
+
+
+---
+
+## Decision 61: Production Prompts via Bedrock Prompt Management with Version Pinning
+**Source:** Spec 12: Production Prompt Management Wiring
+**Date:** March 20, 2026
+
+Production Lambda was silently falling back to hardcoded v1 prompt constants because it lacked `bedrock-agent:GetPrompt` IAM permission and `PROMPT_VERSION_*` environment variables. Fixed by adding both to the SAM template, pinning to eval-validated versions (parser 1, categorizer 2, VB 2, review 3). Hardcoded fallback constants updated to match latest Prompt Management text so even fallback mode uses current prompts. Rollback is a single env var change — no code deployment needed.
+
+---
+
+## Decision 62: Composite Score Weights Need Empirical Grounding
+**Source:** Agent review session (March 20, 2026)
+**Date:** March 20, 2026
+
+The Verification-Builder-centric composite score weights (IP 25%, CMA 25%, etc.) were a judgment call, not derived from data. The composite is directionally useful but not a reliable optimization target. After the verification pipeline is implemented and producing real verification outcomes, weights should be derived from correlation between evaluator scores and actual verification success rates. Backlog item 11 tracks this.
+
+---
+
+## Decision 63: Pre-Graph (v1) Backend as Eval Comparison Target
+**Source:** Agent review session (March 20, 2026)
+**Date:** March 20, 2026
+
+The pre-graph v1 architecture may have produced better subjective results than the current v2 graph. The pluggable backend system (Decision 55) enables a data-driven comparison — drop a `backends/pregraph.py` module and run through the eval framework. Backlog item 10 tracks this.
+

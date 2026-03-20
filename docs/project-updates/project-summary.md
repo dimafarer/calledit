@@ -60,6 +60,12 @@ Launched 6-page Streamlit eval dashboard (Trends, Heatmap, Prompt Correlation, R
 ### Update 10 (March 17): Verification Builder Iteration & Architecture Vision
 Verification Builder v2 prompt pushed IntentPreservation to 0.82 (past 0.80 target). CriteriaMethodAlignment improved to 0.74. Completed per-agent LLM judge coverage (6 judges total). Built pluggable backend system (serial + single backends). Ran 12 eval iterations with isolated single-variable testing methodology. Created consolidated decision log (57 decisions).
 
+### Update 11 (March 18-19): Comparative Eval Dashboard & Architecture Analysis
+Built 7-page comparative eval dashboard with architecture comparison, pipeline-ordered heatmap, and coherence view. Ran first full architecture comparison (serial vs single, all 6 judges). Key finding: shared failure profile — ClarificationRelevance is the biggest failure source on both architectures. Review v3 produced the biggest single-prompt gain in the project (+13% serial, +21% single). Architectures essentially tied on composite score.
+
+### Update 12 (March 20): Production Prompt Management Wiring
+Discovered production was running stale v1 hardcoded prompts — Lambda lacked `bedrock-agent:GetPrompt` IAM permission and `PROMPT_VERSION_*` env vars. Added both to SAM template, pinned to eval-validated versions (parser 1, categorizer 2, VB 2, review 3). Updated all 4 fallback constants to match latest Prompt Management text. Deployed and confirmed new prompts are live. Categorizer now produces v2 reasoning but conservatively labels predictions without registered tools — verification pipeline is the fix.
+
 ## The Eval Framework (Portfolio Centerpiece)
 
 The eval framework is the transferable artifact:
@@ -82,14 +88,16 @@ The eval framework is the transferable artifact:
 - Two-tier evaluator strategy (deterministic catches structure, LLM judge catches reasoning)
 - Verification Builder output as the primary eval target (not categorization)
 
-## Current State (March 19, 2026)
+## Current State (March 20, 2026)
 
+- Production now uses Bedrock Prompt Management with version-pinned prompts (parser 1, categorizer 2, VB 2, review 3)
 - Serial backend: 38% pass rate, IP 0.81, CMA 0.74, Verification-Builder-centric 0.53 (Run 15, review v3)
 - Single backend: 37% pass rate, IP 0.79, CMA 0.77, Verification-Builder-centric 0.52 (Run 16, review v3)
 - Architectures essentially tied on pass rate and composite score after review v3
 - Serial routes better (100% vs 71% auto_verifiable), single reasons better (CMA 0.77 vs 0.74)
 - Review v3 was the biggest single-prompt improvement: +13% serial, +21% single
 - 16 eval runs completed, architecture comparison dashboard fully operational
-- Next: pivot to MCP verification pipeline implementation
-- 8 backlog items: DDB migration, swarm backend, golden dataset review, eval runner resume, file cleanup, code review, MCP verification pipeline, evaluator pipeline review
-- 60 architectural decisions documented in decision log
+- 12 specs completed (latest: production prompt management wiring)
+- Next: MCP verification pipeline implementation, then eval framework recalibration
+- 11 backlog items: DDB migration, golden dataset review, swarm backend, eval runner resume, file cleanup, code review, MCP verification pipeline, evaluator pipeline review, per-architecture prompts, pre-graph backend eval, composite weight recalibration
+- 63 architectural decisions documented in decision log
