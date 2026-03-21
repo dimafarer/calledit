@@ -110,6 +110,15 @@ SECTIONS TO REVIEW:
 - verification_method.criteria: Do the criteria match the prediction's intent exactly?
 - verification_method.steps: Are the steps actionable and correctly ordered?
 
+AVAILABLE TOOLS:
+{tool_manifest}
+
+When reviewing the verification plan, also consider:
+- Are the chosen tools the best match from the available tool list for this prediction?
+- Could a different available tool provide better or more direct verification?
+- If the plan references tools that aren't in the available list, flag this
+- If a better tool exists but wasn't chosen, ask why
+
 Return ONLY the raw JSON object. No markdown code blocks, no backticks, no explanation text before or after the JSON. The first character of your response must be { and the last must be }.
 
 {
@@ -135,27 +144,38 @@ Return ONLY the raw JSON object. No markdown code blocks, no backticks, no expla
 # improvable sections. It doesn't have "previous output" to refine — it
 # always analyzes fresh. Each round produces a new set of reviewable sections
 # based on the current pipeline output.
-def create_review_agent(model_id: str = None) -> Agent:
+def create_review_agent(tool_manifest: str = "", model_id: str = None) -> Agent:
     """
     Create the Review Agent with explicit configuration.
 
     Args:
+        tool_manifest: Available MCP tools manifest string. Injected into the
+            system prompt so the reviewer can assess whether the VB chose the
+            best tools for the verification plan.
         model_id: Optional model override. If None, uses default Sonnet 4.
 
     Returns:
         Configured Review Agent (strands.Agent instance)
     """
+    manifest_text = (
+        tool_manifest
+        if tool_manifest
+        else "No tools currently registered."
+    )
+
     try:
         from prompt_client import fetch_prompt
-        system_prompt = fetch_prompt("review")
+        system_prompt = fetch_prompt("review", variables={"tool_manifest": manifest_text})
     except Exception as e:
         logger.warning(f"Prompt Management unavailable, using bundled prompt: {e}")
-        system_prompt = REVIEW_SYSTEM_PROMPT
+        system_prompt = REVIEW_SYSTEM_PROMPT.replace(
+            "{tool_manifest}", manifest_text
+        )
 
     agent = Agent(
         model=model_id or "us.anthropic.claude-sonnet-4-20250514-v1:0",
         system_prompt=system_prompt
     )
 
-    logger.info("Review Agent created with explicit model configuration")
+    logger.info("Review Agent created with tool manifest")
     return agent

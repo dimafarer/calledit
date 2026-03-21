@@ -110,6 +110,14 @@ Your criteria must match the specificity of the original prediction:
 
 IMPORTANT: All three fields (source, criteria, steps) must be lists, not single strings.
 
+AVAILABLE TOOLS:
+{tool_manifest}
+
+When writing verification plans:
+- If an available tool matches the verification need, reference it by name in the "source" and "steps" fields
+- If no matching tool exists for an "automatable" prediction, note "tool not currently available" in the "steps" field
+- For "human_only" predictions, use self-report or manual verification sources as before
+
 Return ONLY the raw JSON object. No markdown code blocks, no backticks, no explanation text before or after the JSON. The first character of your response must be { and the last must be }.
 
 {
@@ -128,29 +136,39 @@ Always return the complete JSON output, whether confirmed or updated.
 """
 
 
-def create_verification_builder_agent(model_id: str = None) -> Agent:
+def create_verification_builder_agent(tool_manifest: str = "", model_id: str = None) -> Agent:
     """
     Create the Verification Builder Agent with explicit configuration.
     
     Args:
+        tool_manifest: Available MCP tools manifest string. Injected into the
+            system prompt so the VB can reference real tools in verification plans.
         model_id: Optional model override. If None, uses default Sonnet 4.
     
     Returns:
         Configured Verification Builder Agent
     """
+    manifest_text = (
+        tool_manifest
+        if tool_manifest
+        else "No tools currently registered. Rely on pure reasoning for verification planning."
+    )
+
     try:
         from prompt_client import fetch_prompt
-        system_prompt = fetch_prompt("vb")
+        system_prompt = fetch_prompt("vb", variables={"tool_manifest": manifest_text})
     except Exception as e:
         logger.warning(f"Prompt Management unavailable, using bundled prompt: {e}")
-        system_prompt = VERIFICATION_BUILDER_SYSTEM_PROMPT
+        system_prompt = VERIFICATION_BUILDER_SYSTEM_PROMPT.replace(
+            "{tool_manifest}", manifest_text
+        )
 
     agent = Agent(
         model=model_id or "us.anthropic.claude-sonnet-4-20250514-v1:0",
         system_prompt=system_prompt
     )
     
-    logger.info("Verification Builder Agent created with explicit model configuration")
+    logger.info("Verification Builder Agent created with tool manifest")
     return agent
 
 

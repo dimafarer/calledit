@@ -139,7 +139,7 @@ Always return the complete JSON output, whether confirmed or updated.
 """
 
 
-def create_parser_agent(model_id: str = None) -> Agent:
+def create_parser_agent(tool_manifest: str = "", model_id: str = None) -> Agent:
     """
     Create the Parser Agent with explicit configuration.
     
@@ -147,6 +147,9 @@ def create_parser_agent(model_id: str = None) -> Agent:
     falls back to the bundled PARSER_SYSTEM_PROMPT constant if not.
     
     Args:
+        tool_manifest: Available MCP tools manifest string. Accepted for interface
+            consistency with other agent factories but not injected into the parser
+            prompt (parser focuses on extraction, not tool-aware decisions).
         model_id: Optional model override. If None, uses default Sonnet 4.
     
     Returns:

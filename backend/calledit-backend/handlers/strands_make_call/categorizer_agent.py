@@ -83,12 +83,12 @@ classify as auto_verifiable. If no tool matches but one could plausibly exist, c
 as automatable. Only use human_only when the prediction is fundamentally subjective or
 requires personal observation no tool can provide.
 
-Return ONLY the raw JSON object. No markdown code blocks, no backticks, no explanation text before or after the JSON. The first character of your response must be {{ and the last must be }}.
+Return ONLY the raw JSON object. No markdown code blocks, no backticks, no explanation text before or after the JSON. The first character of your response must be { and the last must be }.
 
-{{
+{
     "verifiable_category": "one of 3 categories above",
     "category_reasoning": "clear explanation of why you chose this category"
-}}
+}
 
 REFINEMENT MODE (when previous output is provided):
 You are refining a prediction. Your previous output is provided below.
@@ -119,7 +119,7 @@ def create_categorizer_agent(tool_manifest: str = "", model_id: str = None) -> A
         )
     except Exception as e:
         logger.warning(f"Prompt Management unavailable, using bundled prompt: {e}")
-        system_prompt = CATEGORIZER_SYSTEM_PROMPT.format(tool_manifest=manifest_text)
+        system_prompt = CATEGORIZER_SYSTEM_PROMPT.replace("{tool_manifest}", manifest_text)
 
     agent = Agent(
         model=model_id or "us.anthropic.claude-sonnet-4-20250514-v1:0",

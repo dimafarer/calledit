@@ -91,19 +91,18 @@ The eval framework is the transferable artifact:
 - Two-tier evaluator strategy (deterministic catches structure, LLM judge catches reasoning)
 - Verification Builder output as the primary eval target (not categorization)
 
-## Current State (March 20, 2026)
+## Current State (March 21, 2026)
 
 - Production now uses Bedrock Prompt Management with version-pinned prompts (parser 1, categorizer 2, VB 2, review 3)
+- MCP tool integration live: brave_web_search and brave_local_search discovered via MCP Manager
+- Categorizer correctly routes tool-verifiable predictions to `auto_verifiable` when MCP tools match
+- VB references MCP tools by name (e.g., `brave_web_search`) in verification plans
+- Review agent asks tool-aware clarification questions
 - Serial backend: 38% pass rate, IP 0.81, CMA 0.74, Verification-Builder-centric 0.53 (Run 15, review v3)
 - Single backend: 37% pass rate, IP 0.79, CMA 0.77, Verification-Builder-centric 0.52 (Run 16, review v3)
-- Architectures essentially tied on pass rate and composite score after review v3
-- Serial routes better (100% vs 71% auto_verifiable), single reasons better (CMA 0.77 vs 0.74)
-- Review v3 was the biggest single-prompt improvement: +13% serial, +21% single
 - 16 eval runs completed, architecture comparison dashboard fully operational
-- 13 specs completed (Spec A1 verification-teardown-docker done), 1 planned (Spec A2 mcp-tool-integration)
-- Verification pipeline split into 4 specs: A1 (teardown + Docker — COMPLETE), A2 (MCP integration — next), B (execution agent), C (eval integration)
-- MakeCallStreamFunction now runs as Docker Lambda (Python 3.12 + Node.js LTS) — SnapStart removed (Decision 66)
-- Old verification system archived to `docs/historical/verification-v1/`, mcp-verification-foundation spec marked SUPERSEDED
-- AgentCore migration planned after verification pipeline completion
-- Next immediate: create Spec A2 (MCP Manager + tool-aware agents), then execute
-- 13 backlog items, 70 architectural decisions documented
+- 14 specs completed (A1 teardown + Docker, A2 MCP tool integration), mcp-verification-foundation superseded
+- Docker Lambda cold start ~30 seconds (npx + Node.js subprocess startup) — validates AgentCore migration priority
+- Roadmap: Spec B (verification execution agent) → eval comparison → AgentCore migration
+- Next immediate: deploy Prompt Management VB v3 + Review v4, bump env vars, version bump to v3
+- 13 backlog items, 74 architectural decisions documented

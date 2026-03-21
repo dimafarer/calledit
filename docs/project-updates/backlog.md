@@ -139,9 +139,9 @@ The full eval report (including per-agent judge averages, evaluator groups, and 
 **Priority:** High — this is the key enabler for the entire verification use case
 **Research:** See `docs/research/mcp-verification-pipeline.md` for full ecosystem analysis
 **Status:** Split into 4 specs (March 20, 2026):
-- Spec A1 (`verification-teardown-docker`): Old system teardown + Docker Lambda — DESIGNED, ready for tasks
-- Spec A2 (`mcp-tool-integration`): MCP Manager + tool-aware agents — requirements pending
-- Spec B: Verification execution agent — future
+- Spec A1 (`verification-teardown-docker`): Old system teardown + Docker Lambda — COMPLETE (March 21)
+- Spec A2 (`mcp-tool-integration`): MCP Manager + tool-aware agents — COMPLETE (March 21, Prompt Management deploy pending)
+- Spec B: Verification execution agent — next
 - Spec C: Eval framework integration — future
 
 **Problem:** The Verification Builder currently writes verification plans (criteria, sources, steps) that describe how to verify a prediction, but there's no pipeline that actually executes those plans. The Verification Builder is guessing what tools might exist. Meanwhile, Decision 57 already flagged that tools should be architecture-agnostic.

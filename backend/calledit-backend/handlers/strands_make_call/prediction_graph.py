@@ -102,28 +102,25 @@ def create_prediction_graph():
     Returns:
         Compiled graph ready for execution via __call__ or stream_async
     """
-    # Read tool registry and build manifest for categorizer tool awareness.
-    # This runs at module level (cached by SnapStart). The categorizer uses
-    # the manifest to distinguish auto_verifiable (matching tool exists) from
-    # automatable (tool could exist but doesn't). If the registry read fails,
-    # the categorizer falls back to pure reasoning mode (empty manifest).
-    try:
-        from tool_registry import read_active_tools, build_tool_manifest
-        tools = read_active_tools()
-        tool_manifest = build_tool_manifest(tools)
-    except Exception as e:
-        logger.error(f"Failed to read tool registry, falling back to pure reasoning: {e}")
-        tool_manifest = ""
+    # Read tool manifest from MCP Manager for agent tool awareness.
+    # The MCP Manager connects to MCP servers (fetch, brave-search, playwright)
+    # at module level and discovers available tools. The manifest is a human-readable
+    # string injected into agent system prompts so they know what tools exist.
+    # If all MCP servers fail, get_tool_manifest() returns "" and agents fall back
+    # to reasoning-only mode.
+    from mcp_manager import mcp_manager
+    tool_manifest = mcp_manager.get_tool_manifest()
 
     # Create all 4 agents using factory functions.
     # Each factory returns a configured strands.Agent instance with:
     # - Explicit model selection (Claude Sonnet 4 via Bedrock)
     # - Focused system prompt (single responsibility)
     # - Tools where needed (Parser has parse_relative_date + current_time)
-    parser = create_parser_agent()
+    # - Tool manifest for tool-aware decisions (uniform interface across all agents)
+    parser = create_parser_agent(tool_manifest)
     categorizer = create_categorizer_agent(tool_manifest)
-    vb = create_verification_builder_agent()
-    review = create_review_agent()
+    vb = create_verification_builder_agent(tool_manifest)
+    review = create_review_agent(tool_manifest)
 
     builder = GraphBuilder()
 

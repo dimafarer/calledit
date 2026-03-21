@@ -13,6 +13,13 @@ Globals:
   Api:
     TracingEnabled: true
 
+Parameters:
+  BraveApiKey:
+    Type: String
+    Description: "Brave Search API key for MCP brave-search server"
+    NoEcho: true
+    Default: ""
+
 Resources:
   CallitAPI:
     Type: AWS::Serverless::Api
@@ -332,6 +339,7 @@ Resources:
           PROMPT_VERSION_CATEGORIZER: "2"
           PROMPT_VERSION_VB: "2"
           PROMPT_VERSION_REVIEW: "3"
+          BRAVE_API_KEY: !Ref BraveApiKey
       Policies:
         - DynamoDBCrudPolicy:
             TableName: calledit-db

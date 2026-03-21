@@ -173,6 +173,8 @@ Resources:
               MaxTokens: 2000
           TemplateConfiguration:
             Text:
+              InputVariables:
+                - Name: tool_manifest
               Text: |
                 You are a verification method builder. Create detailed verification plans.
 
@@ -233,6 +235,14 @@ Resources:
 
                 IMPORTANT: All three fields (source, criteria, steps) must be lists, not single strings.
 
+                AVAILABLE TOOLS:
+                {{tool_manifest}}
+
+                When writing verification plans:
+                - If an available tool matches the verification need, reference it by name in the "source" and "steps" fields
+                - If no matching tool exists for an "automatable" prediction, note "tool not currently available" in the "steps" field
+                - For "human_only" predictions, use self-report or manual verification sources as before
+
                 Return ONLY the raw JSON object. No markdown code blocks, no backticks, no explanation text before or after the JSON. The first character of your response must be { and the last must be }.
 
                 {
@@ -262,6 +272,13 @@ Resources:
       PromptArn: !GetAtt VBPrompt.Arn
       Description: "v2 — operationalization instructions and specificity matching"
 
+  VBPromptVersionV3:
+    Type: AWS::Bedrock::PromptVersion
+    DependsOn: VBPromptVersionV2
+    Properties:
+      PromptArn: !GetAtt VBPrompt.Arn
+      Description: "v3 — MCP tool awareness with {{tool_manifest}} variable"
+
   # =========================================================================
   # REVIEW PROMPT
   # =========================================================================
@@ -284,6 +301,8 @@ Resources:
               MaxTokens: 2000
           TemplateConfiguration:
             Text:
+              InputVariables:
+                - Name: tool_manifest
               Text: |
                 You are a verification plan reviewer. Your PRIMARY job is to find specific assumptions
                 in the Verification Builder's output that could be wrong, and ask targeted questions
@@ -325,6 +344,15 @@ Resources:
                 - verification_method.criteria: Do the criteria match the prediction's intent exactly?
                 - verification_method.steps: Are the steps actionable and correctly ordered?
 
+                AVAILABLE TOOLS:
+                {{tool_manifest}}
+
+                When reviewing the verification plan, also consider:
+                - Are the chosen tools the best match from the available tool list for this prediction?
+                - Could a different available tool provide better or more direct verification?
+                - If the plan references tools that aren't in the available list, flag this
+                - If a better tool exists but wasn't chosen, ask why
+
                 Return ONLY the raw JSON object. No markdown code blocks, no backticks, no explanation text before or after the JSON. The first character of your response must be { and the last must be }.
 
                 {
@@ -357,6 +385,13 @@ Resources:
     Properties:
       PromptArn: !GetAtt ReviewPrompt.Arn
       Description: "v3 — targeted questions referencing specific Verification Builder assumptions"
+
+  ReviewPromptVersionV4:
+    Type: AWS::Bedrock::PromptVersion
+    DependsOn: ReviewPromptVersionV3
+    Properties:
+      PromptArn: !GetAtt ReviewPrompt.Arn
+      Description: "v4 — MCP tool awareness with {{tool_manifest}} variable"
 
 Outputs:
   ParserPromptId:

@@ -74,8 +74,18 @@ PROMPT_VERSION_PARSER=1 PROMPT_VERSION_CATEGORIZER=2 PROMPT_VERSION_VB=2 PROMPT_
 
 ```bash
 cd /home/wsluser/projects/calledit/backend/calledit-backend
+
+# Standard build + deploy
 sam build
 sam deploy --stack-name calledit-backend --no-confirm-changeset
+
+# Force rebuild (needed after code changes when Docker cache is stale)
+sam build --no-cached
+sam deploy --stack-name calledit-backend --no-confirm-changeset
+
+# Deploy with BRAVE_API_KEY (source .env first for the key)
+source /home/wsluser/projects/calledit/.env
+sam deploy --parameter-overrides BraveApiKey=$BRAVE_API_KEY
 ```
 
 ## Prompt Management Deploy
@@ -83,6 +93,19 @@ sam deploy --stack-name calledit-backend --no-confirm-changeset
 ```bash
 cd /home/wsluser/projects/calledit/infrastructure/prompt-management
 aws cloudformation deploy --template-file template.yaml --stack-name calledit-prompts
+```
+
+## CloudWatch Logs
+
+```bash
+# MCP Manager logs (check server connections)
+aws logs tail /aws/lambda/calledit-backend-MakeCallStreamFunction-U5p4yuEq1F1x --since 10m --filter-pattern "MCP" --format short
+
+# All recent logs for MakeCallStream
+aws logs tail /aws/lambda/calledit-backend-MakeCallStreamFunction-U5p4yuEq1F1x --since 5m --format short
+
+# List Lambda function names
+aws lambda list-functions --query "Functions[?starts_with(FunctionName, 'calledit')].FunctionName" --output text
 ```
 
 ## Git

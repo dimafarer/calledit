@@ -26,21 +26,26 @@ from typing import List, Dict, Any
 
 from strands.tools.mcp import MCPClient
 from mcp import StdioServerParameters
+from mcp.client.stdio import stdio_client
 
 logger = logging.getLogger(__name__)
 
 # Static MCP server configurations.
 # Each entry maps to an npx-invoked MCP server subprocess.
 # Node.js + npm are available in the Docker Lambda image (Spec A1).
+#
+# NOTE: @modelcontextprotocol/server-fetch does NOT exist as an npm package.
+# The Anthropic fetch server is Python-only (uvx mcp-server-fetch).
+# We use @tokenizin/mcp-npx-fetch as the npm-based alternative.
 MCP_SERVERS: Dict[str, Dict[str, Any]] = {
     "fetch": {
         "command": "npx",
-        "args": ["-y", "@modelcontextprotocol/server-fetch"],
+        "args": ["-y", "@tokenizin/mcp-npx-fetch"],
         "env": None,
     },
     "brave_search": {
         "command": "npx",
-        "args": ["-y", "@nicobailon/mcp-brave-search"],
+        "args": ["-y", "@modelcontextprotocol/server-brave-search"],
         "env": {"BRAVE_API_KEY": os.environ.get("BRAVE_API_KEY", "")},
     },
     "playwright": {
@@ -72,15 +77,35 @@ class MCPManager:
 
     def _initialize(self):
         """Connect to all configured MCP servers, discover tools."""
+        # Verify npx is available in the container
+        import shutil
+        npx_path = shutil.which("npx")
+        node_path = shutil.which("node")
+        logger.info(f"npx path: {npx_path}, node path: {node_path}")
+
         for name, config in MCP_SERVERS.items():
             try:
-                env = {**os.environ, **(config["env"] or {})}
+                env = {
+                    **os.environ,
+                    **(config["env"] or {}),
+                    # Lambda filesystem is read-only except /tmp.
+                    # npx needs a writable HOME for npm cache (~/.npm/_npx/).
+                    "HOME": "/tmp",
+                    "NPM_CONFIG_CACHE": "/tmp/.npm",
+                }
+                logger.info(
+                    f"Connecting to MCP server '{name}': "
+                    f"command={config['command']} args={config['args']}"
+                )
                 client = MCPClient(
-                    lambda c=config, e=env: StdioServerParameters(
-                        command=c["command"],
-                        args=c["args"],
-                        env=e,
-                    )
+                    lambda c=config, e=env: stdio_client(
+                        StdioServerParameters(
+                            command=c["command"],
+                            args=c["args"],
+                            env=e,
+                        )
+                    ),
+                    startup_timeout=60,  # npx downloads packages on first cold start
                 )
                 client.start()
                 tools = client.list_tools_sync()
@@ -88,7 +113,10 @@ class MCPManager:
                 self._tool_list.extend(tools)
                 logger.info(f"MCP server '{name}' connected: {len(tools)} tools")
             except Exception as e:
-                logger.error(f"MCP server '{name}' failed to connect: {e}")
+                logger.error(
+                    f"MCP server '{name}' failed to connect: {type(e).__name__}: {e}",
+                    exc_info=True,
+                )
 
         if not self._clients:
             logger.warning(
@@ -107,8 +135,10 @@ class MCPManager:
             return ""
         lines = []
         for tool in self._tool_list:
-            name = getattr(tool, "name", str(tool))
-            desc = getattr(tool, "description", "No description")
+            name = getattr(tool, "tool_name", str(tool))
+            # MCPAgentTool stores description in tool_spec dict
+            spec = getattr(tool, "tool_spec", {})
+            desc = spec.get("description", "No description") if isinstance(spec, dict) else "No description"
             lines.append(f"- {name}: {desc}")
         return "\n".join(lines)
 

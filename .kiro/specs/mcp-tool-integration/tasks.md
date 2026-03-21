@@ -40,8 +40,8 @@ Wire MCP tool servers into the CalledIt prediction pipeline. Build the MCP Manag
 - [x] 2. Checkpoint — MCP Manager tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [-] 3. Wire MCP Manager into prediction graph
-  - [-] 3.1 Update `backend/calledit-backend/handlers/strands_make_call/prediction_graph.py`
+- [x] 3. Wire MCP Manager into prediction graph
+  - [x] 3.1 Update `backend/calledit-backend/handlers/strands_make_call/prediction_graph.py`
     - Replace `from tool_registry import read_active_tools, build_tool_manifest` try/except block with `from mcp_manager import mcp_manager` and `tool_manifest = mcp_manager.get_tool_manifest()`
     - Pass `tool_manifest` to all 4 agent factories: `create_parser_agent(tool_manifest)`, `create_categorizer_agent(tool_manifest)`, `create_verification_builder_agent(tool_manifest)`, `create_review_agent(tool_manifest)`
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
@@ -52,12 +52,12 @@ Wire MCP tool servers into the CalledIt prediction pipeline. Build the MCP Manag
     - Test file: `backend/calledit-backend/tests/test_mcp_manager.py`
     - _Requirements: 2.1, 2.4_
 
-- [ ] 4. Update all 4 agent factories
-  - [ ] 4.1 Update `create_parser_agent()` in `parser_agent.py` to accept `tool_manifest: str = ""`
+- [x] 4. Update all 4 agent factories
+  - [x] 4.1 Update `create_parser_agent()` in `parser_agent.py` to accept `tool_manifest: str = ""`
     - Add parameter for interface consistency; parser does NOT inject it into its prompt
     - _Requirements: 7.1, 7.2_
 
-  - [ ] 4.2 Update `create_verification_builder_agent()` in `verification_builder_agent.py`
+  - [x] 4.2 Update `create_verification_builder_agent()` in `verification_builder_agent.py`
     - Add `tool_manifest: str = ""` parameter
     - Add `AVAILABLE TOOLS` section with `{tool_manifest}` placeholder to bundled `VERIFICATION_BUILDER_SYSTEM_PROMPT`
     - Add tool-referencing instructions (reference tool names in source/steps, note unavailable tools)
@@ -65,7 +65,7 @@ Wire MCP tool servers into the CalledIt prediction pipeline. Build the MCP Manag
     - Format into bundled prompt on fallback path
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
 
-  - [ ] 4.3 Update `create_review_agent()` in `review_agent.py`
+  - [x] 4.3 Update `create_review_agent()` in `review_agent.py`
     - Add `tool_manifest: str = ""` parameter
     - Add `AVAILABLE TOOLS` section with `{tool_manifest}` placeholder to bundled `REVIEW_SYSTEM_PROMPT`
     - Add tool-awareness instructions for reviewing tool choices
@@ -103,18 +103,18 @@ Wire MCP tool servers into the CalledIt prediction pipeline. Build the MCP Manag
     - Test file: `backend/calledit-backend/tests/test_mcp_manager.py`
     - _Requirements: 3.1, 3.4, 6.1, 6.4, 7.1_
 
-- [ ] 5. Checkpoint — Agent factory tests pass
+- [x] 5. Checkpoint — Agent factory tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Update Prompt Management templates
-  - [ ] 6.1 Update VB prompt in `infrastructure/prompt-management/template.yaml`
+- [x] 6. Update Prompt Management templates
+  - [x] 6.1 Update VB prompt in `infrastructure/prompt-management/template.yaml`
     - Add `{{tool_manifest}}` input variable to VB prompt's `TemplateConfiguration`
     - Add `AVAILABLE TOOLS` section with `{{tool_manifest}}` to VB prompt text
     - Add tool-referencing instructions to VB prompt text
     - Add `VBPromptVersionV3` resource depending on `VBPromptVersionV2`
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
 
-  - [ ] 6.2 Update Review prompt in `infrastructure/prompt-management/template.yaml`
+  - [x] 6.2 Update Review prompt in `infrastructure/prompt-management/template.yaml`
     - Add `{{tool_manifest}}` input variable to Review prompt's `TemplateConfiguration`
     - Add `AVAILABLE TOOLS` section with `{{tool_manifest}}` to Review prompt text
     - Add tool-awareness instructions for reviewing tool choices
@@ -129,8 +129,8 @@ Wire MCP tool servers into the CalledIt prediction pipeline. Build the MCP Manag
     - Test file: `backend/calledit-backend/tests/test_mcp_manager.py`
     - _Requirements: 4.1, 4.5, 4.6_
 
-- [ ] 7. Add BRAVE_API_KEY to SAM template
-  - [ ] 7.1 Update `backend/calledit-backend/template.yaml`
+- [x] 7. Add BRAVE_API_KEY to SAM template
+  - [x] 7.1 Update `backend/calledit-backend/template.yaml`
     - Add `BRAVE_API_KEY: "PLACEHOLDER_REPLACE_BEFORE_DEPLOY"` to MakeCallStreamFunction environment variables
     - Verify all existing env vars (`PROMPT_VERSION_PARSER`, `PROMPT_VERSION_CATEGORIZER`, `PROMPT_VERSION_VB`, `PROMPT_VERSION_REVIEW`) remain unchanged
     - _Requirements: 5.1, 5.2, 5.3_
@@ -141,7 +141,7 @@ Wire MCP tool servers into the CalledIt prediction pipeline. Build the MCP Manag
     - Test file: `backend/calledit-backend/tests/test_mcp_manager.py`
     - _Requirements: 5.1, 5.3_
 
-- [ ] 8. Final checkpoint — All tests pass
+- [x] 8. Final checkpoint — All tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

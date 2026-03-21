@@ -549,3 +549,35 @@ The AWS Lambda Python 3.12 base image (`public.ecr.aws/lambda/python:3.12`) is A
 **Date:** March 20, 2026
 
 CloudFormation cannot delete a non-empty S3 bucket. The VerificationLogsBucket deletion failed during deploy with `DELETE_FAILED` because it contained verification log objects. The bucket is now orphaned (not managed by the stack) but harmless. Manual cleanup can happen later — the deploy succeeded for all other resources including the Docker Lambda switch.
+
+---
+
+## Decision 71: MCP Server Package Names — npm vs Python
+**Source:** Spec A2 debugging (March 21, 2026)
+**Date:** March 21, 2026
+
+The original MCP research doc listed `@modelcontextprotocol/server-fetch` as an npm package — it doesn't exist. The Anthropic fetch server is Python-only (`uvx mcp-server-fetch`). Corrected to `@tokenizin/mcp-npx-fetch` for npm-based fetch. Brave search is `@modelcontextprotocol/server-brave-search` (not `@nicobailon/mcp-brave-search`). Playwright is `@nicobailon/mcp-playwright` (confirmed working). Local test script (`test_mcp_local.py`) was critical for fast iteration — deploy cycles were too slow for debugging package names.
+
+---
+
+## Decision 72: Use .replace() Not .format() for Tool Manifest Substitution
+**Source:** Spec A2 debugging (March 21, 2026)
+**Date:** March 21, 2026
+
+Python `.format()` requires `{{` and `}}` to escape literal braces in the template string. The categorizer's bundled prompt had `{{ "verifiable_category": ... }}` as the JSON example — the model saw double braces and mimicked them in output, producing unparseable JSON. Switched all agent factories to `.replace("{tool_manifest}", value)` which doesn't require brace escaping. The JSON examples now use single braces naturally.
+
+---
+
+## Decision 73: 30-Second Cold Start Validates AgentCore Migration Priority
+**Source:** Spec A2 deployment testing (March 21, 2026)
+**Date:** March 21, 2026
+
+The Docker Lambda with MCP server subprocesses takes ~30 seconds on cold start (npx downloading packages + Node.js subprocess startup + agent creation). Provisioned concurrency could mitigate but fights the natural architecture — tools and agents should be separate execution environments. This validates Decision 68 (AgentCore migration) as the right next step after the verification pipeline is complete. AgentCore manages MCP servers as always-warm network services, eliminating the cold start penalty entirely.
+
+---
+
+## Decision 74: Verification Pipeline Roadmap — Build, Eval, Then Migrate
+**Source:** Session planning (March 21, 2026)
+**Date:** March 21, 2026
+
+Three-phase plan after Spec A2: (1) Build verification execution agent (Spec B) that actually invokes MCP tools to verify predictions, (2) Run golden dataset against both the prediction builder and verification pipeline to compare quality, (3) Migrate from Lambda to AgentCore where tools and agents run in separate execution environments. The eval comparison is critical — it proves the MCP tools actually improve verification outcomes, not just categorization labels.
