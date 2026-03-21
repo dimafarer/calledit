@@ -170,7 +170,10 @@ def lambda_handler(event, context):
                 'verifiable_category': item.get('verifiable_category', 'human_verifiable_only'),
                 'category_reasoning': item.get('category_reasoning', ''),
                 'verification_method': {},  # Will be populated below
+                'status': item.get('status', 'PENDING'),
                 'initial_status': item.get('initial_status', 'Pending'),
+                # Verification result from the Verification Executor (Spec B1/B2)
+                'verification_result': item.get('verification_result', None),
                 # Add verification status fields if they exist
                 'verification_status': item.get('verification_status', ''),
                 'verification_confidence': float(item.get('verification_confidence', 0)) if item.get('verification_confidence') else None,

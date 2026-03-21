@@ -81,6 +81,9 @@ Completed A2 cleanup (Prompt Management VB v3 + Review v4 deployed, SAM env vars
 ### Update 17 (March 21): Spec B1 — Verification Executor Agent
 Built and tested the Verification Executor Agent. Single Strands agent that invokes MCP tools (brave_web_search, fetch) to verify predictions. Lazy singleton pattern avoids MCP connections at import time. `run_verification()` entry point never raises — returns inconclusive on any error. Established no-mocks policy: all tests hit real Bedrock + MCP servers. 24 pure + 7 integration tests, all passing. Agent correctly confirmed/refuted Christmas 2025 day-of-week predictions using brave_web_search.
 
+### Update 18 (March 21): Spec B2 — Verification Triggers & Storage
+Built DynamoDB storage utility and EventBridge verification scanner. Production verification fully decoupled from prediction creation (Decision 81). Scanner runs every 15 minutes, finds eligible predictions, verifies them. Float→Decimal conversion needed for DynamoDB (Decision 82). 13 tests passing against real DynamoDB.
+
 ## The Eval Framework (Portfolio Centerpiece)
 
 The eval framework is the transferable artifact:
@@ -116,6 +119,6 @@ The eval framework is the transferable artifact:
 - 16 eval runs completed, 7-page architecture comparison dashboard operational
 - 16 specs total (A1 + A2 complete, B1/B2/B3 requirements done), mcp-verification-foundation superseded
 - Docker Lambda cold start ~30s — validates AgentCore migration priority (Decision 73)
-- Roadmap: B2 (triggers/storage) → B3 (eval integration) → AgentCore
-- Next immediate: Spec B2 design phase
-- 13 backlog items, 80 architectural decisions documented
+- Roadmap: Deploy B2 → B3 (eval integration) → AgentCore
+- Next immediate: Deploy B2, then Spec B3
+- 13 backlog items, 83 architectural decisions documented

@@ -143,15 +143,15 @@ const ListPredictions: React.FC<ListPredictionsProps> = () => {
           {call.verifiable_category && (
             <p><strong>Verifiability:</strong> {getVerifiabilityDisplay(call.verifiable_category)}</p>
           )}
-          <p><strong>Status:</strong> {call.verification_status || call.initial_status}</p>
-          {call.verification_confidence && (
-            <p><strong>Confidence:</strong> {(call.verification_confidence * 100).toFixed(1)}%</p>
+          <p><strong>Status:</strong> {call.status || call.verification_status || call.initial_status}</p>
+          {call.verification_result?.confidence && (
+            <p><strong>Confidence:</strong> {(call.verification_result.confidence * 100).toFixed(1)}%</p>
           )}
-          {call.verification_reasoning && (
+          {call.verification_result?.reasoning && (
             <details>
               <summary>Verification Reasoning</summary>
               <div className="verification-reasoning">
-                <p>{call.verification_reasoning}</p>
+                <p>{call.verification_result.reasoning}</p>
               </div>
             </details>
           )}

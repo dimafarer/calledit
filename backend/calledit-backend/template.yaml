@@ -367,6 +367,53 @@ Resources:
       DockerContext: .
       Dockerfile: Dockerfile
 
+  # Verification Scanner — EventBridge-triggered Lambda that verifies predictions
+  # whose verification_date has arrived. Same Docker image as MakeCallStreamFunction
+  # (needs MCP tools + Strands + Node.js). CMD override points to scanner handler.
+  # Decision 81: Scanner-only in production, no immediate verification trigger.
+  VerificationScannerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      ImageConfig:
+        Command:
+          - verification_scanner.lambda_handler
+      Timeout: 900  # 15 minutes max (matches EventBridge interval)
+      MemorySize: 512
+      Environment:
+        Variables:
+          PROMPT_VERSION_PARSER: "1"
+          PROMPT_VERSION_CATEGORIZER: "2"
+          PROMPT_VERSION_VB: "3"
+          PROMPT_VERSION_REVIEW: "4"
+          BRAVE_API_KEY: !Ref BraveApiKey
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: calledit-db
+        - Statement:
+            - Effect: Allow
+              Action:
+                - 'bedrock:InvokeModel'
+                - 'bedrock:InvokeModelWithResponseStream'
+                - 'bedrock:ListFoundationModels'
+              Resource: '*'
+        - Statement:
+            - Effect: Allow
+              Action:
+                - 'bedrock-agent:GetPrompt'
+              Resource: '*'
+      Events:
+        ScheduledScan:
+          Type: Schedule
+          Properties:
+            Schedule: rate(15 minutes)
+            Description: "Scan for predictions ready to verify"
+            Enabled: true
+    Metadata:
+      DockerTag: python3.12-nodejs-v1
+      DockerContext: .
+      Dockerfile: Dockerfile
+
   # Lambda permissions
   ConnectFunctionPermission:
     Type: AWS::Lambda::Permission

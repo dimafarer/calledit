@@ -632,3 +632,27 @@ The module-level singleton pattern (`agent = create_agent()` at module scope) tr
 **Date:** March 21, 2026
 
 The verification executor must NOT be triggered by the prediction pipeline completing or the Verification Builder producing a plan. The prediction pipeline can run multiple HITL rounds (user clarifies → agents refine → user reviews). Only when the user explicitly clicks "Log Call" and the prediction is saved to DynamoDB should verification be considered. This preserves the full HITL workflow — the user has the final say on what gets verified.
+
+---
+
+## Decision 81: Drop Immediate Verification — Scanner-Only in Production
+**Source:** Spec B2 requirements review (March 21, 2026)
+**Date:** March 21, 2026
+
+The "Log Call" handler (`write_to_db.py`) is a lightweight REST Lambda (python3.12, zip package) — it doesn't have MCP tools, Strands, or Node.js. It can't run `run_verification()` directly. Options considered: Lambda-to-Lambda invocation, DynamoDB Streams trigger, or scanner-only. User chose scanner-only: production verification is completely decoupled from prediction creation. The EventBridge scanner (every 15 minutes) handles all verification. For local evaluation, the eval runner (Spec B3) calls `run_verification()` directly — no production trigger needed. This eliminates the architectural gap and keeps the system simple.
+
+---
+
+## Decision 82: DynamoDB Requires Decimal Not Float — Recursive Converter
+**Source:** Spec B2 testing (March 21, 2026)
+**Date:** March 21, 2026
+
+DynamoDB's boto3 resource layer rejects Python `float` types with `TypeError: Float types are not supported. Use Decimal types instead`. The `Verification_Outcome` dict contains `confidence: 0.9` as a float from `json.loads()`. Added `_convert_floats_to_decimal()` recursive converter in `verification_store.py` that walks the entire outcome dict and converts all floats to `Decimal(str(value))`. Caught by real integration tests hitting real DynamoDB — would not have been caught by mocks.
+
+---
+
+## Decision 83: Verification Timeout Bumped from 60s to 120s
+**Source:** Spec B2 deployment testing (March 21, 2026)
+**Date:** March 21, 2026
+
+The first scanner invocation timed out at 60 seconds. MCP cold start takes ~40 seconds (npx downloading packages + Node.js subprocess startup), leaving only ~20 seconds for the agent to invoke tools and reason. Bumped to 120 seconds, giving ~80 seconds after cold start. The scanner Lambda has a 900s total timeout (15 minutes), so 120s per prediction is well within budget. On warm invocations, the agent completes in ~15-20 seconds — the timeout is only relevant for the first prediction on a cold start.

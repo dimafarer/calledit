@@ -1,8 +1,98 @@
 # Common Commands
 
 All commands assume you're in `/home/wsluser/projects/calledit` and the venv is active.
+Always `source .env` before commands that need BRAVE_API_KEY or other secrets.
 
 ---
+
+## SAM Build and Deploy
+
+```bash
+cd /home/wsluser/projects/calledit/backend/calledit-backend
+
+# Full rebuild (needed when Docker image code changes — rm -rf .aws-sam clears cache)
+source /home/wsluser/projects/calledit/.env
+rm -rf .aws-sam && sam build
+sam deploy --parameter-overrides BraveApiKey=$BRAVE_API_KEY
+
+# Standard build + deploy (when only non-Docker code changed)
+sam build
+sam deploy --parameter-overrides BraveApiKey=$BRAVE_API_KEY
+
+# Force rebuild without deleting .aws-sam
+sam build --no-cached
+```
+
+## Prompt Management Deploy
+
+```bash
+cd /home/wsluser/projects/calledit/infrastructure/prompt-management
+aws cloudformation deploy --template-file template.yaml --stack-name calledit-prompts
+```
+
+## Tests — Verification Executor (Spec B1)
+
+```bash
+# Run from strands_make_call directory
+cd /home/wsluser/projects/calledit/backend/calledit-backend/handlers/strands_make_call
+
+# Pure function tests only (instant, no Bedrock/MCP)
+/home/wsluser/projects/calledit/venv/bin/python -m pytest \
+    /home/wsluser/projects/calledit/backend/calledit-backend/tests/test_verification_executor.py -v \
+    -k "not integration"
+
+# Integration tests (real Bedrock + MCP, ~75s, needs source .env)
+source /home/wsluser/projects/calledit/.env
+/home/wsluser/projects/calledit/venv/bin/python -m pytest \
+    /home/wsluser/projects/calledit/backend/calledit-backend/tests/test_verification_executor.py -v \
+    -m integration
+```
+
+## Tests — Verification Triggers (Spec B2)
+
+```bash
+cd /home/wsluser/projects/calledit/backend/calledit-backend/handlers/strands_make_call
+
+# All trigger tests (real DynamoDB, ~3s)
+source /home/wsluser/projects/calledit/.env
+/home/wsluser/projects/calledit/venv/bin/python -m pytest \
+    /home/wsluser/projects/calledit/backend/calledit-backend/tests/test_verification_triggers.py -v \
+    -k "not integration"
+```
+
+## Tests — General
+
+```bash
+# All tests in tests/ directory
+cd /home/wsluser/projects/calledit/backend/calledit-backend/handlers/strands_make_call
+/home/wsluser/projects/calledit/venv/bin/python -m pytest \
+    /home/wsluser/projects/calledit/backend/calledit-backend/tests/ -v
+
+# Specific test file
+/home/wsluser/projects/calledit/venv/bin/python -m pytest \
+    /home/wsluser/projects/calledit/backend/calledit-backend/tests/test_mcp_manager.py -v
+```
+
+## Verification Scanner — Manual Invoke
+
+```bash
+# Invoke the scanner Lambda directly (after deploy)
+aws lambda invoke \
+    --function-name <stack-name>-VerificationScannerFunction-<id> \
+    --payload '{}' \
+    /tmp/scanner-output.json && cat /tmp/scanner-output.json
+
+# Check scanner CloudWatch logs
+aws logs tail /aws/lambda/<stack-name>-VerificationScannerFunction-<id> --since 30m --format short
+```
+
+## MCP Local Test
+
+```bash
+cd /home/wsluser/projects/calledit/backend/calledit-backend
+source /home/wsluser/projects/calledit/.env
+/home/wsluser/projects/calledit/venv/bin/python test_mcp_local.py
+```
 
 ## Dashboard
 
@@ -18,81 +108,49 @@ All eval commands run from the strands_make_call directory:
 cd /home/wsluser/projects/calledit/backend/calledit-backend/handlers/strands_make_call
 ```
 
-### Serial backend with judge (current best prompts)
+### Serial backend with judge (current best prompts — v3 pipeline)
 ```bash
-PROMPT_VERSION_PARSER=1 PROMPT_VERSION_CATEGORIZER=2 PROMPT_VERSION_VB=2 PROMPT_VERSION_REVIEW=2 \
+PROMPT_VERSION_PARSER=1 PROMPT_VERSION_CATEGORIZER=2 PROMPT_VERSION_VB=3 PROMPT_VERSION_REVIEW=4 \
 /home/wsluser/projects/calledit/venv/bin/python eval_runner.py \
---dataset ../../../../eval/golden_dataset.json --backend serial --judge
+    --dataset ../../../../eval/golden_dataset.json --backend serial --judge
 ```
 
-### Single backend with judge (current best prompts)
+### Single backend with judge
 ```bash
-PROMPT_VERSION_PARSER=1 PROMPT_VERSION_CATEGORIZER=2 PROMPT_VERSION_VB=2 PROMPT_VERSION_REVIEW=2 \
+PROMPT_VERSION_PARSER=1 PROMPT_VERSION_CATEGORIZER=2 PROMPT_VERSION_VB=3 PROMPT_VERSION_REVIEW=4 \
 /home/wsluser/projects/calledit/venv/bin/python eval_runner.py \
---dataset ../../../../eval/golden_dataset.json --backend single --judge
+    --dataset ../../../../eval/golden_dataset.json --backend single --judge
 ```
 
 ### Dry run (no Bedrock calls, check test case count)
 ```bash
 /home/wsluser/projects/calledit/venv/bin/python eval_runner.py \
---dataset ../../../../eval/golden_dataset.json --dry-run
+    --dataset ../../../../eval/golden_dataset.json --dry-run
 ```
 
 ### Deterministic only (no judge, cheaper/faster)
 ```bash
-PROMPT_VERSION_PARSER=1 PROMPT_VERSION_CATEGORIZER=2 PROMPT_VERSION_VB=2 PROMPT_VERSION_REVIEW=2 \
+PROMPT_VERSION_PARSER=1 PROMPT_VERSION_CATEGORIZER=2 PROMPT_VERSION_VB=3 PROMPT_VERSION_REVIEW=4 \
 /home/wsluser/projects/calledit/venv/bin/python eval_runner.py \
---dataset ../../../../eval/golden_dataset.json --backend serial
+    --dataset ../../../../eval/golden_dataset.json --backend serial
 ```
 
 ### Single prediction test (quick smoke test)
 ```bash
-PROMPT_VERSION_PARSER=1 PROMPT_VERSION_CATEGORIZER=2 PROMPT_VERSION_VB=2 PROMPT_VERSION_REVIEW=2 \
+PROMPT_VERSION_PARSER=1 PROMPT_VERSION_CATEGORIZER=2 PROMPT_VERSION_VB=3 PROMPT_VERSION_REVIEW=4 \
 /home/wsluser/projects/calledit/venv/bin/python eval_runner.py \
---dataset ../../../../eval/golden_dataset.json --backend serial --judge --name base-001
+    --dataset ../../../../eval/golden_dataset.json --backend serial --judge --name base-001
+```
+
+### With comparison to previous run
+```bash
+/home/wsluser/projects/calledit/venv/bin/python eval_runner.py \
+    --dataset ../../../../eval/golden_dataset.json --judge --compare
 ```
 
 ### List available backends
 ```bash
 /home/wsluser/projects/calledit/venv/bin/python eval_runner.py --list-backends
-```
-
-## Tests
-
-```bash
-# All tests
-/home/wsluser/projects/calledit/venv/bin/python -m pytest tests/ -v
-
-# Dashboard tests only
-/home/wsluser/projects/calledit/venv/bin/python -m pytest tests/dashboard/ -v
-
-# Specific test file
-/home/wsluser/projects/calledit/venv/bin/python -m pytest tests/strands_make_call/test_utils.py -v
-```
-
-## SAM Build and Deploy
-
-```bash
-cd /home/wsluser/projects/calledit/backend/calledit-backend
-
-# Standard build + deploy
-sam build
-sam deploy --stack-name calledit-backend --no-confirm-changeset
-
-# Force rebuild (needed after code changes when Docker cache is stale)
-sam build --no-cached
-sam deploy --stack-name calledit-backend --no-confirm-changeset
-
-# Deploy with BRAVE_API_KEY (source .env first for the key)
-source /home/wsluser/projects/calledit/.env
-sam deploy --parameter-overrides BraveApiKey=$BRAVE_API_KEY
-```
-
-## Prompt Management Deploy
-
-```bash
-cd /home/wsluser/projects/calledit/infrastructure/prompt-management
-aws cloudformation deploy --template-file template.yaml --stack-name calledit-prompts
 ```
 
 ## CloudWatch Logs
@@ -108,6 +166,16 @@ aws logs tail /aws/lambda/calledit-backend-MakeCallStreamFunction-U5p4yuEq1F1x -
 aws lambda list-functions --query "Functions[?starts_with(FunctionName, 'calledit')].FunctionName" --output text
 ```
 
+## Install Dependencies
+
+```bash
+# Dev dependencies (root)
+/home/wsluser/projects/calledit/venv/bin/pip install -r requirements.txt
+
+# Lambda runtime dependencies
+/home/wsluser/projects/calledit/venv/bin/pip install -r backend/calledit-backend/handlers/strands_make_call/requirements.txt
+```
+
 ## Git
 
 ```bash
@@ -115,10 +183,4 @@ git branch --show-current
 git checkout main
 git merge feature/prompt-eval-framework
 git push origin main
-```
-
-## Install Dependencies
-
-```bash
-/home/wsluser/projects/calledit/venv/bin/pip install -r requirements.txt
 ```
