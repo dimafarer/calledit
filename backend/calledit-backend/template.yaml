@@ -337,8 +337,8 @@ Resources:
         Variables:
           PROMPT_VERSION_PARSER: "1"
           PROMPT_VERSION_CATEGORIZER: "2"
-          PROMPT_VERSION_VB: "2"
-          PROMPT_VERSION_REVIEW: "3"
+          PROMPT_VERSION_VB: "3"
+          PROMPT_VERSION_REVIEW: "4"
           BRAVE_API_KEY: !Ref BraveApiKey
       Policies:
         - DynamoDBCrudPolicy:

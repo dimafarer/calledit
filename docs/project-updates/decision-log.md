@@ -581,3 +581,30 @@ The Docker Lambda with MCP server subprocesses takes ~30 seconds on cold start (
 **Date:** March 21, 2026
 
 Three-phase plan after Spec A2: (1) Build verification execution agent (Spec B) that actually invokes MCP tools to verify predictions, (2) Run golden dataset against both the prediction builder and verification pipeline to compare quality, (3) Migrate from Lambda to AgentCore where tools and agents run in separate execution environments. The eval comparison is critical — it proves the MCP tools actually improve verification outcomes, not just categorization labels.
+
+---
+
+## Decision 75: Split Spec B Into Three Focused Specs (B1, B2, B3)
+**Source:** Spec B planning session (March 21, 2026)
+**Date:** March 21, 2026
+
+The original Spec B (verification execution agent) had 9 requirements spanning three distinct concerns: agent construction, infrastructure/triggers, and eval integration. Same reasoning as Decision 3 (Spec 1/2 split) and Decision 64 (A1/A2 split) — smaller specs, higher confidence. Split into:
+- **Spec B1** (`verification-execution-agent`): Verification Executor agent, data model, entry point, MCP wiring, factory pattern (5 requirements). Self-contained, testable in isolation.
+- **Spec B2** (`verification-triggers`): DynamoDB storage, immediate trigger, EventBridge scanner (3 requirements). Depends on B1. Touches SAM template and production handler.
+- **Spec B3** (`verification-eval-integration`): `--verify` mode on eval runner, 4 new evaluators, golden dataset extension, dashboard page (4 requirements). Depends on B1 but NOT B2.
+
+---
+
+## Decision 76: Two-Mode Verification Trigger (Immediate vs Scheduled)
+**Source:** Spec B requirements review (March 21, 2026)
+**Date:** March 21, 2026
+
+Most `auto_verifiable` predictions can't be verified at prediction time — "it will be nice weather Saturday" is auto_verifiable (brave_web_search can check weather) but verifying on Wednesday only checks the forecast, not the actual weather. The `verification_date` from the parser is the key signal. Two modes: (1) Immediate — verification_date is past or within 5 minutes, verify inline after prediction pipeline. (2) Scheduled — verification_date is future, leave as `pending` for an EventBridge scanner (every 15 minutes) to pick up when the date arrives. Same pattern as the v1 verification system that worked before Spec A1 teardown.
+
+---
+
+## Decision 77: Fold Verification Eval Into Existing Framework, Not a Second One
+**Source:** Spec B requirements review (March 21, 2026)
+**Date:** March 21, 2026
+
+The VB-Executor comparison eval extends the existing eval framework (`eval_runner.py`, `evaluators/`, `eval/dashboard/`) rather than building a parallel eval system. New `--verify` flag on the existing runner, four new evaluator modules in the existing `evaluators/` directory, scores flow into the existing `evaluator_scores` dict so the Streamlit dashboard picks them up automatically. Golden dataset extended with `verification_readiness` field. One framework, one dashboard, one report format.

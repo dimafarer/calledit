@@ -261,21 +261,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Security Metrics**: 98% compliance, zero critical vulnerabilities
 - **Deployment**: Complete CloudFront + S3 production setup
 
+## [3.0.0] - 2026-03-21 — MCP-Powered Verification Pipeline
+
+### Added
+- **🔧 MCP Tool Integration**: Wired MCP tool servers (fetch, brave-search, playwright) into the prediction pipeline
+  - MCP Manager module with graceful partial failure handling
+  - All 4 agents (Parser, Categorizer, VB, Review) now tool-aware via uniform `tool_manifest` interface
+  - Categorizer routes predictions based on actual available tools
+  - VB references real tools by name in verification plans
+  - Review agent validates tool choices against available tool list
+- **🐳 Docker Lambda**: Switched MakeCallStreamFunction from zip to container image
+  - Python 3.12 + Node.js LTS for MCP server subprocess support
+  - Dockerfile based on `public.ecr.aws/lambda/python:3.12`
+- **📝 Prompt Management Updates**: VB v3 + Review v4 with `{{tool_manifest}}` variable
+- **🔑 BRAVE_API_KEY**: Added as SAM parameter for Brave Search MCP server
+- **🧹 Verification V1 Teardown**: Removed old verification system (EventBridge, S3 logs, standalone agent)
+
+### Changed
+- **Lambda Packaging**: MakeCallStreamFunction now uses `PackageType: Image` (was zip)
+- **SnapStart**: Removed from MakeCallStreamFunction (not supported for container images)
+- **Tool Registry**: Replaced DynamoDB tool registry with MCP Manager singleton pattern
+- **Prompt Versions**: Pinned to VB v3, Review v4 (tool-aware prompts)
+
+### Removed
+- Old verification pipeline (EventBridge scheduler, S3 verification logs, standalone verification agent)
+- DynamoDB tool registry pattern (replaced by MCP Manager)
+
+### Technical Details
+- **Cold Start**: ~30s on cold start (npx downloading packages + Node.js subprocess startup)
+- **AgentCore Migration**: Planned as next major step to eliminate cold start penalty
+- **MCP Servers**: fetch (@tokenizin/mcp-npx-fetch), brave-search (@modelcontextprotocol/server-brave-search), playwright (@nicobailon/mcp-playwright)
+
 ## [Unreleased]
 
-### Planned (Phase 3+)
-- **🌐 MCP Tool Integration**: Weather, sports, and financial API tools implementation
-- **📊 Advanced Analytics**: Verification success rate tracking and insights
-- **🔄 Automated Re-verification**: Smart retry logic for failed verifications
-- **📱 Mobile Application**: React Native app with verification notifications
-- **🌐 Social Features**: Prediction sharing and community leaderboards
-
-### Planned (Phase 3+)
-- **🌐 MCP Tool Integration**: Weather, sports, and financial API tools implementation
-- **📊 Advanced Analytics**: Verification success rate tracking and insights
-- **🔄 Automated Re-verification**: Smart retry logic for failed verifications
-- **📱 Mobile Application**: React Native app with verification notifications
-- **🌐 Social Features**: Prediction sharing and community leaderboards
+### Planned
+- **Spec B**: Verification execution agent — actually invoke MCP tools to verify predictions
+- **Eval Integration**: Run golden dataset against verification pipeline
+- **AgentCore Migration**: Tools as always-warm network services, agents in managed runtime
 
 ---
 
