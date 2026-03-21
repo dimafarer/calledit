@@ -1,5 +1,14 @@
 # Implementation Plan: MCP Verification Foundation
 
+> **⚠️ SUPERSEDED — DO NOT IMPLEMENT**
+>
+> This spec was split into two focused specs per Decision 64 (March 20, 2026):
+> - **Spec A1** (`verification-teardown-docker`): Infrastructure teardown + Docker Lambda — see `.kiro/specs/verification-teardown-docker/`
+> - **Spec A2** (`mcp-tool-integration`): MCP Manager + tool-aware agents — to be created
+>
+> Tasks 1-3 and 9 are covered by Spec A1. Tasks 4-8 and 10-17 will be covered by Spec A2.
+> This spec is kept for reference only. Do not execute any tasks from this file.
+
 ## Overview
 
 Replace the DynamoDB-based tool registry with MCP-native tool discovery, make agents tool-aware, tear down the old verification system, and switch to Docker-based Lambda. Implementation follows a risk-minimizing order: teardown first (removes dead code), then new code (MCP Manager), then wiring (graph + agents + prompts), then infrastructure (Docker Lambda, env vars), then tests, then docs, then version bump.

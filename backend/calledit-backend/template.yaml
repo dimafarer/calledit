@@ -319,14 +319,13 @@ Resources:
   MakeCallStreamFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: handlers/strands_make_call/
-      Handler: strands_make_call_graph.lambda_handler
-      Runtime: python3.12
+      PackageType: Image
+      # SnapStart is not supported for container image Lambdas (Decision 66).
+      # Cold starts will be ~2-5s slower (~2-5s for agent creation) but functional.
+      # Provisioned concurrency can mitigate if needed (separate concern).
+      # AgentCore migration planned post-verification pipeline (Decision 68).
       Timeout: 300  # 5 minutes
       MemorySize: 512
-      # SnapStart is not supported for container image Lambdas (Decision 66).
-      # Removed AutoPublishAlias and SnapStart in preparation for Docker switch.
-      # Cold starts will be ~2-5s slower but functional within the 300s timeout.
       Environment:
         Variables:
           PROMPT_VERSION_PARSER: "1"
@@ -355,6 +354,10 @@ Resources:
               Action:
                 - 'execute-api:ManageConnections'
               Resource: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*'
+    Metadata:
+      DockerTag: python3.12-nodejs-v1
+      DockerContext: .
+      Dockerfile: Dockerfile
 
   # Lambda permissions
   ConnectFunctionPermission:

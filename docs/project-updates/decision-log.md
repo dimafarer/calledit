@@ -533,3 +533,19 @@ The MCP verification pipeline is a backward-compatibility-breaking change (remov
 
 After the verification pipeline is implemented (Specs A1 + A2 + B), migrate the runtime to Amazon Bedrock AgentCore. The Docker Lambda infrastructure from Spec A1 is a stepping stone — AgentCore deploys containerized agents, so the container-based architecture transfers directly. The current SAM Lambda architecture was chosen for the class being taught (low cost for students), but the project now aims to demonstrate best-in-class agent architecture.
 
+
+---
+
+## Decision 69: Dockerfile Requires tar/xz Install on AL2023 Lambda Base
+**Source:** Spec A1 deployment (March 20, 2026)
+**Date:** March 20, 2026
+
+The AWS Lambda Python 3.12 base image (`public.ecr.aws/lambda/python:3.12`) is Amazon Linux 2023 minimal — it does not include `tar` or `xz` utilities. The Dockerfile must `dnf install -y tar xz` before extracting the Node.js binary tarball. Discovered during first `sam build` attempt when `tar: command not found` failed the Docker build.
+
+---
+
+## Decision 70: Orphaned S3 Bucket Acceptable During Teardown
+**Source:** Spec A1 deployment (March 20, 2026)
+**Date:** March 20, 2026
+
+CloudFormation cannot delete a non-empty S3 bucket. The VerificationLogsBucket deletion failed during deploy with `DELETE_FAILED` because it contained verification log objects. The bucket is now orphaned (not managed by the stack) but harmless. Manual cleanup can happen later — the deploy succeeded for all other resources including the Docker Lambda switch.

@@ -100,9 +100,10 @@ The eval framework is the transferable artifact:
 - Serial routes better (100% vs 71% auto_verifiable), single reasons better (CMA 0.77 vs 0.74)
 - Review v3 was the biggest single-prompt improvement: +13% serial, +21% single
 - 16 eval runs completed, architecture comparison dashboard fully operational
-- 12 specs completed, 2 in progress (verification-teardown-docker designed, mcp-tool-integration planned)
-- Verification pipeline split into 4 specs: A1 (teardown + Docker), A2 (MCP integration), B (execution agent), C (eval integration)
-- Docker Lambda replaces zip packaging for MakeCallStreamFunction (SnapStart lost, acceptable tradeoff)
+- 13 specs completed (Spec A1 verification-teardown-docker done), 1 planned (Spec A2 mcp-tool-integration)
+- Verification pipeline split into 4 specs: A1 (teardown + Docker — COMPLETE), A2 (MCP integration — next), B (execution agent), C (eval integration)
+- MakeCallStreamFunction now runs as Docker Lambda (Python 3.12 + Node.js LTS) — SnapStart removed (Decision 66)
+- Old verification system archived to `docs/historical/verification-v1/`, mcp-verification-foundation spec marked SUPERSEDED
 - AgentCore migration planned after verification pipeline completion
-- Next immediate: generate tasks for Spec A1, execute teardown + Docker switch
-- 13 backlog items, 68 architectural decisions documented
+- Next immediate: create Spec A2 (MCP Manager + tool-aware agents), then execute
+- 13 backlog items, 70 architectural decisions documented

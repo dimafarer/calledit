@@ -1,5 +1,11 @@
 # Requirements Document
 
+> **⚠️ SUPERSEDED — DO NOT IMPLEMENT**
+>
+> This spec was split into Spec A1 (`verification-teardown-docker`) and Spec A2 (`mcp-tool-integration`) per Decision 64.
+> See `.kiro/specs/verification-teardown-docker/` for the active infrastructure spec.
+> Spec A2 will be created separately for MCP Manager + tool-aware agents.
+
 ## Introduction
 
 Connect the CalledIt prediction pipeline to real MCP (Model Context Protocol) tool servers, replace the DynamoDB-based tool registry with MCP-native tool discovery, make the Categorizer and Verification Builder agents tool-aware using live MCP tool lists, and tear down the old verification system (Lambda, EventBridge, S3 bucket, SNS topic). This is Spec A of a 3-spec verification pipeline build — it establishes the MCP foundation and tool-aware agents. It does NOT build the verification execution agent (Spec B) or eval framework integration (Spec C).

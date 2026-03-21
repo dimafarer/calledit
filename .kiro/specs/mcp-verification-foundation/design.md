@@ -1,5 +1,11 @@
 # Design Document: MCP Verification Foundation
 
+> **⚠️ SUPERSEDED — DO NOT IMPLEMENT**
+>
+> This spec was split into Spec A1 (`verification-teardown-docker`) and Spec A2 (`mcp-tool-integration`) per Decision 64.
+> See `.kiro/specs/verification-teardown-docker/` for the active infrastructure spec.
+> Spec A2 will be created separately for MCP Manager + tool-aware agents.
+
 ## Overview
 
 This design replaces the DynamoDB-based tool registry with MCP-native tool discovery, makes the Categorizer and Verification Builder agents tool-aware using live MCP tool lists, and tears down the old verification system. It introduces a new `mcp_manager.py` module in `handlers/strands_make_call/` that manages MCP server connections, discovers tools at Lambda INIT time, and provides both a human-readable tool manifest (for agent prompts) and raw MCP tool objects (for future agent tool wiring).
