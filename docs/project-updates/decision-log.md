@@ -608,3 +608,27 @@ Most `auto_verifiable` predictions can't be verified at prediction time — "it 
 **Date:** March 21, 2026
 
 The VB-Executor comparison eval extends the existing eval framework (`eval_runner.py`, `evaluators/`, `eval/dashboard/`) rather than building a parallel eval system. New `--verify` flag on the existing runner, four new evaluator modules in the existing `evaluators/` directory, scores flow into the existing `evaluator_scores` dict so the Streamlit dashboard picks them up automatically. Golden dataset extended with `verification_readiness` field. One framework, one dashboard, one report format.
+
+---
+
+## Decision 78: No-Mocks Policy — All Tests Must Hit Real Services
+**Source:** Spec B1 testing (March 21, 2026)
+**Date:** March 21, 2026
+
+User rejected mock-based testing. All tests must exercise real code paths — real Bedrock calls, real MCP server connections, real DynamoDB. Mocks hide real bugs and give false confidence. Integration tests are slower (~75s) and cost money, but test the actual system. Steering doc created at `.kiro/steering/no-mocks-policy.md`. Pure function tests (testing `_validate_outcome`, `_make_inconclusive`, prompt content) don't need mocks because they don't call external services.
+
+---
+
+## Decision 79: Lazy Singleton for Verification Executor Agent
+**Source:** Spec B1 implementation (March 21, 2026)
+**Date:** March 21, 2026
+
+The module-level singleton pattern (`agent = create_agent()` at module scope) triggers MCP server connections at import time, which breaks test isolation and causes 30s+ delays on every import. Switched to lazy initialization via `_get_executor_agent()` — the agent is created on first use, not at import time. Same warm-Lambda reuse benefit (created once, reused across invocations) without the import-time side effect.
+
+---
+
+## Decision 80: Verification Trigger Is "Log Call", Not Pipeline Completion
+**Source:** Spec B1 design review (March 21, 2026)
+**Date:** March 21, 2026
+
+The verification executor must NOT be triggered by the prediction pipeline completing or the Verification Builder producing a plan. The prediction pipeline can run multiple HITL rounds (user clarifies → agents refine → user reviews). Only when the user explicitly clicks "Log Call" and the prediction is saved to DynamoDB should verification be considered. This preserves the full HITL workflow — the user has the final say on what gets verified.

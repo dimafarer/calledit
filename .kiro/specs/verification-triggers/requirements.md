@@ -39,16 +39,17 @@ This spec does NOT cover: the Verification Executor agent itself (Spec B1), eval
 
 ### Requirement 2: Immediate Verification Trigger
 
-**User Story:** As a pipeline developer, I want predictions whose verification date has already passed to be verified immediately after the prediction pipeline completes, so that currently-decidable facts are resolved without delay.
+**User Story:** As a pipeline developer, I want predictions whose verification date has already passed to be verified immediately after the user logs the prediction, so that currently-decidable facts are resolved without delay.
 
 #### Acceptance Criteria
 
-1. WHEN the prediction pipeline completes for a prediction with `verifiable_category` equal to `auto_verifiable`, THE `execute_and_deliver` function in `strands_make_call_graph.py` SHALL compare the prediction's `verification_date` against the current UTC time
-2. WHEN the `verification_date` is in the past or within 5 minutes of the current UTC time, THE handler SHALL trigger Immediate_Verification by calling `run_verification` with the prediction data from the `prediction_ready` payload
+1. WHEN a prediction is logged to DynamoDB via the "Log Call" action with `verifiable_category` equal to `auto_verifiable`, THE handler SHALL compare the prediction's `verification_date` against the current UTC time
+2. WHEN the `verification_date` is in the past or within 5 minutes of the current UTC time, THE handler SHALL trigger Immediate_Verification by calling `run_verification` with the logged prediction data
 3. WHEN the `verification_date` is more than 5 minutes in the future, THE handler SHALL skip Immediate_Verification and leave the prediction in `pending` status for the Verification_Scanner to pick up later
 4. WHEN Immediate_Verification completes, THE handler SHALL send a `verification_ready` WebSocket message to the client containing the Verification_Outcome
 5. IF Immediate_Verification exceeds a 60-second timeout, THEN THE handler SHALL cancel the verification, return an `inconclusive` outcome with timeout reasoning, and send the partial result to the client
-6. THE Immediate_Verification SHALL run after the `prediction_ready` message is sent, so the user sees the prediction immediately and verification results arrive asynchronously
+6. THE Immediate_Verification SHALL run after the prediction is logged and the `prediction_ready` message is sent, so the user sees the prediction immediately and verification results arrive asynchronously
+7. THE trigger SHALL only fire after the user has completed the HITL review loop and explicitly logged the prediction — verification SHALL NOT be triggered by the prediction pipeline completing or the Verification Builder producing a plan
 
 ### Requirement 3: Scheduled Verification Scanner
 
