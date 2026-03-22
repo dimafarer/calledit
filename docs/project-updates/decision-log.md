@@ -799,3 +799,12 @@ Each turn receives the full conversation history from previous turns. The agent 
 **Date:** March 22, 2026
 
 v3 Lambda backend stays live and untouched through V4-1 to V4-7a. v4 code lives in a separate `calleditv4/` directory. No modifications to v3 during the rebuild. V4-8 (Production Cutover) handles teardown in three phases: (1) Parallel run — deploy v4 to AgentCore, run same predictions through both, compare via eval framework. (2) Traffic cutover — switch frontend to v4 endpoints, keep v3 deployed as rollback target for 1-2 weeks. (3) v3 teardown — delete SAM stack (Lambdas, API Gateway, EventBridge), keep shared resources (DynamoDB tables, Cognito, Prompt Management). v3 predictions in DDB that lack v4 fields (verifiability_score, verifiability_reasoning) are handled gracefully by the verification agent — missing fields treated as v3-era predictions. v3 code archived via git tag.
+
+
+---
+
+## Decision 96: Zero Mocks by Default in v4 — Proven Value + User Approval Required
+**Source:** [Project Update 22](22-project-update-v4-1-agentcore-foundation.md)
+**Date:** March 22, 2026
+
+Tightened the no-mocks policy for v4. Decision 78 allowed mocks for unit/property tests — this is now superseded. Default: NO mocks anywhere. Mocks are only allowed if two conditions are met: (1) the agent demonstrates concrete, specific value that cannot be achieved through pure function tests or real integration tests, and (2) the user gives explicit approval before any mock code is written. Never implement a mock silently. Updated `.kiro/steering/no-mocks-policy.md`. The V4-1 property tests (prompt passthrough, response type, exception handling, missing key) were dropped because they only had value with mocks — the real validation is `agentcore invoke --dev` with real Bedrock calls.

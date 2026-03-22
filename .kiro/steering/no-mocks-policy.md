@@ -6,30 +6,31 @@ inclusion: auto
 
 ## Rule
 
-**DO NOT use mocks, MagicMock, patch, or any test doubles in this project.**
+**Default: NO mocks.** Mocks are not allowed unless two conditions are met:
 
-Tests must exercise the real code path — real MCP servers, real Bedrock calls, real DynamoDB. If a test can't run without mocking, it's testing the wrong thing or the code needs to be restructured.
+1. **Proven value**: The agent must demonstrate a concrete, specific reason why a mock is necessary and what real value it provides that cannot be achieved through pure function tests or real integration tests.
+2. **User approval**: The agent MUST flag the proposed mock to the user and get explicit approval BEFORE writing any mock code. Never implement a mock silently.
 
-## What This Means
+## Decision Protocol
 
-- ❌ `from unittest.mock import patch, MagicMock` — NEVER
-- ❌ `@patch("module.function")` — NEVER
-- ❌ `mock_agent = MagicMock()` — NEVER
-- ❌ Any test double, fake, stub, or spy — NEVER
+When the agent believes a mock might be justified:
 
-## What To Do Instead
+1. STOP — do not write the mock
+2. Explain to the user:
+   - What would be mocked and why
+   - What specific value the mocked test provides
+   - What the alternative is (skip the test, restructure the code, use a real service)
+3. Wait for the user's decision
+4. If the user says no, skip the test or find an alternative
+5. If the user says yes, document the exception in the test file with a comment explaining why
+
+## What To Do Instead of Mocking
 
 - Write integration tests that call real services (Bedrock, MCP servers, DynamoDB)
 - Test pure functions directly with real inputs and assert real outputs
-- Use test scripts (like `test_mcp_local.py`) for manual integration validation
+- Use `agentcore invoke --dev` for manual integration validation
 - Accept that tests calling Bedrock cost money and take time — that's the cost of testing the real thing
 - If a test is too expensive to run frequently, mark it clearly and run it manually
-
-## Before Writing Any Test
-
-1. Check: does this test use mocks? If yes, STOP and inform the user
-2. If you see existing mocks in the codebase, inform the user immediately
-3. Ask the user before introducing any test isolation pattern
 
 ## Why
 

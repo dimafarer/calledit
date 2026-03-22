@@ -132,7 +132,7 @@ Two separate AgentCore Runtime deployments sharing infrastructure (model, tools 
 |--------|-------------|--------------|
 | Agent count | 4 agents in Strands Graph + 1 verification executor | 2 agents (creation + verification) |
 | Categorization | 3 categories (auto_verifiable, automatable, human_only) | Continuous verifiability strength score (0.0-1.0) |
-| Tool hosting | MCP subprocesses in Docker Lambda (~30s cold start) | AgentCore Gateway (always-warm network services) |
+| Tool hosting | MCP subprocesses in Docker Lambda (~30s cold start) | AgentCore Built-in Tools Day 1 (Browser + Code Interpreter), Gateway Phase 2 |
 | Memory | Frontend session state + DynamoDB | AgentCore Memory (STM + LTM) + DynamoDB hybrid |
 | Eval | Strands Evals SDK only | Three-layer: Strands + AgentCore Evals + Bedrock Evals |
 | Observability | Custom OTEL instrumentation | AgentCore Observability (built-in) |
@@ -144,12 +144,12 @@ Two separate AgentCore Runtime deployments sharing infrastructure (model, tools 
 - Prompt text (from Bedrock Prompt Management)
 - DynamoDB schema patterns
 - Frontend (React PWA)
-- 91 architectural decisions
+- 96 architectural decisions
 - Eval methodology (isolated single-variable testing)
 
 ### What Gets Rebuilt
 - Agent code → two BedrockAgentCoreApp entrypoints
-- Tool hosting → AgentCore Gateway
+- Tool hosting → AgentCore Built-in Tools (Browser + Code Interpreter) Day 1, Gateway Phase 2
 - Session state → AgentCore Memory
 - Categorizer → Verifiability Scorer
 - Eval runner → three-layer architecture
@@ -167,4 +167,9 @@ Layer 1 (Strands Evals SDK): dev-time, local, minutes per iteration. Layer 2 (Ag
 - Decision 88: Hybrid Memory Model (DDB + AgentCore Memory)
 - Decision 89: Three-layer eval architecture
 - Decision 90: No hardcoded prompt fallbacks
-- Decision 91: AgentCore Gateway for all tools
+- Decision 91: AgentCore Built-in Tools Day 1 (Browser + Code Interpreter), Gateway Phase 2
+- Decision 92: 11-spec plan for 90%+ confidence
+- Decision 93: Built-in tools first, Gateway later
+- Decision 94: Single agent, multi-turn prompts (data-driven)
+- Decision 95: Parallel run then phased teardown
+- Decision 96: Zero mocks by default — proven value + user approval required

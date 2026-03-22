@@ -52,11 +52,15 @@ graph TB
         VA[Prediction Agent<br/>Verification Mode]
     end
 
-    subgraph "AgentCore Gateway — MCP Tools"
+    subgraph "AgentCore Built-in Tools (Day 1)"
+        BROWSER[AgentCore Browser<br/>Chromium in Firecracker microVM]
+        CODE[AgentCore Code Interpreter<br/>Python sandbox]
+    end
+
+    subgraph "AgentCore Gateway (Phase 2 — When Needed)"
         BV[brave_web_search]
-        FT[fetch]
-        PW[playwright]
-        FUTURE[Future tools...]
+        ALPHA[Alpha Vantage]
+        FUTURE[Future domain APIs...]
     end
 
     subgraph "AgentCore Memory"
@@ -85,12 +89,12 @@ graph TB
 
     FE <-->|WebSocket| APIGW
     APIGW --> PA
+    PA --> BROWSER
+    PA --> CODE
+    VA --> BROWSER
+    VA --> CODE
     EB --> VA
     PA --> BV
-    PA --> FT
-    VA --> BV
-    VA --> FT
-    VA --> PW
     PA --> STM
     PA --> LTM
     PA --> PM
@@ -180,8 +184,7 @@ We chose Option B for these reasons:
 graph LR
     subgraph "Shared Infrastructure"
         MODEL[Claude Sonnet 4<br/>via Bedrock]
-        TOOLS[AgentCore Built-in Tools<br/>Browser + Code Interpreter]
-        DDB[(DynamoDB<br/>Prediction Bundles)]
+        TOOLS[AgentCore Built-in Tools<br/>Browser + Code Interpreter]        DDB[(DynamoDB<br/>Prediction Bundles)]
         PM[Bedrock Prompt Management]
     end
 
@@ -813,98 +816,58 @@ The outer loop for production confidence:
 
 ### Creation Agent (`creation_agent.py`)
 
+> **Note:** This is the target architecture for V4-3a+. V4-1 proved the foundation pattern works.
+> The actual V4-1 entrypoint is simpler (no memory, no prompt_client, no clarification rounds).
+> See `calleditv4/src/main.py` for the current working code.
+
 ```python
 """
 CalledIt v4 — Prediction Creation Agent on AgentCore
 Handles user-facing prediction creation with clarification rounds.
 """
+import json
+import logging
 import os
+
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
-from bedrock_agentcore.memory import MemoryClient
 from strands import Agent
-from strands.hooks import HookProvider, AgentInitializedEvent, MessageAddedEvent
+from strands.models.bedrock import BedrockModel
+from strands_tools.browser import AgentCoreBrowser
+from strands_tools.code_interpreter import AgentCoreCodeInterpreter
 
 app = BedrockAgentCoreApp()
+logger = logging.getLogger(__name__)
 
-memory_client = MemoryClient(region_name='us-west-2')
-MEMORY_ID = os.getenv('MEMORY_ID')
+MODEL_ID = "us.anthropic.claude-sonnet-4-20250514-v1:0"
+REGION = os.getenv("AWS_REGION", "us-west-2")
 
-
-class CreationMemoryHook(HookProvider):
-    """Loads conversation history and user preferences for creation sessions."""
-
-    def on_agent_initialized(self, event):
-        if not MEMORY_ID:
-            return
-        turns = memory_client.get_last_k_turns(
-            memory_id=MEMORY_ID,
-            actor_id="user",
-            session_id=event.agent.state.get("session_id", "default"),
-            k=5
-        )
-        if turns:
-            context = "\n".join(
-                f"{m['role']}: {m['content']['text']}"
-                for t in turns for m in t
-            )
-            event.agent.system_prompt += f"\n\nPrevious conversation:\n{context}"
-
-    def on_message_added(self, event):
-        if not MEMORY_ID:
-            return
-        msg = event.agent.messages[-1]
-        memory_client.create_event(
-            memory_id=MEMORY_ID,
-            actor_id="user",
-            session_id=event.agent.state.get("session_id", "default"),
-            messages=[(str(msg["content"]), msg["role"])]
-        )
-
-    def register_hooks(self, registry):
-        registry.add_callback(AgentInitializedEvent, self.on_agent_initialized)
-        registry.add_callback(MessageAddedEvent, self.on_message_added)
+# Built-in tools (Day 1) — no API keys, no Gateway setup
+browser_tool = AgentCoreBrowser(region=REGION)
+code_interpreter_tool = AgentCoreCodeInterpreter(region=REGION)
 
 
 @app.entrypoint
-def invoke(payload, context):
-    """
-    Creation agent entrypoint.
-    
-    Payload:
-    {
-        "prompt": "Lakers win tonight",
-        "round": 1,
-        "previous_output": null,
-        "clarifications": null
-    }
-    """
-    from prompt_client import fetch_prompt
+def handler(payload: dict, context: dict) -> str:
+    """Creation agent entrypoint — receives prediction, returns bundle."""
+    if "prompt" not in payload:
+        return json.dumps({"error": "Missing 'prompt' field in payload"})
 
-    session_id = getattr(context, 'session_id', 'default')
-    system_prompt = fetch_prompt("creation")
+    prompt = payload["prompt"]
 
-    agent = Agent(
-        model="us.anthropic.claude-sonnet-4-20250514-v1:0",
-        system_prompt=system_prompt,
-        hooks=[CreationMemoryHook()] if MEMORY_ID else [],
-        state={"session_id": session_id}
-        # Tools come from AgentCore Gateway — no local MCP subprocess
-    )
-
-    prompt = payload.get("prompt", "")
-    round_num = payload.get("round", 1)
-
-    if round_num == 1:
-        user_prompt = f"PREDICTION: {prompt}"
-    else:
-        user_prompt = (
-            f"PREDICTION: {prompt}\n\n"
-            f"PREVIOUS OUTPUT:\n{payload.get('previous_output')}\n\n"
-            f"USER CLARIFICATIONS:\n{payload.get('clarifications')}"
+    try:
+        # Prompt Management wiring comes in V4-3a
+        # Memory integration comes in V4-6
+        model = BedrockModel(model_id=MODEL_ID)
+        agent = Agent(
+            model=model,
+            system_prompt="You are the CalledIt v4 creation agent.",  # Placeholder — Prompt Management in V4-3a
+            tools=[browser_tool.browser, code_interpreter_tool.code_interpreter],
         )
-
-    response = agent(user_prompt)
-    return str(response)
+        response = agent(prompt)
+        return str(response)
+    except Exception as e:
+        logger.error(f"Agent invocation failed: {e}", exc_info=True)
+        return json.dumps({"error": f"Agent invocation failed: {str(e)}"})
 
 
 if __name__ == "__main__":
@@ -913,56 +876,64 @@ if __name__ == "__main__":
 
 ### Verification Agent (`verification_agent.py`)
 
+> **Note:** This is the target architecture for V4-5. Built-in tools (Browser + Code Interpreter)
+> replace the v3 MCP subprocess approach. No Gateway needed for Day 1.
+
 ```python
 """
 CalledIt v4 — Prediction Verification Agent on AgentCore
 Runs at verification_date to produce a verdict. No user interaction, no memory.
 """
+import json
+import logging
+import os
+
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from strands import Agent
+from strands.models.bedrock import BedrockModel
+from strands_tools.browser import AgentCoreBrowser
+from strands_tools.code_interpreter import AgentCoreCodeInterpreter
 
 app = BedrockAgentCoreApp()
+logger = logging.getLogger(__name__)
+
+MODEL_ID = "us.anthropic.claude-sonnet-4-20250514-v1:0"
+REGION = os.getenv("AWS_REGION", "us-west-2")
+
+# Built-in tools — same tools as creation agent, different usage pattern
+browser_tool = AgentCoreBrowser(region=REGION)
+code_interpreter_tool = AgentCoreCodeInterpreter(region=REGION)
 
 
 @app.entrypoint
-def invoke(payload, context):
-    """
-    Verification agent entrypoint.
-    
-    Payload:
-    {
-        "prediction_bundle": {
-            "parsed_claim": { "statement": "...", "verification_date": "..." },
-            "verification_plan": { "sources": [...], "criteria": [...], "steps": [...] },
-            "verifiability_score": 0.92,
-            "verifiability_reasoning": "..."
-        }
-    }
-    """
-    from prompt_client import fetch_prompt
-
-    system_prompt = fetch_prompt("verification")
+def handler(payload: dict, context: dict) -> str:
+    """Verification agent entrypoint — receives bundle, returns verdict."""
     bundle = payload.get("prediction_bundle", {})
+    if not bundle:
+        return json.dumps({"error": "Missing 'prediction_bundle' in payload"})
 
-    agent = Agent(
-        model="us.anthropic.claude-sonnet-4-20250514-v1:0",
-        system_prompt=system_prompt,
-        callback_handler=None  # No streaming — batch execution
-        # Tools come from AgentCore Gateway
-    )
+    try:
+        # Prompt Management wiring comes in V4-5
+        model = BedrockModel(model_id=MODEL_ID)
+        agent = Agent(
+            model=model,
+            system_prompt="You are the CalledIt v4 verification agent.",  # Placeholder
+            tools=[browser_tool.browser, code_interpreter_tool.code_interpreter],
+        )
 
-    verification_prompt = (
-        f"VERIFY THIS PREDICTION:\n"
-        f"Claim: {bundle.get('parsed_claim', {}).get('statement', '')}\n"
-        f"Verification Plan: {bundle.get('verification_plan', {})}\n"
-        f"Verifiability Score: {bundle.get('verifiability_score', 'unknown')}\n"
-        f"Verifiability Reasoning: {bundle.get('verifiability_reasoning', '')}\n\n"
-        f"Use your tools to gather evidence and determine: confirmed, refuted, or inconclusive.\n"
-        f"If the plan is insufficient, adapt — use your own judgment to find evidence."
-    )
+        verification_prompt = (
+            f"VERIFY THIS PREDICTION:\n"
+            f"Claim: {bundle.get('parsed_claim', {}).get('statement', '')}\n"
+            f"Verification Plan: {json.dumps(bundle.get('verification_plan', {}))}\n"
+            f"Verifiability Score: {bundle.get('verifiability_score', 'unknown')}\n\n"
+            f"Use your tools to gather evidence and determine: confirmed, refuted, or inconclusive."
+        )
 
-    response = agent(verification_prompt)
-    return str(response)
+        response = agent(verification_prompt)
+        return str(response)
+    except Exception as e:
+        logger.error(f"Verification failed: {e}", exc_info=True)
+        return json.dumps({"error": f"Verification failed: {str(e)}"})
 
 
 if __name__ == "__main__":
@@ -973,45 +944,58 @@ if __name__ == "__main__":
 
 ## Migration Sequence
 
+> **Updated March 22, 2026:** Reflects the 11-spec plan (Decision 92) and V4-1 completion.
+
 ```mermaid
 graph TD
-    S1[Phase 1: AgentCore Foundation] --> S2[Phase 2: Gateway + Tools]
-    S2 --> S3[Phase 3: Unified Agent]
-    S3 --> S4[Phase 4: Verifiability Scorer]
-    S4 --> S5[Phase 5: Memory Integration]
-    S5 --> S6[Phase 6: Three-Layer Eval]
-    S6 --> S7[Phase 7: Frontend Updates]
-    S7 --> S8[Phase 8: Production Cutover]
+    S1[V4-1: AgentCore Foundation ✅] --> S2[V4-2: Built-in Tools]
+    S2 --> S3A[V4-3a: Creation Agent Core]
+    S3A --> S3B[V4-3b: Clarification & Streaming]
+    S3A --> S4[V4-4: Verifiability Scorer]
+    S2 --> S5[V4-5: Verification Agent]
+    S3A --> S6[V4-6: Memory Integration]
+    S3A --> S7A[V4-7a: Eval Layer 1 — Strands]
+    S3B --> S8[V4-8: Production Cutover]
+    S4 --> S8
+    S5 --> S8
+    S6 --> S8
+    S7A --> S8
+    S8 --> S7B[V4-7b: Eval Layer 2 — AgentCore]
+    S7B --> S7C[V4-7c: Eval Layer 3 — Bedrock]
 
-    S1 ---|"agentcore create, dev server,<br/>basic invoke working"| S1
-    S2 ---|"Gateway with brave_web_search,<br/>fetch as Lambda targets"| S2
-    S3 ---|"Single agent, creation + verification<br/>modes, DDB bundle contract"| S3
-    S4 ---|"Replace categorizer with<br/>continuous score + reasoning"| S4
-    S5 ---|"STM for sessions,<br/>LTM for user preferences"| S5
-    S6 ---|"Strands Evals + AgentCore Evals<br/>+ Bedrock Evaluations wired"| S6
-    S7 ---|"Strength indicator UI,<br/>clarification flow updates"| S7
-    S8 ---|"agentcore launch,<br/>EventBridge wiring, DNS cutover"| S8
+    style S1 fill:#22c55e,color:#000
 ```
 
-### Phase Details
+### Spec Status
 
-| Phase | What | Depends On | Validates |
-|-------|------|-----------|-----------|
-| 1. Foundation | `agentcore create`, dev server, basic invoke | Nothing | AgentCore CLI works, agent responds |
-| 2. Gateway + Tools | brave_web_search + fetch as Gateway targets | Phase 1 | Tools accessible via MCP over HTTP |
-| 3. Unified Agent | Single agent with creation/verification modes | Phase 2 | Both modes produce correct output |
-| 4. Verifiability Scorer | Replace categorizer with continuous score | Phase 3 | Score correlates with verification success |
-| 5. Memory | STM for sessions, LTM for preferences | Phase 3 | Conversation persists, preferences extracted |
-| 6. Three-Layer Eval | Strands + AgentCore + Bedrock eval wiring | Phase 3 | All three layers produce eval data |
-| 7. Frontend | Strength indicator, updated clarification flow | Phase 4 | User sees score, can clarify to improve |
-| 8. Production | agentcore launch, EventBridge, DNS | All above | End-to-end production traffic |
+| Spec | Name | Status | Validates |
+|------|------|--------|-----------|
+| V4-1 | AgentCore Foundation | ✅ COMPLETE | `agentcore create`, dev server, basic invoke, config |
+| V4-2 | Built-in Tools | NEXT | Browser + Code Interpreter wired, basic verification |
+| V4-3a | Creation Agent Core | Pending | Prediction in → bundle out, Prompt Management, DDB save |
+| V4-3b | Clarification & Streaming | Pending | Multi-round clarification, WebSocket streaming |
+| V4-4 | Verifiability Scorer | Pending | Continuous 0.0-1.0 score, 5 dimensions |
+| V4-5 | Verification Agent | Pending | Separate runtime, DDB bundle load, verdict |
+| V4-6 | Memory Integration | Pending | STM + 3 LTM strategies, session manager |
+| V4-7a | Eval Layer 1 (Strands) | Pending | Golden dataset adapted, local eval runner |
+| V4-7b | Eval Layer 2 (AgentCore) | Pending | Span-level eval, online scoring |
+| V4-7c | Eval Layer 3 (Bedrock) | Pending | LLM-as-judge at scale, human eval |
+| V4-8 | Production Cutover | Pending | Three-phase cutover, v3 teardown |
 
 ---
 
-## Open Questions for Spec Planning
+## Open Questions (Updated March 22, 2026)
 
-1. Should the verifiability scorer be a separate lightweight LLM call, or a section of the main agent's output that gets extracted?
-2. How should the EventBridge scanner invoke the AgentCore agent in verification mode? Direct HTTP invoke? Or a separate "verification scheduler" agent?
-3. Should we keep the existing DynamoDB table schema or redesign for the new bundle format?
-4. What's the right LTM extraction strategy? User preferences only, or also prediction patterns?
-5. How do we handle the transition period where v3 predictions in DDB need to be verifiable by the v4 agent?
+1. ~~Should the verifiability scorer be a separate lightweight LLM call, or a section of the main agent's output that gets extracted?~~ **Answered (Decision 94):** It's Turn 3 of the 4-turn creation agent. Same agent, separate prompt from Prompt Management. The agent scores its own plan because it has full conversation context.
+
+2. ~~How should the EventBridge scanner invoke the AgentCore agent in verification mode?~~ **Answered (Decision 86):** EventBridge → `InvokeAgentRuntime` API on the verification agent's separate AgentCore Runtime. This is Deviation 2 in the steering doc — valid use of the Runtime API, just not the typical interactive pattern.
+
+3. Should we keep the existing DynamoDB table schema or redesign for the new bundle format? **Partially answered (Decision 95):** v3 predictions in DDB are handled gracefully — missing v4 fields (verifiability_score, verifiability_reasoning) treated as v3-era predictions. Full schema design is part of V4-3a.
+
+4. ~~What's the right LTM extraction strategy?~~ **Answered (Decision 88):** Three strategies — semantic (prediction facts), user preferences, session summaries. Detailed in the Hybrid Memory Model section above.
+
+5. ~~How do we handle the transition period where v3 predictions in DDB need to be verifiable by the v4 agent?~~ **Answered (Decision 95):** v3 stays live and untouched through V4-1 to V4-7a. V4-8 handles cutover in three phases. v3 predictions missing v4 fields are handled gracefully.
+
+6. **NEW:** What IAM permissions does the dev identity need for Browser + Code Interpreter? V4-2 will determine the exact policy. The AgentCore docs specify `bedrock-agentcore:StartBrowserSession`, `InvokeCodeInterpreter`, etc.
+
+7. **NEW:** Does `agentcore dev` support built-in tools locally, or do they require AWS API calls even in dev mode? V4-2 will test this — Browser and Code Interpreter run in AWS infrastructure (Firecracker microVMs), so they likely need real AWS credentials even during local dev.

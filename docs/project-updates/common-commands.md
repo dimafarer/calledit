@@ -208,3 +208,20 @@ git checkout main
 git merge feature/prompt-eval-framework
 git push origin main
 ```
+
+
+## AgentCore v4 (calleditv4/)
+
+```bash
+# Start dev server (requires TTY — run in terminal)
+cd /home/wsluser/projects/calledit/calleditv4 && agentcore dev
+
+# Invoke agent locally (requires dev server running)
+agentcore invoke --dev '{"prompt": "Hello, are you working?"}'
+
+# Test missing prompt key (should return error JSON)
+agentcore invoke --dev '{"not_prompt": "test"}'
+
+# Run v4 unit tests
+/home/wsluser/projects/calledit/venv/bin/python -m pytest calleditv4/tests/test_entrypoint.py -v
+```

@@ -112,6 +112,9 @@ The eval framework is the transferable artifact:
 - Two-tier evaluator strategy (deterministic catches structure, LLM judge catches reasoning)
 - Verification Builder output as the primary eval target (not categorization)
 
+### Update 22 (March 22): V4-1 AgentCore Foundation Complete
+First v4 spec executed. Installed AgentCore toolkit, scaffolded `calleditv4/` project, wrote entrypoint with Claude Sonnet 4 and error handling, validated via `agentcore dev` + `agentcore invoke --dev`. Tightened no-mocks policy — mocks now require proven value + explicit user approval (Decision 96).
+
 ## Current State (March 22, 2026)
 
 - v3.0.0 released — MCP-powered verification pipeline with Docker Lambda
@@ -125,5 +128,6 @@ The eval framework is the transferable artifact:
 - Roadmap: Complete eval analysis (Update 21) → v4 spec creation → AgentCore migration
 - v4 spec plan: 11 specs, 36 requirements, ~80-92 tasks, all ≥88% confidence (Decision 92)
 - v4 creation agent: single agent, 4 multi-turn prompts — data-driven choice from 16 eval runs (Decision 94)
-- V4-1 spec (AgentCore Foundation) complete: requirements, design, tasks — ready for implementation
-- 95 architectural decisions documented
+- V4-1 spec (AgentCore Foundation) COMPLETE: `calleditv4/` scaffolded, entrypoint working, dev server validated, 6 tests passing
+- No-mocks policy tightened: mocks require proven value + explicit user approval (Decision 96)
+- 96 architectural decisions documented
