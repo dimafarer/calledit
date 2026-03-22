@@ -656,3 +656,19 @@ DynamoDB's boto3 resource layer rejects Python `float` types with `TypeError: Fl
 **Date:** March 21, 2026
 
 The first scanner invocation timed out at 60 seconds. MCP cold start takes ~40 seconds (npx downloading packages + Node.js subprocess startup), leaving only ~20 seconds for the agent to invoke tools and reason. Bumped to 120 seconds, giving ~80 seconds after cold start. The scanner Lambda has a 900s total timeout (15 minutes), so 120s per prediction is well within budget. On warm invocations, the agent completes in ~15-20 seconds — the timeout is only relevant for the first prediction on a cold start.
+
+---
+
+## Decision 84: Verification Evaluators NOT Added to EVALUATOR_WEIGHTS
+**Source:** Spec B3 requirements review (March 22, 2026)
+**Date:** March 22, 2026
+
+The four new verification alignment evaluators (ToolAlignment, SourceAccuracy, CriteriaQuality, StepFidelity) report scores but do NOT contribute to the VB-centric composite score. Per Decision 62, composite weights need empirical grounding from actual verification outcomes before weighting can be calibrated. The evaluators will accumulate data across eval runs, and a future calibration spec will derive weights from correlation between evaluator scores and actual verification success rates.
+
+---
+
+## Decision 85: Golden Dataset Schema Stays at 3.0 for verification_readiness
+**Source:** Spec B3 requirements review (March 22, 2026)
+**Date:** March 22, 2026
+
+The new `verification_readiness` field on `BasePrediction` is optional with a safe default of `"future"` (conservative — don't attempt verification unless explicitly marked). This is not a breaking change — existing dataset consumers that don't know about the field will continue to work. No schema version bump needed. 10 of 45 base predictions tagged as `immediate` (established facts verifiable now), remaining 35 default to `future`.

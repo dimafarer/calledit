@@ -89,6 +89,7 @@ def render(runs: list[dict]) -> dict:
                 "Reasoning Explorer",
                 "Coherence View",
                 "Fuzzy Convergence",
+                "Verification Alignment",
             ],
             key="page_nav",
         )

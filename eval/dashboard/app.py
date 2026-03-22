@@ -26,6 +26,7 @@ from eval.dashboard.pages import (
     reasoning_explorer,
     coherence,
     fuzzy_convergence,
+    verification_alignment,
 )
 
 
@@ -122,6 +123,8 @@ def main():
         coherence.render(run_detail, loader)
     elif page == "Fuzzy Convergence":
         fuzzy_convergence.render(run_detail)
+    elif page == "Verification Alignment":
+        verification_alignment.render(run_detail, loader)
 
 
 if __name__ == "__main__":

@@ -134,6 +134,25 @@ class EvalReasoningStore:
             data[f"{agent}_output_tokens"] = tokens.get("output_tokens", 0)
         self._put_item(f"token_counts#{test_case_id}", data)
 
+    def write_verification_outcome(
+        self,
+        test_case_id: str,
+        verification_plan: dict,
+        verification_outcome: dict,
+        evaluator_scores: dict,
+    ):
+        """Write verification data as verification_outcome#{test_case_id}.
+
+        Stores the plan, outcome, and all four verification evaluator scores.
+        Float values are sanitized to strings via _sanitize_for_ddb.
+        """
+        self._put_item(f"verification_outcome#{test_case_id}", {
+            "test_case_id": test_case_id,
+            "verification_plan": verification_plan,
+            "verification_outcome": verification_outcome,
+            "evaluator_scores": evaluator_scores,
+        })
+
     @staticmethod
     def _sanitize_for_ddb(obj):
         """Recursively convert floats to strings for DDB compatibility.

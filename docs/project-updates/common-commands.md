@@ -153,6 +153,30 @@ PROMPT_VERSION_PARSER=1 PROMPT_VERSION_CATEGORIZER=2 PROMPT_VERSION_VB=3 PROMPT_
 /home/wsluser/projects/calledit/venv/bin/python eval_runner.py --list-backends
 ```
 
+### With verification (--verify, deterministic evaluators only)
+```bash
+source /home/wsluser/projects/calledit/.env
+PROMPT_VERSION_PARSER=1 PROMPT_VERSION_CATEGORIZER=2 PROMPT_VERSION_VB=3 PROMPT_VERSION_REVIEW=4 \
+/home/wsluser/projects/calledit/venv/bin/python eval_runner.py \
+    --dataset ../../../../eval/golden_dataset.json --backend serial --verify
+```
+
+### With verification + judge (all 4 verification evaluators)
+```bash
+source /home/wsluser/projects/calledit/.env
+PROMPT_VERSION_PARSER=1 PROMPT_VERSION_CATEGORIZER=2 PROMPT_VERSION_VB=3 PROMPT_VERSION_REVIEW=4 \
+/home/wsluser/projects/calledit/venv/bin/python eval_runner.py \
+    --dataset ../../../../eval/golden_dataset.json --backend serial --verify --judge
+```
+
+### Single test case with verification (fast iteration, ~20-120s)
+```bash
+source /home/wsluser/projects/calledit/.env
+PROMPT_VERSION_PARSER=1 PROMPT_VERSION_CATEGORIZER=2 PROMPT_VERSION_VB=3 PROMPT_VERSION_REVIEW=4 \
+/home/wsluser/projects/calledit/venv/bin/python eval_runner.py \
+    --dataset ../../../../eval/golden_dataset.json --backend serial --verify --name base-002
+```
+
 ## CloudWatch Logs
 
 ```bash

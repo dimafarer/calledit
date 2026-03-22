@@ -48,7 +48,8 @@
       },
       "evaluation_rubric": "Categorizer reasoning should reference astronomical knowledge, Earth rotation, or physical certainty. Should NOT reference any tool \u2014 this is pure reasoning. VB steps should be trivially simple.",
       "is_boundary_case": false,
-      "boundary_description": null
+      "boundary_description": null,
+      "verification_readiness": "immediate"
     },
     {
       "id": "base-002",
@@ -91,7 +92,8 @@
       },
       "evaluation_rubric": "Categorizer reasoning should reference calendar lookup or date arithmetic. Should NOT need any tool. VB should describe a straightforward calendar check.",
       "is_boundary_case": false,
-      "boundary_description": null
+      "boundary_description": null,
+      "verification_readiness": "immediate"
     },
     {
       "id": "base-003",
@@ -359,7 +361,8 @@
       },
       "evaluation_rubric": "Categorizer should recognize this is about schedule data (factual, published) not game outcome (uncertain). Should reference web_search for sports schedules. VB should describe schedule lookup, not outcome prediction.",
       "is_boundary_case": false,
-      "boundary_description": null
+      "boundary_description": null,
+      "verification_readiness": "immediate"
     },
     {
       "id": "base-008",
@@ -411,7 +414,8 @@
       },
       "evaluation_rubric": "Categorizer should recognize present-tense weather verification via web_search. Parser should handle 'current' as present time, not a future date.",
       "is_boundary_case": false,
-      "boundary_description": null
+      "boundary_description": null,
+      "verification_readiness": "immediate"
     },
     {
       "id": "base-009",
@@ -465,7 +469,8 @@
       },
       "evaluation_rubric": "Categorizer should recognize government financial data is publicly accessible via web_search. VB should reference Treasury data source and specific dollar threshold.",
       "is_boundary_case": false,
-      "boundary_description": null
+      "boundary_description": null,
+      "verification_readiness": "immediate"
     },
     {
       "id": "base-010",
@@ -508,7 +513,8 @@
       },
       "evaluation_rubric": "Categorizer should reference lunar cycle calculations or astronomical knowledge. Should NOT need any tool \u2014 this is pure reasoning like sunrise (base-001).",
       "is_boundary_case": false,
-      "boundary_description": null
+      "boundary_description": null,
+      "verification_readiness": "immediate"
     },
     {
       "id": "base-011",
@@ -562,7 +568,8 @@
       },
       "evaluation_rubric": "Categorizer should recognize software release status as publicly verifiable via web_search. VB should reference official Python release channels.",
       "is_boundary_case": false,
-      "boundary_description": null
+      "boundary_description": null,
+      "verification_readiness": "immediate"
     },
     {
       "id": "base-012",
@@ -615,7 +622,8 @@
       },
       "evaluation_rubric": "Categorizer should recognize real-time currency data is accessible via web_search. VB should specify EUR/USD pair and 1.05 threshold.",
       "is_boundary_case": false,
-      "boundary_description": null
+      "boundary_description": null,
+      "verification_readiness": "immediate"
     },
     {
       "id": "base-013",
@@ -668,7 +676,8 @@
       },
       "evaluation_rubric": "Categorizer should recognize Wikipedia as publicly accessible via web_search. May note the counting challenge but should still classify as auto_verifiable since the data is accessible. VB should describe how to count references specifically.",
       "is_boundary_case": false,
-      "boundary_description": null
+      "boundary_description": null,
+      "verification_readiness": "immediate"
     },
     {
       "id": "base-014",
@@ -1899,7 +1908,8 @@
       },
       "evaluation_rubric": "Categorizer should NOT be distracted by 'I bet' framing. Should identify the core astronomical claim and classify as auto_verifiable. Parser should extract 'sun will rise tomorrow' as the prediction statement.",
       "is_boundary_case": true,
-      "boundary_description": "Casual 'I bet' framing on a trivially verifiable claim. Tests whether the categorizer looks past colloquial language to the underlying verifiable content."
+      "boundary_description": "Casual 'I bet' framing on a trivially verifiable claim. Tests whether the categorizer looks past colloquial language to the underlying verifiable content.",
+      "verification_readiness": "immediate"
     },
     {
       "id": "base-041",

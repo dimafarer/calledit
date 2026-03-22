@@ -293,6 +293,118 @@ def _evaluate_with_judges(
     return scores
 
 
+def _evaluate_verification(
+    bp: "BasePrediction",
+    pipeline_output: dict,
+    verification_outcome: dict,
+    use_judge: bool = False,
+) -> dict:
+    """Apply verification alignment evaluators.
+
+    Compares the Verification_Plan (from VB output) against the
+    Verification_Outcome (from run_verification) across four dimensions.
+
+    Args:
+        bp: The base prediction test case.
+        pipeline_output: The prediction pipeline's final output dict.
+        verification_outcome: The Verification_Outcome from run_verification().
+        use_judge: Whether to run LLM judge evaluators (CriteriaQuality, StepFidelity).
+
+    Returns:
+        Dict of evaluator scores keyed by evaluator name.
+    """
+    scores = {}
+
+    # Extract verification plan from pipeline output
+    verification_plan = pipeline_output.get("verification_method", {})
+    if isinstance(verification_plan, str):
+        try:
+            verification_plan = json.loads(verification_plan)
+        except json.JSONDecodeError:
+            verification_plan = {}
+
+    # Deterministic evaluators — always run
+    try:
+        from evaluators.tool_alignment import evaluate_tool_alignment
+        scores["ToolAlignment"] = evaluate_tool_alignment(
+            verification_plan, verification_outcome
+        )
+        logger.info(
+            f"ToolAlignment for {bp.id}: {scores['ToolAlignment'].get('score', '?')}"
+        )
+    except Exception as e:
+        logger.warning(f"ToolAlignment failed for {bp.id}: {e}")
+        scores["ToolAlignment"] = {"score": 0.0, "evaluator": "ToolAlignment",
+                                    "error": str(e)}
+
+    try:
+        from evaluators.source_accuracy import evaluate_source_accuracy
+        scores["SourceAccuracy"] = evaluate_source_accuracy(
+            verification_plan, verification_outcome
+        )
+        logger.info(
+            f"SourceAccuracy for {bp.id}: {scores['SourceAccuracy'].get('score', '?')}"
+        )
+    except Exception as e:
+        logger.warning(f"SourceAccuracy failed for {bp.id}: {e}")
+        scores["SourceAccuracy"] = {"score": 0.0, "evaluator": "SourceAccuracy",
+                                     "error": str(e)}
+
+    # LLM judge evaluators — only when --judge is enabled
+    if use_judge:
+        try:
+            from evaluators.criteria_quality import evaluate_criteria_quality
+            scores["CriteriaQuality"] = evaluate_criteria_quality(
+                verification_plan, verification_outcome
+            )
+            logger.info(
+                f"CriteriaQuality for {bp.id}: "
+                f"{scores['CriteriaQuality'].get('score', '?')}"
+            )
+        except Exception as e:
+            logger.warning(f"CriteriaQuality failed for {bp.id}: {e}")
+            scores["CriteriaQuality"] = {
+                "score": 0.0, "evaluator": "CriteriaQuality",
+                "judge_reasoning": f"Failed: {e}",
+                "judge_model": "unknown",
+            }
+
+        try:
+            from evaluators.step_fidelity import evaluate_step_fidelity
+            scores["StepFidelity"] = evaluate_step_fidelity(
+                verification_plan, verification_outcome
+            )
+            logger.info(
+                f"StepFidelity for {bp.id}: "
+                f"{scores['StepFidelity'].get('score', '?')}"
+            )
+        except Exception as e:
+            logger.warning(f"StepFidelity failed for {bp.id}: {e}")
+            scores["StepFidelity"] = {
+                "score": 0.0, "evaluator": "StepFidelity",
+                "judge_reasoning": f"Failed: {e}",
+                "judge_model": "unknown",
+                "delta_classification": None,
+            }
+
+    return scores
+
+
+def _skip_verification_evaluators(use_judge: bool = False) -> dict:
+    """Return skipped entries for all verification evaluators.
+
+    Used when verification_readiness is 'future' or --verify is not set.
+    """
+    skipped = {
+        "ToolAlignment": "future_dated",
+        "SourceAccuracy": "future_dated",
+    }
+    if use_judge:
+        skipped["CriteriaQuality"] = "future_dated"
+        skipped["StepFidelity"] = "future_dated"
+    return skipped
+
+
 def _aggregate_report(test_results: list, manifest: dict,
                       dataset_version: str = "", schema_version: str = "",
                       eval_run_id: str = "", backend_meta: dict = None) -> dict:
@@ -380,6 +492,47 @@ def _aggregate_report(test_results: list, manifest: dict,
         skipped = tr.get("evaluator_scores", {}).get("_skipped_evaluators", {})
         all_skipped.update(skipped)
 
+    # B3: Verification alignment aggregates (None when --verify not used)
+    verification_alignment_aggregates = None
+    verify_evaluator_names = ["ToolAlignment", "CriteriaQuality", "SourceAccuracy", "StepFidelity"]
+    has_any_verify = any(
+        any(vn in tr.get("evaluator_scores", {}) for vn in verify_evaluator_names)
+        for tr in test_results
+    )
+    if has_any_verify:
+        verify_scores_by_eval = {vn: [] for vn in verify_evaluator_names}
+        delta_counts = {"plan_error": 0, "new_information": 0, "tool_drift": 0}
+        verify_count = 0
+        skipped_count = 0
+        for tr in test_results:
+            scores = tr.get("evaluator_scores", {})
+            tr_has_verify = False
+            for vn in verify_evaluator_names:
+                val = scores.get(vn)
+                if isinstance(val, dict) and "score" in val:
+                    verify_scores_by_eval[vn].append(float(val["score"]))
+                    tr_has_verify = True
+                    dc = val.get("delta_classification")
+                    if dc in delta_counts:
+                        delta_counts[dc] += 1
+            if tr_has_verify:
+                verify_count += 1
+            elif scores.get("_skipped_evaluators", {}).get("ToolAlignment") == "future_dated":
+                skipped_count += 1
+
+        verification_alignment_aggregates = {}
+        for vn in verify_evaluator_names:
+            s = verify_scores_by_eval[vn]
+            if s:
+                verification_alignment_aggregates[vn.lower()] = {
+                    "mean": round(sum(s) / len(s), 4),
+                    "min": round(min(s), 4),
+                    "max": round(max(s), 4),
+                }
+        verification_alignment_aggregates["delta_classification_breakdown"] = delta_counts
+        verification_alignment_aggregates["verification_count"] = verify_count
+        verification_alignment_aggregates["skipped_count"] = skipped_count
+
     return {
         "timestamp": timestamp,
         "schema_version": schema_version,
@@ -394,8 +547,10 @@ def _aggregate_report(test_results: list, manifest: dict,
             "per_agent": ["IntentExtraction", "CategorizationJustification", "ClarificationRelevance"],
             "cross_pipeline": ["PipelineCoherence"],
             "deterministic": ["CategoryMatch", "JSONValidity", "ClarificationQuality"],
+            "verification_alignment": ["ToolAlignment", "SourceAccuracy", "CriteriaQuality", "StepFidelity"],
         },
         "skipped_evaluators": all_skipped,
+        "verification_alignment_aggregates": verification_alignment_aggregates,
         "per_test_case_scores": test_results,
         "per_agent_aggregates": per_agent_aggregates,
         "per_category_accuracy": per_category_accuracy,
@@ -417,12 +572,15 @@ def run_on_demand_evaluation(
     use_judge: bool = False,
     backend_name: str = "serial",
     model_id: str = None,
+    use_verify: bool = False,
 ) -> dict:
     """Run on-demand evaluation against the golden dataset.
 
     Args:
         backend_name: Name of the backend to use. Must match a module in backends/.
         model_id: Model ID override for the backend. If None, backend uses its default.
+        use_verify: When True, run Verification Executor after prediction pipeline
+                    for test cases with verification_readiness == "immediate".
 
     Returns:
         Report dict with per-test scores, aggregates, and prompt version manifest.
@@ -501,6 +659,46 @@ def run_on_demand_evaluation(
                         output_contract, tc, manifest_str
                     )
                     scores.update(agent_judge_scores)
+
+                # B3: Verification alignment evaluators (only when --verify is enabled)
+                verification_plan = None
+                verification_outcome = None
+                if use_verify:
+                    verification_plan = result.get("verification_method", {})
+                    if isinstance(verification_plan, str):
+                        try:
+                            verification_plan = json.loads(verification_plan)
+                        except json.JSONDecodeError:
+                            verification_plan = {}
+
+                    readiness = getattr(tc, "verification_readiness", "future")
+                    if readiness == "immediate":
+                        try:
+                            from verification_executor_agent import run_verification
+                            # Build prediction record for run_verification
+                            pred_record = {
+                                "prediction_statement": tc.prediction_text,
+                                "verifiable_category": result.get("verifiable_category", "unknown"),
+                                "verification_method": verification_plan,
+                            }
+                            verification_outcome = run_verification(pred_record)
+                            verify_scores = _evaluate_verification(
+                                tc, result, verification_outcome, use_judge
+                            )
+                            scores.update(verify_scores)
+                        except Exception as e:
+                            logger.warning(f"Verification failed for {tc.id}: {e}")
+                            scores["ToolAlignment"] = {"score": 0.0, "evaluator": "ToolAlignment", "error": str(e)}
+                            scores["SourceAccuracy"] = {"score": 0.0, "evaluator": "SourceAccuracy", "error": str(e)}
+                            if use_judge:
+                                scores["CriteriaQuality"] = {"score": 0.0, "evaluator": "CriteriaQuality", "judge_reasoning": f"Verification failed: {e}", "judge_model": "unknown"}
+                                scores["StepFidelity"] = {"score": 0.0, "evaluator": "StepFidelity", "judge_reasoning": f"Verification failed: {e}", "judge_model": "unknown", "delta_classification": None}
+                    else:
+                        # Future-dated: skip verification evaluators
+                        existing_skipped = scores.get("_skipped_evaluators", {})
+                        existing_skipped.update(_skip_verification_evaluators(use_judge))
+                        scores["_skipped_evaluators"] = existing_skipped
+
                 # V2: expected_category field path
                 expected_cat = tc.expected_per_agent_outputs.get(
                     "categorizer", {}
@@ -510,6 +708,8 @@ def run_on_demand_evaluation(
                     "difficulty": tc.difficulty, "expected_category": expected_cat,
                     "evaluator_scores": scores, "error": None,
                     "duration_s": round(time.time() - tc_start, 2),
+                    **({"verification_plan": verification_plan} if verification_plan is not None else {}),
+                    **({"verification_outcome": verification_outcome} if verification_outcome is not None else {}),
                 })
 
                 # V2: Write agent outputs to reasoning store
@@ -524,6 +724,19 @@ def run_on_demand_evaluation(
                         evaluator_scores=scores,
                         duration_s=round(time.time() - tc_start, 2),
                     )
+
+                    # B3: Write verification outcome to reasoning store
+                    if verification_outcome is not None and verification_plan is not None:
+                        verify_scores = {
+                            k: v for k, v in scores.items()
+                            if k in ("ToolAlignment", "SourceAccuracy", "CriteriaQuality", "StepFidelity")
+                        }
+                        reasoning_store.write_verification_outcome(
+                            test_case_id=tc.id,
+                            verification_plan=verification_plan,
+                            verification_outcome=verification_outcome,
+                            evaluator_scores=verify_scores,
+                        )
 
             elif isinstance(tc, FuzzyPrediction):
                 # Use the base prediction's tool manifest for fuzzy tests
@@ -693,6 +906,7 @@ if __name__ == "__main__":
     parser.add_argument("--backend", default="serial", help="Backend to use (default: serial). Use --list-backends to see available.")
     parser.add_argument("--model", default=None, help="Model ID override for the backend (e.g., us.anthropic.claude-opus-4-6-v1). If not set, each backend uses its default.")
     parser.add_argument("--list-backends", action="store_true", help="List available backends and exit")
+    parser.add_argument("--verify", action="store_true", help="Run Verification Executor after prediction pipeline for immediate test cases")
     args = parser.parse_args()
 
     # Handle --list-backends
@@ -716,6 +930,7 @@ if __name__ == "__main__":
         use_judge=args.judge,
         backend_name=args.backend,
         model_id=args.model,
+        use_verify=args.verify,
     )
     print_report(report)
 

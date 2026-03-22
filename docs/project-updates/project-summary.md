@@ -84,6 +84,9 @@ Built and tested the Verification Executor Agent. Single Strands agent that invo
 ### Update 18 (March 21): Spec B2 — Verification Triggers & Storage
 Built DynamoDB storage utility and EventBridge verification scanner. Production verification fully decoupled from prediction creation (Decision 81). Scanner runs every 15 minutes, finds eligible predictions, verifies them. Float→Decimal conversion needed for DynamoDB (Decision 82). 13 tests passing against real DynamoDB.
 
+### Update 19 (March 22): Spec B3 — Verification Eval Integration
+Extended the eval framework with `--verify` mode and 4 new verification alignment evaluators (ToolAlignment, SourceAccuracy, CriteriaQuality, StepFidelity). Golden dataset extended with `verification_readiness` field (10 immediate, 35 future). Delta classification categorizes plan-execution mismatches as `plan_error`, `new_information`, or `tool_drift`. New Verification Alignment dashboard page. End-to-end verified: base-002 confirmed as Friday with confidence 0.9.
+
 ## The Eval Framework (Portfolio Centerpiece)
 
 The eval framework is the transferable artifact:
@@ -106,19 +109,19 @@ The eval framework is the transferable artifact:
 - Two-tier evaluator strategy (deterministic catches structure, LLM judge catches reasoning)
 - Verification Builder output as the primary eval target (not categorization)
 
-## Current State (March 21, 2026)
+## Current State (March 22, 2026)
 
 - v3.0.0 released — MCP-powered verification pipeline with Docker Lambda
 - Production prompts: parser v1, categorizer v2, VB v3 (tool-aware), review v4 (tool-aware)
 - MCP tool integration fully deployed: all 4 agents tool-aware via `tool_manifest`
-- Categorizer routes tool-verifiable predictions to `auto_verifiable` when MCP tools match
-- VB references MCP tools by name (e.g., `brave_web_search`) in verification plans
-- Review agent validates tool choices against available tool list
-- Serial backend: 38% pass rate, IP 0.81, CMA 0.74, VB-centric 0.53 (Run 15, review v3)
-- Single backend: 37% pass rate, IP 0.79, CMA 0.77, VB-centric 0.52 (Run 16, review v3)
-- 16 eval runs completed, 7-page architecture comparison dashboard operational
-- 16 specs total (A1 + A2 complete, B1/B2/B3 requirements done), mcp-verification-foundation superseded
+- Verification Executor agent (B1) confirmed working with real MCP tools
+- Verification Scanner (B2) deployed with EventBridge 15-min schedule
+- Eval framework extended with `--verify` mode and 4 verification alignment evaluators (B3)
+- 15 evaluators total: 6 LLM judges + 6 deterministic + 2 deterministic verification + 2 LLM judge verification (+ delta classifier)
+- 8-page Streamlit dashboard (7 existing + Verification Alignment)
+- Golden dataset: 45 base + 23 fuzzy predictions, 10 marked `immediate` for verification
+- 17 specs total (A1 + A2 + B1 + B2 + B3 complete), mcp-verification-foundation superseded
 - Docker Lambda cold start ~30s — validates AgentCore migration priority (Decision 73)
-- Roadmap: Deploy B2 → B3 (eval integration) → AgentCore
-- Next immediate: Deploy B2, then Spec B3
-- 13 backlog items, 83 architectural decisions documented
+- Roadmap: Composite score recalibration (Backlog 11) → AgentCore migration
+- Next immediate: Run full `--verify --judge` eval, then calibrate composite weights
+- 13 backlog items, 85 architectural decisions documented

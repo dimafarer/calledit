@@ -1,831 +1,239 @@
-# CalledIt: A Serverless Prediction Verification Platform
+# CalledIt: Building an Agentic Prediction Verification Platform
 
-> **⚠️ DEMONSTRATION PROJECT ONLY**  
-> This is a demo/educational project showcasing serverless AI architecture patterns. **NOT intended for production use.** See [License](#license) and [Disclaimers](#disclaimers) for important usage restrictions.
+> A learning journal disguised as a codebase. This project documents the evolution from a simple prediction app to a multi-agent verification system — every architectural decision, wrong turn, and hard-won insight preserved in 19 project updates and 85 decisions.
 
-CalledIt is a serverless web application that converts natural language predictions into structured, verifiable formats using AI agents. Built on AWS serverless architecture, it provides a robust platform for creating, managing, and validating predictions with **intelligent verifiability categorization**.
+## What This Project Is
 
-The application combines AWS Cognito for authentication, AWS Lambda for serverless compute, and DynamoDB for data persistence. The frontend is built with React and TypeScript, providing a responsive and intuitive user interface. The backend leverages **Strands agents** for AI orchestration, Amazon Bedrock for reasoning, and **real-time WebSocket streaming** for immediate user feedback during prediction processing.
+CalledIt is a prediction verification platform. You make a prediction ("Lakers win tonight", "it'll rain tomorrow", "Bitcoin hits $100k by Friday"), and the system:
 
-## 🎯 Key Innovation: Verifiability Categorization
+1. Parses your natural language into a structured claim
+2. Categorizes it by verifiability (can a machine check this?)
+3. Builds a verification plan (what to check, where, when)
+4. Reviews the plan for gaps and asks clarifying questions
+5. Executes the verification using real tools (web search, data APIs)
+6. Scores how well the plan translated into actual verification
 
-CalledIt automatically classifies every prediction into one of **5 verifiability categories**, enabling future automated verification:
+The interesting part isn't the app — it's the agent architecture, the eval framework, and the decisions that got us here.
 
-- 🧠 **Agent Verifiable** - Pure reasoning/knowledge (e.g., "The sun will rise tomorrow")
-- ⏰ **Current Tool Verifiable** - Time-based verification (e.g., "It's past 11 PM")
-- 🔧 **Strands Tool Verifiable** - Mathematical/computational (e.g., "Calculate compound interest")
-- 🌐 **API Tool Verifiable** - External data required (e.g., "Bitcoin will hit $100k")
-- 👤 **Human Verifiable Only** - Subjective assessment (e.g., "I will feel happy")
+## The Architecture Journey
 
-Each prediction includes AI-generated reasoning for its categorization, creating a structured foundation for automated verification systems.
+This project has gone through three major architectural phases, each teaching different lessons about building agentic systems.
+
+### v1: Monolith Agent (January 2025)
+One big agent prompt doing everything — parsing, categorizing, building verification plans. It worked, but you couldn't tell which part was failing when output quality dropped. The agent would sometimes re-interpret the prediction from scratch at each stage, losing context from earlier reasoning.
+
+**Lesson learned:** A single agent doing multiple jobs makes debugging impossible. When the categorization is wrong, is it because the parsing was bad, or because the categorization logic is flawed? You can't tell.
+
+### v2: Multi-Agent Graph (March 2026)
+Split into four specialized agents in a Strands Graph: Parser → Categorizer → Verification Builder → Review Agent. Each agent has one job, one prompt, and one output contract. The graph handles sequencing and data flow.
+
+**Key insight:** The silo problem. Each agent re-interprets from scratch instead of building on the previous agent's work. The Parser extracts "nice weather Saturday" → the Categorizer ignores the Parser's date reasoning and re-derives it → the VB ignores both and starts fresh. We built a PipelineCoherence evaluator specifically to measure this.
+
+**Lesson learned:** Multi-agent doesn't automatically mean better. The serial graph and a single-agent baseline scored within 1% of each other on our eval framework. The value of multi-agent is debuggability and isolated iteration, not inherently better output.
+
+### v3: MCP-Powered Verification Pipeline (March 2026, current)
+Added real tool execution via Model Context Protocol (MCP). The Verification Builder doesn't just say "check weather.gov" — the Verification Executor actually invokes `brave_web_search` and `fetch` to gather evidence and produce a verdict.
+
+**The container trade-off:** MCP servers are npm packages that need Node.js. Lambda's Python runtime doesn't include Node.js. We switched MakeCallStreamFunction to a Docker Lambda image with both Python 3.12 and Node.js. This killed SnapStart (cold starts went from 444ms back to ~30s) but was necessary for MCP subprocess support.
+
+> **This is a transient architecture.** Docker Lambda with MCP subprocesses is a stepping stone to Amazon Bedrock AgentCore, where tools run as always-warm network services instead of cold-starting inside the Lambda. The 30s cold start validates this migration as the right next step.
+>
+> **Pre-container checkpoint:** If you want the zip-packaged Lambda version with SnapStart (before MCP tools), see commit [`978c304`](../../commit/978c304) — "feat: wire production Lambda to Bedrock Prompt Management". Everything after that commit introduces Docker Lambda packaging.
+
+## Tech Stack
+
+- **Frontend:** React + TypeScript, mobile-first PWA, WebSocket streaming
+- **Backend:** AWS Lambda (Python 3.12, Docker image for MCP), SAM/CloudFormation
+- **AI:** Strands Agents SDK, Amazon Bedrock (Claude Sonnet 4), 4-agent graph
+- **Tools:** MCP servers (brave_web_search, fetch, playwright) via npx subprocesses
+- **Storage:** DynamoDB (predictions, eval reasoning, tool registry)
+- **Auth:** Cognito with auto-refresh for mobile UX
+- **Eval:** Custom framework with 15 evaluators, Strands Evals SDK, Streamlit dashboard
+- **Prompts:** Bedrock Prompt Management with immutable versions
+
+## The Agent Pipeline
+
+Four specialized agents in a Strands Graph, each with a focused prompt and clear output contract:
+
+```
+User prediction → Parser → Categorizer → Verification Builder → Review Agent
+                    ↓           ↓                ↓                    ↓
+              Structured    Route to         Build plan          Identify gaps,
+              claim +     auto_verifiable/   (sources,          ask clarifying
+              date parse  automatable/       criteria,           questions
+                          human_only         steps)
+```
+
+After the user logs the prediction, the Verification Executor runs separately:
+
+```
+Verification Plan → Verification Executor → brave_web_search, fetch → Verdict
+                         (Strands Agent with MCP tools)
+```
+
+The executor is triggered by an EventBridge scanner every 15 minutes — it finds predictions whose `verification_date` has passed and verifies them. This decouples verification from prediction creation, which matters because most predictions can't be verified immediately ("nice weather Saturday" can't be checked on Wednesday).
+
+## The Eval Framework (Portfolio Centerpiece)
+
+The eval framework is the most transferable artifact in this project. It's a complete system for measuring multi-agent pipeline quality:
+
+- **Golden dataset:** 45 base + 23 fuzzy predictions with ground truth metadata (verifiability reasoning, date derivation, verification sources, objectivity assessment, verification criteria, verification steps)
+- **15 evaluators** across four tiers:
+  - 6 deterministic (CategoryMatch, JSONValidity, ClarificationQuality, ToolAlignment, SourceAccuracy, Convergence)
+  - 6 LLM-as-judge using Opus 4.6 (IntentPreservation, CriteriaMethodAlignment, IntentExtraction, CategorizationJustification, ClarificationRelevance, PipelineCoherence)
+  - 2 verification alignment judges (CriteriaQuality, StepFidelity)
+  - 1 delta classifier (plan_error vs new_information vs tool_drift)
+- **Pluggable backends:** Serial graph vs single-agent, same evaluators score both
+- **8-page Streamlit dashboard:** Trends, Heatmap, Architecture Comparison, Prompt Correlation, Reasoning Explorer, Coherence View, Fuzzy Convergence, Verification Alignment
+- **DynamoDB reasoning store:** Full model traces for every eval run
+- **Bedrock Prompt Management:** Immutable prompt versions, eval runs record which versions produced which scores
+- **Verification alignment:** `--verify` flag runs the actual Verification Executor and measures plan-execution fidelity
+
+### What the Eval Framework Taught Us
+
+1. **Categorization is a routing hint, not the goal.** We spent weeks optimizing category accuracy before realizing the real question is: does the Verification Builder produce a plan that actually works? Category labels just route predictions to the right verification path.
+
+2. **The VB-centric composite score** weights IntentPreservation and CriteriaMethodAlignment highest because they directly measure "can this plan be executed to verify the prediction?" Other evaluators are weighted by how much they contribute to VB output quality.
+
+3. **Isolated single-variable testing** is the only way to iterate on prompts. Change one thing per eval run. When you change two things and the score goes up, you don't know which change helped.
+
+4. **The shared failure profile** was the biggest surprise. Serial graph and single-agent architectures fail on the same predictions. ClarificationRelevance (the Review Agent asking useful questions) is the bottleneck on both. The architecture doesn't matter as much as the prompts.
+
+5. **Verification evaluator scores need empirical grounding** before they can be weighted in the composite. We deliberately excluded the 4 new verification evaluators from the composite score — they'll accumulate data first, then we'll derive weights from correlation with actual verification success.
+
+## Key Decisions and Lessons
+
+85 architectural decisions are documented in `docs/project-updates/decision-log.md`. Here are the ones that shaped the project most:
+
+**On agent architecture:**
+- Decision 7: Simple sequential graph, no conditional edges. The pipeline is linear — when VB completes, Parser and Categorizer have already completed by definition. Overengineering the graph topology was a waste.
+- Decision 8: Frontend holds session state, Lambda is stateless. The refinement loop (user clarifies → agents refine) lives in the browser. DynamoDB stores only the final prediction. This keeps the backend simple.
+- Decision 49: Pluggable backend abstraction. Any architecture (2-agent, 5-agent, single-agent) can be tested through the same eval framework by dropping a module in `backends/`.
+
+**On evaluation:**
+- Decision 30: Two-tier evaluator strategy. Deterministic evaluators catch structural regressions fast and cheap. LLM judges catch nuanced quality issues. The 80% → 30% pass rate drop when adding the judge proves the judge adds real signal.
+- Decision 44: Verification criteria is the primary eval target, not categorization. This reframe changed everything about how we measure quality.
+- Decision 50: Isolated single-variable testing. Every eval iteration changes exactly one variable. This is now standard practice.
+- Decision 62: Composite score weights need empirical grounding. The initial weights were a judgment call. After the verification pipeline produces real outcomes, weights will be derived from data.
+
+**On verification:**
+- Decision 76: Two-mode verification trigger. Most predictions can't be verified at creation time. The `verification_date` from the parser determines whether to verify immediately or schedule for later.
+- Decision 78: No mocks. All tests hit real Bedrock, real MCP servers, real DynamoDB. Mocks hide real bugs. The DynamoDB float→Decimal bug (Decision 82) would never have been caught by mocks.
+- Decision 81: Scanner-only in production. The "Log Call" handler is a lightweight REST Lambda — it can't run MCP tools. Rather than adding Lambda-to-Lambda invocation complexity, all production verification goes through the EventBridge scanner.
+
+**On infrastructure:**
+- Decision 65: Docker Lambda for MCP subprocess support. A necessary trade-off — lost SnapStart, gained real tool execution.
+- Decision 68: AgentCore as post-verification migration target. The Docker Lambda architecture transfers directly to AgentCore's containerized agent model, but with always-warm MCP servers instead of cold-starting subprocesses.
+
+## Project Documentation
+
+This project is extensively documented as a learning journal:
+
+- `docs/project-updates/01-19*.md` — 19 numbered project updates, each a detailed narrative of what happened, what was learned, and what to do next
+- `docs/project-updates/decision-log.md` — 85 architectural decisions with rationale
+- `docs/project-updates/project-summary.md` — Condensed narrative of the full project arc
+- `docs/project-updates/common-commands.md` — Every command you need to run anything
+- `docs/project-updates/backlog.md` — Open items and future work
+- `.kiro/specs/` — 17 Kiro specs (requirements → design → tasks) covering every feature
+
+Each project update is written for "future self context pickup" — a new agent (or human) can read the latest update and know exactly where things stand and what to do next.
+
+## Running the Eval Framework
+
+```bash
+# From the strands_make_call directory
+cd backend/calledit-backend/handlers/strands_make_call
+
+# Dry run (no Bedrock calls, check test case count)
+/home/wsluser/projects/calledit/venv/bin/python eval_runner.py \
+    --dataset ../../../../eval/golden_dataset.json --dry-run
+
+# Deterministic evaluators only (~$3, ~15 min)
+PROMPT_VERSION_PARSER=1 PROMPT_VERSION_CATEGORIZER=2 PROMPT_VERSION_VB=3 PROMPT_VERSION_REVIEW=4 \
+/home/wsluser/projects/calledit/venv/bin/python eval_runner.py \
+    --dataset ../../../../eval/golden_dataset.json --backend serial
+
+# With LLM judges (~$13, ~30 min)
+PROMPT_VERSION_PARSER=1 PROMPT_VERSION_CATEGORIZER=2 PROMPT_VERSION_VB=3 PROMPT_VERSION_REVIEW=4 \
+/home/wsluser/projects/calledit/venv/bin/python eval_runner.py \
+    --dataset ../../../../eval/golden_dataset.json --backend serial --judge
+
+# With verification execution (runs real MCP tools on immediate test cases)
+source /home/wsluser/projects/calledit/.env
+PROMPT_VERSION_PARSER=1 PROMPT_VERSION_CATEGORIZER=2 PROMPT_VERSION_VB=3 PROMPT_VERSION_REVIEW=4 \
+/home/wsluser/projects/calledit/venv/bin/python eval_runner.py \
+    --dataset ../../../../eval/golden_dataset.json --backend serial --verify
+
+# Single test case with verification (fast iteration, ~20-120s)
+source /home/wsluser/projects/calledit/.env
+PROMPT_VERSION_PARSER=1 PROMPT_VERSION_CATEGORIZER=2 PROMPT_VERSION_VB=3 PROMPT_VERSION_REVIEW=4 \
+/home/wsluser/projects/calledit/venv/bin/python eval_runner.py \
+    --dataset ../../../../eval/golden_dataset.json --backend serial --verify --name base-002
+
+# Launch the dashboard
+/home/wsluser/projects/calledit/venv/bin/python -m streamlit run eval/dashboard/app.py
+```
+
+## What's Next
+
+**Amazon Bedrock AgentCore migration.** The current Docker Lambda + MCP subprocess architecture works but has a 30-second cold start. AgentCore manages MCP servers as always-warm network services, eliminating the cold start penalty entirely. The containerized architecture we built for Lambda transfers directly to AgentCore's deployment model.
+
+**Composite score recalibration.** The 4 new verification alignment evaluators are accumulating data. Once we have enough `--verify` runs, we'll derive empirical weights from correlation between evaluator scores and actual verification success rates, replacing the current judgment-call weights.
+
+## Version History
+
+| Version | Date | What Changed |
+|---------|------|-------------|
+| v0.8 | Jan 2025 | Core prediction system, Cognito auth, DynamoDB |
+| v0.9 | Jan 2025 | WebSocket streaming, Strands agent integration |
+| v1.0 | Jan 2025 | 5-category verifiability system, automated testing |
+| v1.3 | Jan 2025 | "Crying" notification system for verified predictions |
+| v1.5 | Aug 2025 | Production deployment, security hardening, VPSS |
+| v1.6 | Jan 2026 | 3-agent graph architecture (Parser → Categorizer → VB) |
+| v2.0 | Mar 2026 | Unified 4-agent graph with Review Agent, SnapStart, eval framework |
+| v3.0 | Mar 2026 | MCP-powered verification pipeline, Docker Lambda, 15 evaluators |
 
 ## Repository Structure
-```
-.
-├── backend/                      # Backend serverless application
-│   └── calledit-backend/
-│       ├── handlers/            # Lambda function handlers (8 active)
-│       │   ├── auth_token/      # Cognito token exchange
-│       │   ├── strands_make_call/ # 3-agent graph with streaming
-│       │   │   ├── strands_make_call_graph.py      # Main handler (ACTIVE)
-│       │   │   ├── prediction_graph.py             # Graph orchestration
-│       │   │   ├── parser_agent.py                 # Parser Agent
-│       │   │   ├── categorizer_agent.py            # Categorizer Agent
-│       │   │   ├── verification_builder_agent.py   # Verification Builder Agent
-│       │   │   ├── graph_state.py                  # Graph state TypedDict
-│       │   │   ├── utils.py                        # Shared utilities
-│       │   │   └── review_agent.py                 # Future: Review Agent (Task 10)
-│       │   ├── websocket/       # WebSocket connection handlers (connect/disconnect)
-│       │   ├── list_predictions/# Retrieve user predictions
-│       │   ├── write_to_db/     # DynamoDB write operations
-│       │   ├── verification/    # Automated verification system (EventBridge)
-│       │   │   ├── app.py                       # Main handler
-│       │   │   ├── verification_agent.py        # Strands verification agent
-│       │   │   ├── ddb_scanner.py               # DynamoDB scanner
-│       │   │   ├── status_updater.py            # Updates verification status
-│       │   │   ├── s3_logger.py                 # Logs to S3
-│       │   │   └── email_notifier.py            # SNS notifications
-│       │   └── notification_management/ # SNS email subscription management
-│       ├── template.yaml        # SAM template for AWS resources
-│       └── tests/               # Backend unit tests
-├── frontend/                    # React TypeScript frontend
-│   ├── src/
-│   │   ├── components/         # React components with category display
-│   │   ├── services/          # API, auth, and WebSocket services
-│   │   ├── types/             # TypeScript interfaces (CallResponse)
-│   │   ├── hooks/             # Custom React hooks (4 for VPSS)
-│   │   └── utils/             # Utility functions
-│   └── package.json           # Frontend dependencies
-├── testing/                     # Comprehensive testing framework
-│   ├── active/                 # Working tests (100% success rate)
-│   ├── integration/            # End-to-end integration tests
-│   ├── automation/             # Automated testing tools
-│   ├── deprecated/             # Archived/non-functional tests
-│   ├── demo_prompts.py         # 40 compelling test prompts (5 categories)
-│   ├── demo_api_test.py        # WebSocket API testing with results capture
-│   └── demo_results_writer.py  # DynamoDB writer for demo data
-├── strands/                     # Strands agent development
-│   ├── demos/                  # Agent development examples
-│   └── my_agent/               # Custom agent implementation
-├── docs/                       # Organized documentation structure
-│   ├── current/                # Up-to-date documentation
-│   │   ├── API.md              # REST and WebSocket API documentation
-│   │   ├── APPLICATION_FLOW.md # Complete system flow documentation
-│   │   ├── TRD.md              # Technical Requirements Document
-│   │   ├── TESTING.md          # Testing strategy and coverage
-│   │   ├── VERIFICATION_SYSTEM.md # Automated verification documentation
-│   │   └── infra.svg           # Infrastructure diagram
-│   ├── implementation-plans/   # Feature implementation plans
-│   ├── historical/             # Archived documentation
-│   └── archive/                # Deprecated documentation
-└── CHANGELOG.md                # Version history and feature tracking
-```
-
-## Usage Instructions
-### Prerequisites
-- Node.js 16.x or later
-- Python 3.12
-- AWS CLI configured with appropriate credentials
-- AWS SAM CLI installed
-- Docker (for local development)
-- **Strands agents library** (installed via pip)
-
-### Installation
-
-#### Backend Setup
-```bash
-# Set up virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Navigate to backend directory
-cd backend/calledit-backend
-
-# Install Python dependencies (including Strands)
-pip install -r requirements.txt
-
-# Create SAM config from example
-cp samconfig.toml.example samconfig.toml
-# Edit samconfig.toml with your stack name and region
-
-# IMPORTANT: Update account-specific configurations in template.yaml
-# 1. Update CloudFront URLs in Cognito callback URLs (lines ~290-295):
-#    - Replace https://d2w6gdbi1zx8x5.cloudfront.net/ with your CloudFront domain
-# 2. Update CORS ALLOWED_ORIGINS in Lambda functions (lines ~194, ~219):
-#    - Replace https://d2w6gdbi1zx8x5.cloudfront.net with your CloudFront domain
-
-# Deploy to AWS
-sam build
-sam deploy --guided
-```
-
-#### Frontend Setup
-```bash
-# Navigate to frontend directory
-cd frontend
-
-# Install dependencies
-npm install
-
-# Create .env file from example
-cp .env.example .env
-
-# Update .env with your AWS configuration:
-# - Replace YOUR-API-ID with your API Gateway ID
-# - Replace YOUR-WEBSOCKET-ID with your WebSocket API ID
-# - Replace YOUR-REGION with your AWS region
-# - Replace Cognito values with your User Pool details
-# - Replace CloudFront domain with your distribution
-```
-
-#### Testing Setup
-```bash
-# Install testing dependencies
-pip install -r testing/requirements.txt
-
-# Validate deployment with automated tests
-python testing/verifiability_category_tests.py wss://your-websocket-url/prod
-```
-
-### Quick Start
-1. Start the frontend development server:
-```bash
-cd frontend
-npm run dev
-```
-
-2. Open your browser to `http://localhost:5173`
-
-3. Log in using your Cognito credentials
-
-4. Create a prediction using streaming:
-   - Click "Streaming Call" tab
-   - Enter your prediction in the input field
-   - Click "Make Call" and watch real-time AI processing
-   - See the **verifiability category** with visual badge and reasoning
-   - Review the generated verification method
-   - Click "Log Call" to save your prediction with category
-
-### More Detailed Examples
-
-#### Making a Streaming Prediction with Verifiability Categorization
-The application uses Strands agents for intelligent prediction processing with automatic categorization:
-
-```typescript
-// Example streaming prediction flow with 3-agent graph
-1. User enters: "Bitcoin will hit $100k before 3pm today"
-2. 3-agent graph processes:
-   - Parser Agent: Extracts prediction, parses "3pm" to "15:00", handles timezone
-   - Categorizer Agent: Analyzes verifiability, classifies as "api_tool_verifiable"
-   - Verification Builder Agent: Generates verification method with sources/criteria/steps
-3. Real-time streaming shows:
-   - "Processing your prediction with 3-agent graph..."
-   - "[Parser Agent] Extracting prediction..."
-   - "[Categorizer Agent] Analyzing verifiability..."
-   - "[Verification Builder] Creating verification method..."
-4. Final structured output:
-{
-  "prediction_statement": "Bitcoin will reach $100,000 before 15:00:00 on 2025-01-27",
-  "verification_date": "2025-01-27T15:00:00Z",
-  "date_reasoning": "Converted 3pm to 15:00 24-hour format for precision",
-  "verifiable_category": "api_tool_verifiable",
-  "category_reasoning": "Verifying Bitcoin's price requires real-time financial data through external APIs",
-  "verification_method": {
-    "source": ["CoinGecko API", "CoinMarketCap"],
-    "criteria": ["BTC/USD price exceeds $100,000 before 15:00 UTC"],
-    "steps": ["Check BTC price at 15:00:00 on January 27, 2025"]
-  }
-}
-```
-
-#### UI Display with Category Badges
-The frontend displays verifiability categories with visual indicators:
 
 ```
-Call Details:
-- Prediction: "Bitcoin will hit $100k before 3pm today"
-- Verification Date: 1/27/2025, 3:00:00 PM
-- Verifiability: 🌐 API Verifiable
-- Category Reasoning: "Verifying Bitcoin's price requires real-time financial data..."
-- Status: PENDING
+├── backend/calledit-backend/
+│   ├── handlers/
+│   │   ├── strands_make_call/       # Main prediction pipeline (Docker Lambda)
+│   │   │   ├── prediction_graph.py  # 4-agent Strands Graph
+│   │   │   ├── parser_agent.py      # Parser Agent factory
+│   │   │   ├── categorizer_agent.py # Categorizer Agent factory
+│   │   │   ├── verification_builder_agent.py  # VB Agent factory
+│   │   │   ├── review_agent.py      # Review Agent factory
+│   │   │   ├── verification_executor_agent.py # Verification Executor (B1)
+│   │   │   ├── verification_scanner.py        # EventBridge scanner (B2)
+│   │   │   ├── verification_store.py          # DynamoDB storage utility (B2)
+│   │   │   ├── mcp_manager.py       # MCP server lifecycle management
+│   │   │   ├── eval_runner.py       # Eval framework CLI (--verify, --judge, --backend)
+│   │   │   ├── eval_reasoning_store.py # DynamoDB eval data store
+│   │   │   ├── golden_dataset.py    # Dataset schema, loader, validation
+│   │   │   ├── evaluators/          # 15 evaluator modules
+│   │   │   └── backends/            # Pluggable eval backends (serial, single)
+│   │   ├── auth_token/              # Cognito token exchange
+│   │   ├── list_predictions/        # Prediction retrieval API
+│   │   ├── write_to_db/             # DynamoDB write (Log Call)
+│   │   └── websocket/               # WebSocket connect/disconnect
+│   ├── template.yaml               # SAM template (all AWS resources)
+│   └── tests/                       # Integration tests (no mocks)
+├── frontend/src/                    # React + TypeScript PWA
+├── eval/
+│   ├── golden_dataset.json          # 45 base + 23 fuzzy predictions
+│   ├── dashboard/                   # 8-page Streamlit dashboard
+│   └── reports/                     # Eval run reports (gitignored)
+├── infrastructure/
+│   └── prompt-management/           # Bedrock Prompt Management CloudFormation
+├── docs/project-updates/            # 19 project updates + decision log
+└── .kiro/specs/                     # 17 Kiro specs (requirements → design → tasks)
 ```
-
-### Troubleshooting
-
-#### Common Issues
-
-1. **WebSocket Connection Issues**
-```bash
-# Check WebSocket API deployment
-aws apigatewayv2 get-apis
-
-# Verify WebSocket URL in frontend .env
-# VITE_WEBSOCKET_URL=wss://your-websocket-id.execute-api.region.amazonaws.com/prod
-```
-
-2. **Strands Agent Errors**
-```bash
-# Check agent function logs
-sam logs -n MakeCallStreamFunction --stack-name calledit-backend
-
-# Verify Strands dependencies in requirements.txt
-# strands-agents>=1.7.0
-# strands-agents-tools>=0.2.6
-
-# Check graph execution
-# The 3-agent graph should execute: Parser → Categorizer → Verification Builder
-```
-
-3. **Streaming Issues**
-- Ensure WebSocket permissions are configured
-- Check connection timeout settings (5 minutes default)
-- Verify Bedrock streaming permissions:
-```bash
-# Required permissions:
-# bedrock:InvokeModel
-# bedrock:InvokeModelWithResponseStream
-# execute-api:ManageConnections
-```
-
-4. **Authentication Issues**
-```bash
-# Verify Cognito configuration
-aws cognito-idp describe-user-pool --user-pool-id YOUR_POOL_ID
-
-# Check user status
-aws cognito-idp admin-get-user --user-pool-id YOUR_POOL_ID --username USER_EMAIL
-```
-
-5. **Deployment Issues**
-```bash
-# Check CloudFormation stack status
-aws cloudformation describe-stacks --stack-name calledit-backend
-
-# View deployment events
-aws cloudformation describe-stack-events --stack-name calledit-backend
-
-# Validate SAM template
-sam validate
-```
-
-6. **Verifiability Category Issues**
-```bash
-# Test category classification
-python testing/verifiability_category_tests.py
-
-# Check agent logs for category processing
-sam logs -n MakeCallStreamFunction --stack-name calledit-backend
-
-# Verify category validation logic
-# Categories: agent_verifiable, current_tool_verifiable, strands_tool_verifiable, api_tool_verifiable, human_verifiable_only
-```
-
-7. **Handler Structure Issues**
-```bash
-# Verify correct handler count (should be 8)
-ls -la backend/calledit-backend/handlers/
-
-# Expected directories:
-# - auth_token/
-# - list_predictions/
-# - notification_management/
-# - strands_make_call/
-# - verification/
-# - websocket/
-# - write_to_db/
-
-# If you see old handlers (hello_world, make_call, prompt_bedrock, prompt_agent, shared):
-# These were removed in January 2026 cleanup - see HANDLER_CLEANUP_COMPLETE.md
-```
-
-## Data Flow
-The application follows a serverless event-driven architecture with real-time streaming capabilities.
-
-```ascii
-User -> Cognito Auth -> WebSocket API -> 3-Agent Graph -> Bedrock (Reasoning)
-                    |                      |                |
-                    |                      Parser Agent     |
-                    |                      Categorizer      |
-                    |                      Verification     |
-                    |                      Builder          |
-                    |                      |                |
-                    |                      -> Tools -> Real-time Stream
-                    |
-                    -> REST API -> Lambda Functions -> DynamoDB
-```
-
-Key component interactions:
-1. User authenticates through Cognito user pool
-2. **WebSocket connection** established for real-time streaming
-3. **3-agent graph** orchestrates: Parser → Categorizer → Verification Builder
-4. **Streaming responses** sent back to frontend via WebSocket
-5. Bedrock provides AI reasoning with **InvokeModelWithResponseStream**
-6. Tools (current_time, parse_relative_date) provide context to agents
-7. Final predictions stored in DynamoDB via REST API
-8. Frontend receives real-time updates during processing
-
-## Active Lambda Functions (8)
-
-After handler cleanup (January 2026), the application uses 8 Lambda functions organized by purpose:
-
-### REST API Functions (4)
-1. **AuthTokenFunction** - `handlers/auth_token/`
-   - Cognito OAuth token exchange
-   - Converts authorization codes to JWT tokens
-   - No provisioned concurrency
-
-2. **LogCall** - `handlers/write_to_db/`
-   - Saves predictions to DynamoDB
-   - Handles CORS for frontend
-   - **Provisioned Concurrency**: 1 instance (alias: live)
-
-3. **ListPredictions** - `handlers/list_predictions/`
-   - Retrieves user predictions from DynamoDB
-   - Supports pagination and filtering
-   - **Provisioned Concurrency**: 1 instance (alias: live)
-
-4. **NotificationManagementFunction** - `handlers/notification_management/`
-   - Manages SNS email subscriptions
-   - Endpoints: /subscribe-notifications, /unsubscribe-notifications, /notification-status
-   - No provisioned concurrency
-
-### WebSocket Functions (3)
-5. **ConnectFunction** - `handlers/websocket/connect.py`
-   - Handles WebSocket $connect route
-   - Manages connection lifecycle
-   - No provisioned concurrency
-
-6. **DisconnectFunction** - `handlers/websocket/disconnect.py`
-   - Handles WebSocket $disconnect route
-   - Cleanup on connection close
-   - No provisioned concurrency
-
-7. **MakeCallStreamFunction** - `handlers/strands_make_call/`
-   - **PRIMARY FUNCTION**: Main prediction processing with 3-agent graph
-   - **Architecture**: Parser → Categorizer → Verification Builder
-   - Handles WebSocket route: makecall
-   - Real-time streaming via WebSocket
-   - Timeout: 300 seconds (5 minutes)
-   - Memory: 512 MB
-   - **Provisioned Concurrency**: 1 instance (alias: live)
-   - **Components**:
-     - `strands_make_call_graph.py` - Main handler (ACTIVE)
-     - `prediction_graph.py` - Graph orchestration
-     - `parser_agent.py` - Extracts predictions and parses dates
-     - `categorizer_agent.py` - Classifies verifiability
-     - `verification_builder_agent.py` - Generates verification methods
-     - `graph_state.py` - Graph state TypedDict
-     - `utils.py` - Shared utilities (timezone, JSON extraction)
-     - `review_agent.py` - Future: Review Agent (Task 10)
-
-### Scheduled Functions (1)
-8. **VerificationFunction** - `handlers/verification/`
-   - Automated verification system
-   - Triggered by EventBridge every 15 minutes
-   - Processes ALL pending predictions
-   - Timeout: 300 seconds (5 minutes)
-   - Memory: 512 MB
-   - No provisioned concurrency (scheduled execution)
-   - **Components**:
-     - `app.py` - Main handler
-     - `verification_agent.py` - Strands verification agent
-     - `ddb_scanner.py` - DynamoDB scanner
-     - `status_updater.py` - Updates verification status
-     - `s3_logger.py` - Logs to S3
-     - `email_notifier.py` - SNS notifications
-
-### Provisioned Concurrency Architecture
-Three critical functions use provisioned concurrency to eliminate cold starts:
-- **LogCall** (alias: live) - 1 instance always warm
-- **ListPredictions** (alias: live) - 1 instance always warm
-- **MakeCallStreamFunction** (alias: live) - 1 instance always warm
-
-This ensures zero cold start delays for the most frequently used functions.
-
-## Infrastructure
-
-![Infrastructure diagram](./docs/infra.svg)
-The application uses the following AWS resources:
-
-### API Gateways
-- **CallitAPI** (AWS::Serverless::Api): REST API for CRUD operations
-  - Handles authentication and data persistence
-  - Implements CORS and Cognito authorization
-- **WebSocketApi** (AWS::ApiGatewayV2::Api): Real-time streaming
-  - Handles WebSocket connections for streaming responses
-  - Routes: $connect, $disconnect, makecall, improve_section, improvement_answers
-
-### AI & Orchestration
-- **3-Agent Graph**: Parser → Categorizer → Verification Builder
-  - **Parser Agent**: Extracts predictions and parses dates with reasoning
-  - **Categorizer Agent**: Classifies verifiability into 5 categories
-  - **Verification Builder Agent**: Generates detailed verification methods
-- **Strands Framework**: Orchestrates multi-agent workflows
-- **Amazon Bedrock**: AI reasoning with streaming support
-- **Custom Tools**: current_time, parse_relative_date utilities
-
-### Authentication
-- **CognitoUserPool**: Manages user authentication
-- **UserPoolClient**: Configures OAuth flows
-- **UserPoolDomain**: Provides hosted UI for authentication
-
-### Database & Storage
-- **DynamoDB** table "calledit-db" for storing predictions and verification data
-- **S3 Bucket** for verification logs with encryption and lifecycle policies
-
-### Notifications
-- **SNS Topic** for verification notifications ("crying" system)
-
-### Key Features
-- **🎯 Verifiability Categorization**: Automatic classification into 5 categories with AI reasoning
-- **⚡ Real-time Streaming**: WebSocket-based streaming for immediate feedback
-- **🤖 3-Agent Graph Architecture**: Parser → Categorizer → Verification Builder
-- **🌍 Timezone Intelligence**: Automatic timezone handling and 12/24-hour conversion
-- **📋 Structured Verification**: AI-generated verification methods with reasoning
-- **🧪 Automated Testing**: 100% success rate testing suite for all categories
-- **📊 Visual Category Display**: Beautiful UI badges with icons and explanations
-- **💾 Complete Data Persistence**: Categories and reasoning stored in DynamoDB
-- **📢 "Crying" System**: Celebrate successful predictions with notifications and social sharing
-- **📧 Email Notifications**: Get notified when your predictions are verified as TRUE
-- **⚡ Zero Cold Starts**: Provisioned concurrency on 3 critical functions eliminates delays
-- **🔄 VPSS (Future)**: Human-in-the-loop prediction refinement (Task 10)
-- **🤖 Automated Verification**: EventBridge-scheduled verification every 15 minutes
-- **📝 Comprehensive Logging**: S3-based audit trail for all verifications
-
-## Deployment
-
-### Production Deployment
-
-#### Prerequisites
-- AWS CLI configured with deployment permissions
-- Virtual environment activated
-- All dependencies installed
-
-#### Backend Deployment
-```bash
-# Activate virtual environment
-source venv/bin/activate
-
-# Navigate to backend
-cd backend/calledit-backend
-
-# Build and deploy
-sam build
-sam deploy --no-confirm-changeset
-
-# Note the output URLs:
-# - REST API URL for VITE_API_URL
-# - WebSocket URL for VITE_WEBSOCKET_URL
-```
-
-#### Verify Deployment
-
-After deployment, verify all 8 functions are active:
-
-```bash
-# List all Lambda functions in the stack
-aws lambda list-functions --query "Functions[?starts_with(FunctionName, 'calledit-backend')].FunctionName"
-
-# Expected output (8 functions):
-# - calledit-backend-AuthTokenFunction-xxx
-# - calledit-backend-LogCall-xxx
-# - calledit-backend-ListPredictions-xxx
-# - calledit-backend-NotificationManagementFunction-xxx
-# - calledit-backend-ConnectFunction-xxx
-# - calledit-backend-DisconnectFunction-xxx
-# - calledit-backend-MakeCallStreamFunction-xxx
-# - calledit-backend-verification
-
-# Verify provisioned concurrency on critical functions
-python backend/calledit-backend/tests/test_provisioned_concurrency.py
-
-# Expected output:
-# 🎯 Overall: 3/3 tests passed
-# 🎉 All provisioned concurrency tests PASSED!
-```
-
-#### Frontend Deployment
-```bash
-# Navigate to frontend
-cd frontend
-
-# Update environment variables
-# Edit .env with URLs from backend deployment
-VITE_API_URL=https://your-api-gateway-url/Prod
-VITE_WEBSOCKET_URL=wss://your-websocket-url/prod
-
-# Build for production
-npm run build
-
-# Deploy dist/ folder to your hosting service
-# (AWS S3 + CloudFront, Netlify, Vercel, etc.)
-```
-
-#### Deployment Validation
-```bash
-# Run automated tests to verify deployment
-python testing/verifiability_category_tests.py wss://your-websocket-url/prod
-
-# Expected: 100% test success rate across all 5 categories
-```
-
-## Testing
-
-### Automated Verifiability Testing
-The project includes a comprehensive automated testing suite that validates the 5-category verifiability system:
-
-```bash
-# Run the complete test suite
-python testing/verifiability_category_tests.py
-
-# Expected output:
-# 🚀 Starting Verifiability Category Tests
-# ✅ Agent Verifiable - Natural Law
-# ✅ Current Tool Verifiable - Time Check  
-# ✅ Strands Tool Verifiable - Math Calculation
-# ✅ API Tool Verifiable - Market Data
-# ✅ Human Verifiable Only - Subjective Feeling
-# 📊 Success Rate: 100.0%
-```
-
-### Test Categories
-- **Unit Tests**: Backend Lambda functions (`/backend/calledit-backend/tests/`)
-- **Integration Tests**: API endpoints and WebSocket flows
-- **End-to-End Tests**: Complete verifiability categorization validation
-- **Performance Tests**: Real-time streaming and response times
-- **Provisioned Concurrency Tests**: Verify zero cold starts on critical functions
-
-#### Provisioned Concurrency Monitoring
-```bash
-# Test all functions have proper alias + provisioned concurrency setup
-python backend/calledit-backend/tests/test_provisioned_concurrency.py
-
-# Expected output:
-# 🎯 Overall: 3/3 tests passed
-# 🎉 All provisioned concurrency tests PASSED!
-```
-
-See [docs/TESTING.md](docs/TESTING.md) for comprehensive testing documentation.
-
-## Documentation
-
-### Core Documentation
-- **[CHANGELOG.md](CHANGELOG.md)** - Version history and feature releases
-- **[docs/current/APPLICATION_FLOW.md](docs/current/APPLICATION_FLOW.md)** - Complete system flow documentation
-  - Authentication flow
-  - Prediction creation flow (step-by-step)
-  - VPSS workflow (Verifiable Prediction Structuring System)
-  - Data persistence flow
-  - Verification system flow
-  - Component interactions with diagrams
-  - 4 complete user journey examples
-- **[docs/current/API.md](docs/current/API.md)** - REST and WebSocket API documentation
-- **[docs/current/TRD.md](docs/current/TRD.md)** - Technical Requirements Document
-- **[docs/current/TESTING.md](docs/current/TESTING.md)** - Testing strategy and coverage
-- **[docs/current/VERIFICATION_SYSTEM.md](docs/current/VERIFICATION_SYSTEM.md)** - Automated verification documentation
-
-### Implementation Documentation
-- **[docs/guides/HANDLER_CLEANUP_COMPLETE.md](docs/guides/HANDLER_CLEANUP_COMPLETE.md)** - Handler cleanup details (January 2026)
-- **[docs/guides/STRANDS_BEST_PRACTICES_REVIEW.md](docs/guides/STRANDS_BEST_PRACTICES_REVIEW.md)** - Strands refactoring recommendations
-- **[docs/guides/LOCAL_DEBUG_SETUP.md](docs/guides/LOCAL_DEBUG_SETUP.md)** - SAM local debugging in WSL
-
-### Historical Documentation
-- **[docs/historical/](docs/historical/)** - Archived completion reports and historical plans
-
-### Additional Resources
-- **[docs/current/infra.svg](docs/current/infra.svg)** - Infrastructure architecture diagram
-- **[testing/README.md](testing/README.md)** - Testing framework overview
-- **[strands/demos/](strands/demos/)** - Strands agent development examples
-
-### Environment Configuration
-
-#### Backend Environment Variables
-- Managed automatically by AWS SAM template
-- Cognito User Pool and Client IDs auto-configured
-- DynamoDB table name: `calledit-db`
-
-#### Frontend Environment Variables
-```bash
-# .env file
-VITE_API_URL=https://your-api-gateway-url/Prod
-VITE_WEBSOCKET_URL=wss://your-websocket-url/prod
-VITE_APIGATEWAY=https://your-api-gateway-url/Prod
-```
-
-### Monitoring & Maintenance
-
-#### Health Checks
-```bash
-# Check API health
-curl https://your-api-gateway-url/Prod/hello
-
-# Check WebSocket connectivity
-# Use browser dev tools or WebSocket testing tool
-```
-
-#### Log Monitoring
-```bash
-# View Lambda function logs
-sam logs -n MakeCallStreamFunction --stack-name calledit-backend --tail
-
-# View all function logs
-aws logs describe-log-groups --log-group-name-prefix /aws/lambda/calledit-backend
-```
-
-#### Performance Monitoring
-- **CloudWatch Metrics**: Lambda invocations, duration, errors
-- **API Gateway Metrics**: Request count, latency, 4XX/5XX errors
-- **DynamoDB Metrics**: Read/write capacity, throttling
-
-### Rollback Procedures
-
-#### Backend Rollback
-```bash
-# Rollback to previous version
-aws cloudformation cancel-update-stack --stack-name calledit-backend
-
-# Or deploy previous version
-git checkout previous-commit
-sam build && sam deploy --no-confirm-changeset
-```
-
-#### Frontend Rollback
-```bash
-# Rollback to previous build
-git checkout previous-commit
-npm run build
-# Redeploy dist/ folder
-```
-
-## Project Status
-
-### Current Version: v1.6.0 - 🏗️ 3-AGENT GRAPH ARCHITECTURE (2025-01-19)
-- ✅ **3-Agent Graph Refactor**: Complete migration from monolith to multi-agent architecture
-  - Parser Agent: Extracts predictions and parses dates with reasoning
-  - Categorizer Agent: Classifies verifiability into 5 categories
-  - Verification Builder Agent: Generates detailed verification methods
-  - Graph orchestration using Strands plain Agent pattern
-  - Automatic input propagation between agents
-- ✅ **Code Cleanup**: Removed all legacy monolith code
-  - Deleted: strands_make_call.py, strands_make_call_stream.py
-  - Deleted: custom_node.py, error_handling.py
-  - Clean codebase with only active 3-agent graph code
-- ✅ **Testing Framework**: Fresh start with Strands best practices
-  - 18 integration tests with real agent invocations
-  - No mocks - tests validate actual agent behavior
-  - 100% test success rate
-- ✅ **Documentation**: Comprehensive updates
-  - Updated README.md to reflect 3-agent architecture
-  - Created STRANDS_GRAPH_FLOW.md with complete graph documentation
-  - Cleanup logs and completion reports
-
-### Previous: v1.5.1 - 🔧 PRODUCTION DEPLOYMENT & SECURITY HARDENING (2025-08-23)
-- ✅ **Verifiability Categorization System**: Complete 5-category classification
-- ✅ **Real-time Streaming**: WebSocket-based AI processing
-- ✅ **Automated Testing**: 100% success rate test suite
-- ✅ **Visual UI**: Category badges with reasoning display
-- ✅ **Data Persistence**: Complete DynamoDB integration
-- ✅ **Comprehensive Documentation**: API, TRD, APPLICATION_FLOW, and testing docs
-- ✅ **Automated Verification System**: Strands agent processes ALL predictions every 15 minutes
-- ✅ **Production Deployment**: EventBridge scheduling, S3 logging, SNS notifications
-- ✅ **Frontend Integration**: Real-time verification status display with confidence scores
-- ✅ **Tool Gap Analysis**: MCP tool suggestions for missing verification capabilities
-- ✅ **"Crying" Notifications**: Email alerts for successful predictions with social sharing setup
-- ✅ **Modern UI Design**: Complete responsive redesign with educational UX and streaming text effects
-- ✅ **Lambda Provisioned Concurrency**: Eliminated cold starts on 3 key functions with alias-based architecture
-- ✅ **Verifiable Prediction Structuring System (VPSS)**: FULLY OPERATIONAL
-  - Transforms natural language into verification-ready JSON structures
-  - WebSocket routing for improvement workflow (improve_section, improvement_answers)
-  - Server-initiated review with client-facilitated LLM interactions
-  - Human-in-the-loop design with floating status indicators
-  - Date conflict resolution ("today" vs "tomorrow" assumptions)
-  - Enterprise-grade state management with 4 custom React hooks
-- ✅ **Production Infrastructure**: CloudFront deployment with security hardening
-  - CloudFront distribution (d2w6gdbi1zx8x5.cloudfront.net) with 10s cache TTL
-  - Comprehensive security fixes (KMS encryption, log injection prevention)
-  - CORS resolution and mobile UI improvements
-  - Environment variable configuration management
-
-### Recent Updates (January 2026)
-- ✅ **3-Agent Graph Architecture**: Complete refactor from monolith to multi-agent
-  - Parser → Categorizer → Verification Builder workflow
-  - Following Strands best practices with plain Agent pattern
-  - Automatic input propagation between agents
-  - See [STRANDS_GRAPH_FLOW.md](docs/current/STRANDS_GRAPH_FLOW.md) for details
-- ✅ **Code Cleanup Round 1**: Removed custom nodes and error handling wrappers
-  - Deleted: custom_node.py, error_handling.py
-  - Simplified to plain Agent pattern per Strands documentation
-- ✅ **Code Cleanup Round 2**: Removed legacy monolith agent code
-  - Deleted: strands_make_call.py, strands_make_call_stream.py
-  - Clean codebase with only active 3-agent graph
-  - See [MONOLITH_CLEANUP_COMPLETE.md](.kiro/specs/strands-graph-refactor/MONOLITH_CLEANUP_COMPLETE.md)
-- ✅ **Testing Framework Rebuild**: Fresh start with real agent invocations
-  - 18 integration tests (no mocks)
-  - Tests validate actual production behavior
-  - 100% success rate
-  - See [TESTING_FRAMEWORK_COMPLETE.md](backend/calledit-backend/tests/TESTING_FRAMEWORK_COMPLETE.md)
-- ✅ **Handler Cleanup**: Removed 5 deprecated handlers (38% reduction)
-  - Deleted: hello_world, make_call, prompt_bedrock, prompt_agent, shared
-  - Active: 8 Lambda functions (see [HANDLER_CLEANUP_COMPLETE.md](docs/guides/HANDLER_CLEANUP_COMPLETE.md))
-  - Reduced function count from 13 to 8
-  - Faster deployments and cleaner codebase
-- ✅ **Documentation Overhaul**: Created comprehensive [APPLICATION_FLOW.md](docs/current/APPLICATION_FLOW.md)
-  - Complete system flow documentation with diagrams
-  - Step-by-step user journeys
-  - Component interaction details
-- ✅ **Security Hardening**: Completed security audit before GitHub push
-  - Verified no credentials in codebase
-  - Confirmed .gitignore protection
-  - Ready for public repository
-
-### ✅ **PREVIOUS: Verifiable Prediction Structuring System (VPSS)**
-**Note:** VPSS is a future enhancement (Task 10) not yet integrated into the 3-agent graph.
-
-- 🔍 **Strands Review Agent**: Complete VPSS implementation (standalone)
-  - Multiple field updates: prediction_statement improvements update verification_date and verification_method
-  - Date conflict resolution: Handles "today" vs "tomorrow" assumption conflicts intelligently
-  - JSON response processing: Proper parsing of complex improvement responses
-- 🌐 **WebSocket Infrastructure**: Complete routing and state management
-  - Full routing: `improve_section` and `improvement_answers` with proper permissions
-  - Multiple field update handling: Backend processes complex JSON responses
-  - Real-time status indicators: Floating UI elements with smart timing
-- 🎨 **Enterprise UX**: Production-grade user experience
-  - 4 custom React hooks: useReviewState, useErrorHandler, useWebSocketConnection, useImprovementHistory
-  - Floating review indicator: Always-visible status during improvement processing
-  - Smart state management: Proper status clearing and error handling
-- 🧪 **Validation Complete**: End-to-end workflow tested and operational
-  - Test case: "it will rain" → "NYC tomorrow" → multiple field updates working
-  - All components tested: ReviewAgent (10/10), WebSocket routing (3/3), Frontend integration (15/15)
-  - Production deployment: All fixes applied and validated
-
-**Integration Status:** Review Agent exists but not yet integrated into 3-agent graph (see Task 10)
-
-### ✅ **PREVIOUS: Automated Verification System**
-- 🤖 **Strands Verification Agent**: AI-powered prediction verification with 5-category routing
-- ⏰ **Automated Processing**: Every 15 minutes via EventBridge, processes ALL predictions
-- 🎯 **Real-time Status Updates**: Frontend displays actual verification results
-- 📊 **Tool Gap Detection**: Automatic MCP tool suggestions for missing capabilities
-- 📧 **Smart Notifications**: SNS email alerts for verified TRUE predictions
-- 🗂️ **Complete Audit Trail**: S3 logging with structured JSON for analysis
-
-### Future Roadmap (Phase 3+)
-- 🌐 **MCP Tool Integration**: Weather, sports, and financial API tools
-- 📊 **Analytics Dashboard**: User statistics and accuracy tracking
-- 📱 **Mobile Application**: React Native mobile app
-- 📢 **Social Media Integration**: Auto-post successful predictions to Twitter, LinkedIn, Facebook
-- 🏆 **Leaderboards**: Community prediction accuracy rankings
-- 🎉 **Crying Dashboard**: Showcase your successful predictions with social proof
-
-See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
-
-## Contributing
-
-When contributing to CalledIt:
-1. Follow the testing requirements in [docs/TESTING.md](docs/TESTING.md)
-2. Ensure all verifiability category tests pass
-3. Update documentation for new features
-4. Maintain the 5-category classification system integrity
 
 ## Disclaimers
 
-### ⚠️ **DEMONSTRATION PROJECT ONLY**
-
-**This is a demo/educational project showcasing serverless AI architecture patterns. It is NOT intended for production use.**
-
-### 🚫 **Not Production Ready**
-- This software is provided for **demonstration and educational purposes only**
-- **DO NOT deploy in production environments** without significant additional security review, testing, and hardening
-- No warranties or guarantees are provided regarding security, scalability, or reliability
-- Use entirely at your own risk
-
-### 💰 **AWS Costs Warning**
-- This project deploys AWS resources that **WILL incur costs**
-- You are **solely responsible** for any AWS charges
-- Monitor your AWS billing dashboard when running this demo
-- Consider using AWS cost alerts and budgets
-
-### 🔒 **Security Notice**
-- While security best practices are attempted, this is a **demonstration project**
-- May contain security vulnerabilities not suitable for production
-- Conduct your own security assessment before any use
-- See [SECURITY.md](SECURITY.md) for security considerations
-
-### 📋 **Usage Restrictions**
-This software may **NOT** be used for:
-- Any illegal activities under applicable law
-- Harassment, abuse, or harm to individuals or organizations  
-- Fraud, deception, or misrepresentation
-- Violation of privacy or data protection laws
-- Any malicious or unethical purposes
-
-### 🛡️ **Liability Disclaimer**
-- **Use at your own risk** - no liability accepted for any damages or issues
-- Authors disclaim all warranties and liability
-- Users assume full responsibility for any consequences of use
-- This software is provided "AS IS" without any guarantees
+This is a demonstration/educational project. Not intended for production use. See [DISCLAIMER.md](DISCLAIMER.md) for full details.
 
 ## License
 
-This project is licensed under the MIT License with additional disclaimers - see the [LICENSE](LICENSE) file for details.
-
-This project is part of an educational/research initiative focused on AI-powered prediction verification systems.
+See [LICENSE](LICENSE) for details.

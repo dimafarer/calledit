@@ -39,6 +39,7 @@ VALID_OBJECTIVITY = {"objective", "subjective", "mixed"}
 VALID_STAKES = {"life-changing", "significant", "moderate", "trivial"}
 VALID_TIME_HORIZONS = {"minutes-to-hours", "days", "weeks-to-months", "months-to-years"}
 VALID_FUZZINESS_LEVELS = {0, 1, 2, 3}
+VALID_VERIFICATION_READINESS = {"immediate", "future"}
 
 
 # --- Dataclasses ---
@@ -88,6 +89,7 @@ class BasePrediction:
     evaluation_rubric: Optional[str] = None
     is_boundary_case: bool = False
     boundary_description: Optional[str] = None
+    verification_readiness: str = "future"  # "immediate" or "future"
 
 
 @dataclass
@@ -300,6 +302,14 @@ def _validate_base_prediction(bp: dict, idx: int) -> BasePrediction:
             f"non-empty string when 'is_boundary_case' is True"
         )
 
+    # Verification readiness — optional, defaults to "future"
+    verification_readiness = bp.get("verification_readiness", "future")
+    if verification_readiness not in VALID_VERIFICATION_READINESS:
+        raise ValueError(
+            f"Base prediction '{bp_id}': 'verification_readiness' must be one of "
+            f"{VALID_VERIFICATION_READINESS}, got '{verification_readiness}'"
+        )
+
     return BasePrediction(
         id=bp_id,
         prediction_text=text,
@@ -311,6 +321,7 @@ def _validate_base_prediction(bp: dict, idx: int) -> BasePrediction:
         evaluation_rubric=bp.get("evaluation_rubric"),
         is_boundary_case=is_boundary,
         boundary_description=boundary_desc,
+        verification_readiness=verification_readiness,
     )
 
 
@@ -553,6 +564,7 @@ def _serialize_base(bp: BasePrediction) -> dict:
         "evaluation_rubric": bp.evaluation_rubric,
         "is_boundary_case": bp.is_boundary_case,
         "boundary_description": bp.boundary_description,
+        "verification_readiness": bp.verification_readiness,
     }
     return d
 
