@@ -73,6 +73,8 @@ Created `docs/calledit-pe-perspective.md` — a standalone presentation artifact
 - Decision 91: AgentCore built-in tools (Browser + Code Interpreter) replace local MCP subprocesses. Eliminates the 30-second cold start. Gateway reserved for Phase 2 domain-specific APIs (superseded by Decision 93 for Day 1 tooling).
 - Decision 92: Split v4 into 11 focused specs for 90%+ confidence. Same reasoning as Decision 3 (Spec 1/2 split), Decision 64 (A1/A2 split), and Decision 75 (B1/B2/B3 split). V4-3 (Creation Agent) split into core + clarification. V4-7 (Three-Layer Eval) split into one spec per layer.
 - Decision 93: Built-in tools first, Gateway later. Start with AgentCore Browser + Code Interpreter (zero external dependencies, zero API keys, zero Gateway setup). Add Gateway with domain-specific APIs (Brave, Alpha Vantage, weather, sports) only when built-in tools become a bottleneck for specific prediction domains. Build smarter, not harder.
+- Decision 94: Single agent, multi-turn prompts for the creation agent. One Strands Agent with 4 sequential prompt turns (parse → build plan → score → review), each a separate versioned prompt in Prompt Management. Chosen based on experimental data: 16 eval runs showed multi-turn matches serial graph on all reasoning metrics while eliminating the silo problem. Per-step observability via AgentCore spans. 92% confidence.
+- Decision 95: Parallel run then phased teardown. v3 stays live and untouched through V4-1 to V4-7a. V4-8 handles cutover in three phases: parallel run (compare v3 vs v4 via eval), traffic switch (frontend to v4, v3 as rollback), v3 teardown (delete SAM stack, keep shared DDB/Cognito/Prompt Management). v3 predictions in DDB handled gracefully by v4 verification agent.
 
 ## v4 Spec Plan — 11 Specs
 
@@ -112,7 +114,7 @@ graph TD
 | V4-7a | Eval Layer 1 (Strands) | 3 | 8-10 | 92% | V4-3a | Golden dataset adapted, evaluators for two agents, local eval runner |
 | V4-7b | Eval Layer 2 (AgentCore) | 3 | 8-10 | 88% | V4-7a, V4-8 | Span-level eval, online scoring, on-demand eval, dashboard Layer 2 panel |
 | V4-7c | Eval Layer 3 (Bedrock) | 3 | 6-8 | 88% | V4-7b | LLM-as-judge at scale, custom metrics, human eval, dashboard Layer 3 panel |
-| V4-8 | Production Cutover | 3 | 6-8 | 92% | V4-3b, V4-4, V4-5, V4-6, V4-7a | Both agents launched, frontend cutover, EventBridge, observability, v3 teardown |
+| V4-8 | Production Cutover | 3 | 6-8 | 92% | V4-3b, V4-4, V4-5, V4-6, V4-7a | Three-phase cutover: parallel run (v3+v4), traffic switch, v3 teardown. Keep DDB/Cognito/Prompt Mgmt shared. v3 predictions handled gracefully (Decision 95) |
 
 **Totals:** 36 requirements, ~80-92 tasks, 11 specs, all ≥88% confidence.
 
@@ -142,10 +144,13 @@ The two highest-risk areas were split:
 - `docs/project-updates/bedrock-capability-assessment.md` — Feature-by-feature Bedrock assessment with verdicts
 - `docs/calledit-pe-perspective.md` — PE interview presentation artifact
 - `.kiro/steering/agentcore-architecture.md` — AgentCore architecture standards and pushback protocol
+- `.kiro/specs/agentcore-foundation/requirements.md` — V4-1 requirements (4 requirements, 15 acceptance criteria)
+- `.kiro/specs/agentcore-foundation/design.md` — V4-1 design (architecture, entrypoint pattern, 4 correctness properties)
+- `.kiro/specs/agentcore-foundation/tasks.md` — V4-1 tasks (8 tasks, ready for implementation)
 
 ### Modified
 - `docs/project-updates/eval-run-log.md` — Added Run 17 (serial baseline), Run 18 (single baseline)
-- `docs/project-updates/decision-log.md` — Added Decisions 86-93
+- `docs/project-updates/decision-log.md` — Added Decisions 86-95
 - `docs/project-updates/project-summary.md` — Added Update 20 entry, updated Current State
 - `docs/project-updates/architecture-insights.md` — Added v4 section
 - `docs/project-updates/backlog.md` — Updated item 13 (AgentCore migration) with v4 plan

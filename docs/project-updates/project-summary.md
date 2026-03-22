@@ -88,7 +88,7 @@ Built DynamoDB storage utility and EventBridge verification scanner. Production 
 Extended the eval framework with `--verify` mode and 4 new verification alignment evaluators (ToolAlignment, SourceAccuracy, CriteriaQuality, StepFidelity). Golden dataset extended with `verification_readiness` field (10 immediate, 35 future). Delta classification categorizes plan-execution mismatches as `plan_error`, `new_information`, or `tool_drift`. New Verification Alignment dashboard page. End-to-end verified: base-002 confirmed as Friday with confidence 0.9.
 
 ### Update 20 (March 22): v4 AgentCore Architecture Planning
-Planned the v4 clean rebuild on Amazon Bedrock AgentCore. Three architectural insights: (1) two separate agents (creation + verification) with shared infrastructure, (2) verifiability strength score replacing 3-category system, (3) three-layer eval architecture (Strands Evals → AgentCore Evaluations → Bedrock Evaluations). Designed hybrid memory model — DynamoDB for structured prediction bundles, AgentCore Memory for conversational context and user preferences. Fixed Prompt Management versions (VB v3 + Review v4 were missing). Created AgentCore steering doc with pushback protocol. Six new decisions (86-91).
+Planned the v4 clean rebuild on Amazon Bedrock AgentCore. Three architectural insights: (1) two separate agents (creation + verification) with shared infrastructure, (2) verifiability strength score replacing 3-category system, (3) three-layer eval architecture (Strands Evals → AgentCore Evaluations → Bedrock Evaluations). Designed hybrid memory model — DynamoDB for structured prediction bundles, AgentCore Memory for conversational context and user preferences. Fixed Prompt Management versions (VB v3 + Review v4 were missing). Created AgentCore steering doc with pushback protocol. Chose single agent with multi-turn prompts based on 16 eval runs of experimental data (Decision 94). Built-in tools first — Browser + Code Interpreter, Gateway later (Decision 93). 11-spec plan with dependency graph, all ≥88% confidence. V4-1 spec (AgentCore Foundation) created with requirements, design, and tasks. Ten new decisions (86-95).
 
 ## The Eval Framework (Portfolio Centerpiece)
 
@@ -124,4 +124,6 @@ The eval framework is the transferable artifact:
 - AgentCore steering doc created with pushback protocol and documented deviations
 - Roadmap: Complete eval analysis (Update 21) → v4 spec creation → AgentCore migration
 - v4 spec plan: 11 specs, 36 requirements, ~80-92 tasks, all ≥88% confidence (Decision 92)
-- 93 architectural decisions documented
+- v4 creation agent: single agent, 4 multi-turn prompts — data-driven choice from 16 eval runs (Decision 94)
+- V4-1 spec (AgentCore Foundation) complete: requirements, design, tasks — ready for implementation
+- 95 architectural decisions documented

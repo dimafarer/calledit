@@ -739,3 +739,63 @@ The v4 AgentCore rebuild is split into 11 specs, each independently deployable a
 **Date:** March 22, 2026
 
 Start v4 with AgentCore's built-in tools (Browser + Code Interpreter) instead of building Gateway infrastructure with external API dependencies. Browser covers web search (navigate to search engine), URL fetching (navigate to any URL), and JavaScript-heavy sites (full Chromium). Code Interpreter covers numerical verification (calculate percentages, dates, statistics). Zero API keys, zero external dependencies, zero Gateway setup. This simplifies V4-2 from "Gateway + OAuth + Lambda targets" to "wire two built-in tools." Gateway with domain-specific APIs (Brave Search, Alpha Vantage, OpenWeatherMap, sports scores) is Phase 2 — add only when built-in tools become a bottleneck for specific prediction domains. Each Gateway addition graduates a class of predictions from "browser search" to "direct API call." Build smarter, not harder.
+
+
+---
+
+## Decision 94: Single Agent, Multi-Turn Prompts — Data-Driven Architecture Choice
+**Source:** [Project Update 20](20-project-update-v4-agentcore-architecture-planning.md)
+**Date:** March 22, 2026
+**Confidence:** 92%
+
+The v4 creation agent uses a single Strands Agent with 4 sequential prompt turns (parse → build plan → score verifiability → review), each managed as a separate versioned prompt in Bedrock Prompt Management. The verification agent uses a single agent with a single prompt. This is a middle ground between the v3 serial graph (4 separate agents) and a single mega-prompt.
+
+**The experimental evidence (16 eval runs, 68 test cases each):**
+
+| Metric | Serial (4 agents) | Single (multi-turn) | Difference |
+|---|---|---|---|
+| Pass rate | 35% (Run 17) | 34% (Run 18) | Within noise |
+| Composite score | 0.52 | 0.49 | Within noise |
+| IntentPreservation | 0.81 | 0.80 | Within noise |
+| CriteriaMethodAlignment | 0.75 | 0.74 | Within noise |
+| PipelineCoherence failures | 2/68 | 2/68 | Identical |
+| auto_verifiable accuracy | 100% | 71% | Serial better at routing |
+| Parser JSON validity | 96% | 87% | Serial better at formatting |
+
+The reasoning quality metrics (IP, CMA, PipelineCoherence) are identical across architectures. The serial graph's advantages are purely structural (JSON formatting, category routing) — and the categorizer is being replaced by the verifiability scorer anyway.
+
+**Why multi-turn, not 4 separate agents:**
+- No silo problem — the agent sees all its own previous reasoning through conversation history
+- Simpler code — 1 agent, 1 AgentCore Runtime, no graph wiring
+- Faster execution — no inter-agent data serialization overhead
+- The eval data proves multi-turn doesn't sacrifice reasoning quality
+
+**Why multi-turn, not 1 mega-prompt:**
+- Each prompt is focused and detailed (not a diluted 200-line mega-prompt)
+- Each turn is a distinct span in AgentCore Observability — per-step latency, token counts, quality tracing
+- Each prompt lives in Prompt Management as a separate versioned resource — iterate on the scorer without touching the parser
+- Easier to debug — when quality drops, you can identify which step degraded
+
+**Why 92% confidence, not 100%:**
+- The v3 single backend used the same 4 prompts but the v4 creation agent has a new step (verifiability scorer) and different prompt content. The pattern is proven but the specific prompts are new.
+- Parser JSON validity was lower on single (87% vs 96%) — the multi-turn approach may need explicit JSON discipline instructions per step.
+- If quality is insufficient during V4-3a testing, the fallback is splitting into 2 agents (parse+plan and review+score) — still fewer than v3's 4.
+
+**The 4 creation agent turns:**
+1. Parse — extract claim, resolve dates, structure the prediction
+2. Build Plan — create verification plan (sources, criteria, steps) using tools
+3. Score Verifiability — evaluate the plan's likelihood of successful verification (0.0-1.0)
+4. Review — identify assumptions in the plan, generate targeted clarification questions
+
+Each turn receives the full conversation history from previous turns. The agent builds on its own work. If the user clarifies, the whole sequence re-runs with clarification as additional context.
+
+**Portfolio significance:** This is an architectural decision driven by experimental data, not opinion. 16 eval runs with 68 test cases each, 15 evaluators including 6 LLM judges, across 2 architectures. The eval framework that produced this data is the transferable artifact.
+
+
+---
+
+## Decision 95: Parallel Run Then Phased Teardown — v3 Stays Live Until v4 Validated
+**Source:** [Project Update 20](20-project-update-v4-agentcore-architecture-planning.md)
+**Date:** March 22, 2026
+
+v3 Lambda backend stays live and untouched through V4-1 to V4-7a. v4 code lives in a separate `calleditv4/` directory. No modifications to v3 during the rebuild. V4-8 (Production Cutover) handles teardown in three phases: (1) Parallel run — deploy v4 to AgentCore, run same predictions through both, compare via eval framework. (2) Traffic cutover — switch frontend to v4 endpoints, keep v3 deployed as rollback target for 1-2 weeks. (3) v3 teardown — delete SAM stack (Lambdas, API Gateway, EventBridge), keep shared resources (DynamoDB tables, Cognito, Prompt Management). v3 predictions in DDB that lack v4 fields (verifiability_score, verifiability_reasoning) are handled gracefully by the verification agent — missing fields treated as v3-era predictions. v3 code archived via git tag.

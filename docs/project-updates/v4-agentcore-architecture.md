@@ -180,15 +180,20 @@ We chose Option B for these reasons:
 graph LR
     subgraph "Shared Infrastructure"
         MODEL[Claude Sonnet 4<br/>via Bedrock]
-        GW[AgentCore Gateway<br/>brave_web_search, fetch, playwright]
+        TOOLS[AgentCore Built-in Tools<br/>Browser + Code Interpreter]
         DDB[(DynamoDB<br/>Prediction Bundles)]
         PM[Bedrock Prompt Management]
     end
 
     subgraph "Creation Agent — AgentCore Runtime #1"
-        CP[Creation Prompt]
-        UI[WebSocket Streaming<br/>User Interaction]
-        VS[Verifiability Scorer]
+        direction TB
+        CP1[Turn 1: Parse Prompt]
+        CP2[Turn 2: Build Plan Prompt]
+        CP3[Turn 3: Score Verifiability Prompt]
+        CP4[Turn 4: Review Prompt]
+        CP1 -->|conversation history| CP2
+        CP2 -->|conversation history| CP3
+        CP3 -->|conversation history| CP4
         MEM1[AgentCore Memory<br/>STM + LTM]
         SAVE[Save Bundle]
     end
@@ -200,18 +205,72 @@ graph LR
         VERDICT[Produce Verdict]
     end
 
-    MODEL --> CP
+    MODEL --> CP1
     MODEL --> VP
-    GW --> CP
-    GW --> VP
-    PM --> CP
+    TOOLS --> CP2
+    TOOLS --> VP
+    PM --> CP1
+    PM --> CP2
+    PM --> CP3
+    PM --> CP4
     PM --> VP
     SAVE --> DDB
     DDB --> LOAD
 
-    style CP fill:#3b82f6,color:#fff
+    style CP1 fill:#3b82f6,color:#fff
+    style CP2 fill:#3b82f6,color:#fff
+    style CP3 fill:#3b82f6,color:#fff
+    style CP4 fill:#3b82f6,color:#fff
     style VP fill:#8b5cf6,color:#fff
 ```
+
+### Single Agent, Multi-Turn Prompts (Decision 94)
+
+The creation agent is one Strands Agent that processes 4 sequential prompt turns. Each turn is a separate versioned prompt in Bedrock Prompt Management. The agent sees its full conversation history at each step — no silo problem, no context loss.
+
+This architecture was chosen based on experimental data from 16 eval runs:
+
+```mermaid
+graph TD
+    subgraph "The Evidence"
+        DATA[16 eval runs × 68 test cases<br/>15 evaluators including 6 LLM judges<br/>2 architectures compared]
+    end
+
+    subgraph "Finding"
+        F1[Serial 4-agent: IP 0.81, CMA 0.75, Composite 0.52]
+        F2[Single multi-turn: IP 0.80, CMA 0.74, Composite 0.49]
+        F3[Difference: within noise on ALL reasoning metrics]
+        F4[Same failure profile: both fail on same predictions]
+    end
+
+    subgraph "Conclusion"
+        C1[Multi-turn preserves reasoning quality]
+        C2[Eliminates silo problem by design]
+        C3[Simpler code, faster execution]
+        C4[Per-step observability via AgentCore spans]
+    end
+
+    DATA --> F1
+    DATA --> F2
+    F1 --> F3
+    F2 --> F3
+    F3 --> F4
+    F4 --> C1
+    C1 --> C2
+    C2 --> C3
+    C3 --> C4
+```
+
+**How the 4 turns work:**
+
+| Turn | Prompt (from Prompt Management) | Input | Output |
+|------|------|-------|--------|
+| 1. Parse | `calledit-creation-parse` | Raw prediction text + current date | Structured claim + date reasoning |
+| 2. Build Plan | `calledit-creation-plan` | (conversation history) + tool manifest | Verification plan (sources, criteria, steps) |
+| 3. Score | `calledit-creation-score` | (conversation history) | Verifiability score (0.0-1.0) + reasoning per dimension |
+| 4. Review | `calledit-creation-review` | (conversation history) | Clarification questions targeting plan assumptions |
+
+Each turn's prompt says "Here is what you've done so far. Now do this next step." The agent naturally builds on its own reasoning because it sees the full conversation.
 
 ### What Gets Saved to DDB (The Prediction Bundle)
 
