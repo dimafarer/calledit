@@ -286,19 +286,36 @@ The data from Runs 13-14 shows that deterministic evaluators often pass test cas
 
 ## 13. Migrate Runtime to Amazon Bedrock AgentCore
 
-**Source:** Spec planning session (March 20, 2026)
-**Priority:** Medium — after verification pipeline is complete (Specs A1 + A2 + B)
+**Source:** Spec planning session (March 20, 2026), v4 Architecture Planning (March 22, 2026)
+**Priority:** High — next major work after eval analysis
+**Status:** Architecture planned (Update 20), specs pending
 
 **Problem:** The current SAM Lambda architecture was chosen for the class being taught (low cost for students to deploy). Now the project aims to demonstrate best-in-class agent architecture. AgentCore is purpose-built for deploying and operating AI agents with built-in observability, scaling, and lifecycle management.
 
+**v4 Architecture Planned (Update 20):**
+- Two separate AgentCore Runtimes (creation agent + verification agent) — Decision 86
+- Verifiability strength score replaces 3-category system — Decision 87
+- Hybrid memory model (DDB + AgentCore Memory) — Decision 88
+- Three-layer eval (Strands + AgentCore + Bedrock) — Decision 89
+- AgentCore Gateway for all tools — Decision 91
+- Full design: `docs/project-updates/v4-agentcore-architecture.md`
+- Steering guardrails: `.kiro/steering/agentcore-architecture.md`
+
 **What to do:**
-- After the verification pipeline is implemented and validated, migrate MakeCallStreamFunction to AgentCore
-- The Docker Lambda infrastructure from Spec A1 is a stepping stone — AgentCore deploys containerized agents, so the container-based architecture transfers directly
-- Evaluate AgentCore's built-in observability vs the current CloudWatch + OTEL setup
-- Consider migrating the eval framework to use AgentCore Evaluations (Decision 23)
+- Complete eval analysis (Update 21) first
+- Then begin v4 spec creation following the 8-phase migration sequence in the architecture doc
+- Phase 1: AgentCore foundation (agentcore create, dev server, basic invoke)
+- Phase 2: Gateway + tools (brave_web_search, fetch as Gateway targets)
+- Phase 3: Unified agent (creation + verification modes, DDB bundle contract)
+- Phase 4: Verifiability scorer
+- Phase 5: Memory integration (STM + LTM)
+- Phase 6: Three-layer eval wiring
+- Phase 7: Frontend updates (strength indicator UI)
+- Phase 8: Production cutover
 
 **References:**
 - Decision 23: AgentCore Evaluations — USE
 - Decision 65: Docker Lambda for MCP subprocess support (stepping stone)
 - Decision 68: AgentCore as post-verification migration target
+- Decisions 86-91: v4 architecture decisions
 

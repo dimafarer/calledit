@@ -672,3 +672,70 @@ The four new verification alignment evaluators (ToolAlignment, SourceAccuracy, C
 **Date:** March 22, 2026
 
 The new `verification_readiness` field on `BasePrediction` is optional with a safe default of `"future"` (conservative — don't attempt verification unless explicitly marked). This is not a breaking change — existing dataset consumers that don't know about the field will continue to work. No schema version bump needed. 10 of 45 base predictions tagged as `immediate` (established facts verifiable now), remaining 35 default to `future`.
+
+
+---
+
+## Decision 86: Two Separate AgentCore Runtimes (Creation + Verification)
+**Source:** [Project Update 20](20-project-update-v4-agentcore-architecture-planning.md)
+**Date:** March 22, 2026
+
+Two separate `agentcore launch` deployments instead of one agent with a mode flag. Creation agent is collaborative and user-facing (WebSocket streaming, clarification rounds, AgentCore Memory with STM+LTM). Verification agent is investigative and autonomous (batch execution, no user interaction, DDB-driven with optional Memory enrichment). Different prompts, different scaling profiles, different observability needs. Aligns with AgentCore's recommended multi-agent pattern — the multi-agent CloudFormation template demonstrates exactly this: orchestrator + specialist as separate runtimes.
+
+---
+
+## Decision 87: Verifiability Strength Score Replaces 3-Category System
+**Source:** [Project Update 20](20-project-update-v4-agentcore-architecture-planning.md)
+**Date:** March 22, 2026
+
+The 3-category system (auto_verifiable / automatable / human_only) is replaced by a continuous 0.0-1.0 verifiability strength score. Mapped to green (0.8-1.0), yellow (0.5-0.79), red (0.0-0.49) for the user. Scored across 5 dimensions: criteria specificity (30%), source availability (25%), temporal clarity (20%), outcome objectivity (15%), tool coverage (10%). The user sees the indicator after round 1 and can choose to do clarification rounds to improve the score. This gives users agency, eliminates false confidence from binary labels, and captures the full spectrum of verifiability.
+
+---
+
+## Decision 88: Hybrid Memory Model — DynamoDB + AgentCore Memory
+**Source:** [Project Update 20](20-project-update-v4-agentcore-architecture-planning.md)
+**Date:** March 22, 2026
+
+Prediction data lives in two stores, each used for its strength. DynamoDB stores the structured prediction bundle (exact JSON fields: parsed_claim, verification_plan, verifiability_score) — the precise contract between creation and verification agents, loaded by exact prediction_id lookup. AgentCore Memory stores conversational context via three LTM strategies: semantic (prediction facts for cross-prediction learning), user preferences (timezone, sports teams, weather thresholds), and session summaries (clarification round context). The verification agent loads the bundle from DDB for precision and optionally enriches with Memory context for nuance. Neither store alone is sufficient — DDB can't do fuzzy recall or cross-session learning, Memory can't guarantee exact field precision for structured contracts.
+
+---
+
+## Decision 89: Three-Layer Eval Architecture
+**Source:** [Project Update 20](20-project-update-v4-agentcore-architecture-planning.md)
+**Date:** March 22, 2026
+
+Layer 1: Strands Evals SDK for dev-time evaluation (inner loop, local experiments, prompt iteration, minutes per iteration). Layer 2: AgentCore Evaluations for deployed agent evaluation (bridge, span-level trace analysis, online eval every Nth request, on-demand eval after deploys). Layer 3: Bedrock Evaluations for production monitoring (outer loop, LLM-as-judge at scale, human evaluation for edge cases, trend monitoring over days/weeks). The eval dashboard hero page shows the full lifecycle for any prompt version or configuration change: experiment → deployment → production confidence.
+
+---
+
+## Decision 90: No Hardcoded Prompt Fallbacks in v4
+**Source:** [Project Update 20](20-project-update-v4-agentcore-architecture-planning.md)
+**Date:** March 22, 2026
+
+v3 had hardcoded fallback constants (Decision 61) — if Prompt Management was unavailable, the agent silently used stale text. v4 removes these. If Prompt Management is down, the agent fails with a clear error. Silent fallback to stale prompts is worse than a visible failure. This was validated by the Prompt Management bug discovered in this session — VB and Review had been running on fallback for weeks without anyone noticing.
+
+---
+
+## Decision 91: AgentCore Built-in Tools Replace Local MCP Subprocesses
+**Source:** [Project Update 20](20-project-update-v4-agentcore-architecture-planning.md)
+**Date:** March 22, 2026
+
+AgentCore Browser (Chromium in Firecracker microVM) and Code Interpreter (secure Python/JS sandbox) replace the v3 Docker Lambda + npx MCP subprocess architecture. No local MCP subprocesses, no npm packages, no Node.js in the container. Eliminates the 30-second cold start (Decision 73). Browser covers web search, URL fetching, and JavaScript rendering. Code Interpreter covers numerical verification and data analysis. Gateway with domain-specific APIs is Phase 2 (see Decision 93).
+
+
+---
+
+## Decision 92: Split v4 Into 11 Focused Specs for 90%+ Confidence
+**Source:** [Project Update 20](20-project-update-v4-agentcore-architecture-planning.md)
+**Date:** March 22, 2026
+
+The v4 AgentCore rebuild is split into 11 specs, each independently deployable and testable. Same reasoning as Decision 3 (Spec 1/2 split), Decision 64 (A1/A2 split), and Decision 75 (B1/B2/B3 split) — smaller specs, higher confidence. The two highest-risk areas were split further: V4-3 (Creation Agent) into core + clarification/streaming, and V4-7 (Three-Layer Eval) into one spec per eval layer. All 11 specs are at ≥88% confidence. Total: 37 requirements, ~84-96 tasks. Critical path: V4-1 → V4-2 → V4-3a → parallel (V4-3b, V4-4, V4-5, V4-7a) → V4-6 → V4-8 → V4-7b → V4-7c.
+
+
+---
+
+## Decision 93: Built-in Tools First, Gateway Later
+**Source:** [Project Update 20](20-project-update-v4-agentcore-architecture-planning.md)
+**Date:** March 22, 2026
+
+Start v4 with AgentCore's built-in tools (Browser + Code Interpreter) instead of building Gateway infrastructure with external API dependencies. Browser covers web search (navigate to search engine), URL fetching (navigate to any URL), and JavaScript-heavy sites (full Chromium). Code Interpreter covers numerical verification (calculate percentages, dates, statistics). Zero API keys, zero external dependencies, zero Gateway setup. This simplifies V4-2 from "Gateway + OAuth + Lambda targets" to "wire two built-in tools." Gateway with domain-specific APIs (Brave Search, Alpha Vantage, OpenWeatherMap, sports scores) is Phase 2 — add only when built-in tools become a bottleneck for specific prediction domains. Each Gateway addition graduates a class of predictions from "browser search" to "direct API call." Build smarter, not harder.

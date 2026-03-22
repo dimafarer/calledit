@@ -181,3 +181,54 @@ After every eval run, append an entry with:
   - Single's automatable jumped from 79% to 93% — the review prompt was dragging this down
   - The JSON validity gap is narrowing (94% vs 97%) even without architecture-specific fixes
 - **Next:** This is a good baseline for pivoting to verification pipeline implementation
+
+## Run 17 — March 22, 16:28 — Serial baseline with VB v3 + Review v4 (tool-aware prompts)
+- **Config:** dataset v3.1, prompts 1/2/fallback/fallback, judge, serial (full 68 predictions)
+- **Pass rate:** 35% | auto_v: 100% | auto_m: 71% | human: 88%
+- **IP:** 0.81 | **CMA:** 0.75 | **Verification-Builder-centric:** 0.52
+- **What changed:** First run with tool-aware prompts (Verification Builder v3 + Review v4). Prompt Management versions for VB and Review don't exist in Bedrock — running on hardcoded fallback constants which contain the correct tool-aware text. Parser JSON validity: 96%.
+- **Note:** Prompt versions show "fallback" for VB and Review because CloudFormation never pushed the tool-aware DRAFT text to Bedrock Prompt Management. The fallback constants match the intended v3/v4 text, so the eval ran with the correct prompts. Prompt stack redeployment in progress to fix this.
+- **Comparison with Run 15 (serial, review v3, pre-tool-aware):**
+  - Pass rate: 38% → 35% (-3%, within noise — model non-determinism)
+  - Verification-Builder-centric: 0.53 → 0.52 (-0.01, noise)
+  - IP: 0.81 → 0.81 (unchanged)
+  - CMA: 0.74 → 0.75 (+0.01, noise)
+  - Category accuracy: auto_v 100% (same), auto_m 71% (same), human 94% → 88% (-6%)
+  - Parser JSON validity: 97% → 96% (-1%, noise)
+- **Insight:**
+  - Baseline is stable — tool-aware prompts didn't regress prediction pipeline quality
+  - All metrics within noise range of Run 15, confirming the tool_manifest additions are neutral to prediction quality
+  - human_only dipped from 94% to 88% — worth watching but likely noise
+  - This establishes the v3 pipeline baseline for comparison with --verify runs
+- **Next:** Run single backend with same config, then --verify runs on both architectures
+
+## Run 18 — March 22, 18:34 — Single baseline with VB v3 + Review v4 (tool-aware prompts, Prompt Management fixed)
+- **Config:** dataset v3.1, prompts 1/2/3/4, judge, single (full 68 predictions)
+- **Pass rate:** 34% | auto_v: 71% | auto_m: 93% | human: 82%
+- **IP:** 0.80 | **CMA:** 0.74 | **Verification-Builder-centric:** 0.49
+- **What changed:** First single run with Prompt Management fixed (VB v3 + Review v4 now pulled from Bedrock, not fallback). Parser JSON validity: 87%.
+- **Comparison with Run 16 (single, review v3, pre-tool-aware):**
+  - Pass rate: 37% → 34% (-3%, within noise)
+  - Verification-Builder-centric: 0.52 → 0.49 (-0.03, within noise)
+  - IP: 0.79 → 0.80 (+0.01, noise)
+  - CMA: 0.77 → 0.74 (-0.03, slight regression)
+  - auto_verifiable: 71% → 71% (unchanged)
+  - automatable: 93% → 93% (unchanged)
+  - human_only: 88% → 82% (-6%)
+  - Parser JSON validity: 94% → 87% (-7%, notable regression)
+- **Comparison with Run 17 (serial, same config) — architecture comparison:**
+  - Pass rate: serial 35% vs single 34% — essentially tied
+  - Verification-Builder-centric: serial 0.52 vs single 0.49 — serial slightly ahead
+  - IP: serial 0.81 vs single 0.80 — essentially tied
+  - CMA: serial 0.75 vs single 0.74 — essentially tied (single's CMA advantage from Run 16 has narrowed)
+  - auto_verifiable: serial 100% vs single 71% — serial still wins on routing
+  - automatable: serial 71% vs single 93% — single still wins here
+  - Parser JSON validity: serial 96% vs single 87% — serial still more disciplined
+- **Insight:**
+  - Baseline is stable across both architectures — tool-aware prompts are neutral to quality
+  - Single's CMA advantage has narrowed from +0.03 (Run 16 vs 15) to essentially tied
+  - Parser JSON validity on single dropped to 87% — the single agent's JSON discipline is getting worse, not better
+  - human_only dipped on both architectures (serial 88%, single 82%) — worth investigating
+  - Architectures remain essentially tied on composite score and pass rate
+  - Prompt Management fix confirmed working — no more "fallback" in version manifest
+- **Next:** Run --verify --judge on both architectures for the 10 immediate test cases

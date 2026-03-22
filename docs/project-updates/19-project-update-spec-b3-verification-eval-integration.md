@@ -3,7 +3,7 @@
 **Date:** March 22, 2026
 **Context:** Extended the eval framework with --verify mode, 4 new verification alignment evaluators, golden dataset verification_readiness field, report aggregation, DDB storage, and dashboard page. End-to-end verified with real Bedrock + MCP.
 **Audience:** Future self for project narrative; next agent for context pickup
-**Git Commit:** Pending — includes B3 implementation + README rewrite
+**Git Commit:** Pending — commit with message below after review — includes B3 implementation + README rewrite
 
 ### Referenced Kiro Specs
 - `.kiro/specs/verification-eval-integration/` — Spec B3 (COMPLETE)

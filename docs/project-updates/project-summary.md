@@ -87,6 +87,9 @@ Built DynamoDB storage utility and EventBridge verification scanner. Production 
 ### Update 19 (March 22): Spec B3 — Verification Eval Integration
 Extended the eval framework with `--verify` mode and 4 new verification alignment evaluators (ToolAlignment, SourceAccuracy, CriteriaQuality, StepFidelity). Golden dataset extended with `verification_readiness` field (10 immediate, 35 future). Delta classification categorizes plan-execution mismatches as `plan_error`, `new_information`, or `tool_drift`. New Verification Alignment dashboard page. End-to-end verified: base-002 confirmed as Friday with confidence 0.9.
 
+### Update 20 (March 22): v4 AgentCore Architecture Planning
+Planned the v4 clean rebuild on Amazon Bedrock AgentCore. Three architectural insights: (1) two separate agents (creation + verification) with shared infrastructure, (2) verifiability strength score replacing 3-category system, (3) three-layer eval architecture (Strands Evals → AgentCore Evaluations → Bedrock Evaluations). Designed hybrid memory model — DynamoDB for structured prediction bundles, AgentCore Memory for conversational context and user preferences. Fixed Prompt Management versions (VB v3 + Review v4 were missing). Created AgentCore steering doc with pushback protocol. Six new decisions (86-91).
+
 ## The Eval Framework (Portfolio Centerpiece)
 
 The eval framework is the transferable artifact:
@@ -112,16 +115,13 @@ The eval framework is the transferable artifact:
 ## Current State (March 22, 2026)
 
 - v3.0.0 released — MCP-powered verification pipeline with Docker Lambda
-- Production prompts: parser v1, categorizer v2, VB v3 (tool-aware), review v4 (tool-aware)
-- MCP tool integration fully deployed: all 4 agents tool-aware via `tool_manifest`
-- Verification Executor agent (B1) confirmed working with real MCP tools
-- Verification Scanner (B2) deployed with EventBridge 15-min schedule
-- Eval framework extended with `--verify` mode and 4 verification alignment evaluators (B3)
-- 15 evaluators total: 6 LLM judges + 6 deterministic + 2 deterministic verification + 2 LLM judge verification (+ delta classifier)
-- 8-page Streamlit dashboard (7 existing + Verification Alignment)
+- v4 architecture planned — clean rebuild on Amazon Bedrock AgentCore (zero technical debt)
+- Production prompts: parser v1, categorizer v2, VB v3 (tool-aware), review v4 (tool-aware) — all versions now confirmed in Prompt Management
+- v4 design: two separate AgentCore agents (creation + verification), verifiability strength score (replaces categories), hybrid memory model (DDB + AgentCore Memory), three-layer eval (Strands + AgentCore + Bedrock)
+- Eval framework: 15 evaluators, 8-page dashboard, `--verify` mode, 17 eval runs
 - Golden dataset: 45 base + 23 fuzzy predictions, 10 marked `immediate` for verification
-- 17 specs total (A1 + A2 + B1 + B2 + B3 complete), mcp-verification-foundation superseded
-- Docker Lambda cold start ~30s — validates AgentCore migration priority (Decision 73)
-- Roadmap: Composite score recalibration (Backlog 11) → AgentCore migration
-- Next immediate: Run full `--verify --judge` eval, then calibrate composite weights
-- 13 backlog items, 85 architectural decisions documented
+- 17 specs complete (A1 + A2 + B1 + B2 + B3), v4 specs pending
+- AgentCore steering doc created with pushback protocol and documented deviations
+- Roadmap: Complete eval analysis (Update 21) → v4 spec creation → AgentCore migration
+- v4 spec plan: 11 specs, 36 requirements, ~80-92 tasks, all ≥88% confidence (Decision 92)
+- 93 architectural decisions documented

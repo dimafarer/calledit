@@ -112,3 +112,59 @@ After each comparative eval run:
 2. Add new observations to Cross-Architecture Observations
 3. If a prompt change is made, note what changed and whether it helped
 4. Keep the Prompt Needs sections current — remove items that have been addressed, add new ones discovered
+
+
+---
+
+## v4: AgentCore Architecture (Planned — Clean Rebuild)
+
+> Full design reference: `docs/project-updates/v4-agentcore-architecture.md`
+
+### Architecture Summary
+Two separate AgentCore Runtime deployments sharing infrastructure (model, tools via Gateway, DDB, Prompt Management):
+
+- **Creation Agent** — user-facing, WebSocket streaming, clarification rounds, AgentCore Memory (STM + LTM)
+- **Verification Agent** — batch/scheduled, EventBridge-triggered, DDB bundle + optional Memory enrichment
+
+### Key Design Changes from v3
+
+| Aspect | v3 (Current) | v4 (Planned) |
+|--------|-------------|--------------|
+| Agent count | 4 agents in Strands Graph + 1 verification executor | 2 agents (creation + verification) |
+| Categorization | 3 categories (auto_verifiable, automatable, human_only) | Continuous verifiability strength score (0.0-1.0) |
+| Tool hosting | MCP subprocesses in Docker Lambda (~30s cold start) | AgentCore Gateway (always-warm network services) |
+| Memory | Frontend session state + DynamoDB | AgentCore Memory (STM + LTM) + DynamoDB hybrid |
+| Eval | Strands Evals SDK only | Three-layer: Strands + AgentCore Evals + Bedrock Evals |
+| Observability | Custom OTEL instrumentation | AgentCore Observability (built-in) |
+| Prompt fallback | Hardcoded constants (silent fallback) | No fallback — fail clearly if Prompt Management unavailable |
+
+### What Carries Forward
+- Golden dataset (68 test cases with ground truth)
+- Evaluator rubrics (scoring criteria, not code)
+- Prompt text (from Bedrock Prompt Management)
+- DynamoDB schema patterns
+- Frontend (React PWA)
+- 91 architectural decisions
+- Eval methodology (isolated single-variable testing)
+
+### What Gets Rebuilt
+- Agent code → two BedrockAgentCoreApp entrypoints
+- Tool hosting → AgentCore Gateway
+- Session state → AgentCore Memory
+- Categorizer → Verifiability Scorer
+- Eval runner → three-layer architecture
+- Observability → AgentCore Observability
+
+### Hybrid Memory Model
+DynamoDB for structured prediction bundles (precise contract between agents). AgentCore Memory for conversational context (STM for clarification rounds, LTM semantic strategy for prediction facts, user preference strategy for personalization, summary strategy for session recaps). The verification agent loads the bundle from DDB for precision and optionally enriches with Memory context for nuance.
+
+### Three-Layer Eval (Dashboard Hero)
+Layer 1 (Strands Evals SDK): dev-time, local, minutes per iteration. Layer 2 (AgentCore Evaluations): deployed agents, span-level, online + on-demand. Layer 3 (Bedrock Evaluations): production, LLM-as-judge at scale, human eval. Dashboard hero page shows the full lifecycle for any change.
+
+### Decisions
+- Decision 86: Two separate AgentCore Runtimes
+- Decision 87: Verifiability strength score replaces categories
+- Decision 88: Hybrid Memory Model (DDB + AgentCore Memory)
+- Decision 89: Three-layer eval architecture
+- Decision 90: No hardcoded prompt fallbacks
+- Decision 91: AgentCore Gateway for all tools
