@@ -896,3 +896,28 @@ Each turn uses `stream_async` with `structured_output_model` to get both real-ti
 **Date:** March 23, 2026
 
 The v3 system used 3 discrete categories (`auto_verifiable`, `automatable`, `human_only`) with `getVerifiabilityDisplay()` and `CATEGORY_CONFIG` in the frontend. V4 replaces this entirely with a continuous verifiability score (0.0-1.0) plus a 3-tier display system (high/moderate/low with green/yellow/red colors). There is no `legacy_category` field in the PlanReview model or the prediction bundle. No backward compatibility with v3 categories. The v3 frontend will need updating when it connects to v4 — that's V4-7's scope. This is a deliberate clean break to avoid technical debt from maintaining two parallel classification systems.
+
+
+---
+
+## Decision 104: Split V4-5 Into V4-5a (Agent Core) and V4-5b (Triggers)
+**Source:** V4-5 planning session (March 23, 2026)
+**Date:** March 23, 2026
+
+Split the verification agent spec into two specs following the same pattern as the v3 B1/B2 split (Decision 64). V4-5a covers the verification agent itself — entrypoint, prompt, verdict model, DDB load/update, evidence gathering via Browser + Code Interpreter. V4-5b covers the scheduling layer — EventBridge scanner, DDB query for due predictions, AgentCoreRuntimeClient invocation. V4-5a is testable via `agentcore invoke --dev` with a prediction bundle payload. V4-5b requires the verification agent to be deployed first and needs a DDB GSI for efficient status+date queries.
+
+---
+
+## Decision 105: Separate Project Directory Per AgentCore Agent
+**Source:** V4-5 planning session (March 23, 2026)
+**Date:** March 23, 2026
+
+Each AgentCore agent gets its own project directory: `calleditv4/` for the creation agent, `calleditv4-verification/` for the verification agent. This aligns with AgentCore's "one agent = one runtime" pattern — each project has its own `BedrockAgentCoreApp`, `@app.entrypoint`, `agentcore dev` server, and `agentcore launch` deployment. The projects are independently deployable with separate scaling and observability.
+
+---
+
+## Decision 106: Minimal Code Duplication Over Shared Packages
+**Source:** V4-5 planning session (March 23, 2026)
+**Date:** March 23, 2026
+
+The creation and verification agents share ~20 lines of code (DDB key format `PK=PRED#{id}/SK=BUNDLE`, `_convert_floats_to_decimal()` utility). Rather than extracting a shared package (adds packaging complexity) or importing across projects (fragile coupling), the shared code is duplicated in each project. This keeps each agent self-contained and independently deployable. If shared code grows significantly, extract a `calledit-common` package.

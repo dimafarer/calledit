@@ -597,6 +597,73 @@ Resources:
       PromptArn: !GetAtt PlanReviewerPrompt.Arn
       Description: "v2 — V4-4 dimension assessments, score tier, and guidance text"
 
+  # =========================================================================
+  # V4 VERIFICATION PROMPT (V4-5a)
+  # =========================================================================
+
+  VerificationExecutorPrompt:
+    Type: AWS::Bedrock::Prompt
+    Properties:
+      Name: calledit-verification-executor
+      Description: "V4-5a Verification Executor — gathers evidence and produces verdict"
+      DefaultVariant: default
+      Tags:
+        Project: calledit
+        Agent: verification
+      Variants:
+        - Name: default
+          ModelId: !Ref ModelId
+          TemplateType: TEXT
+          InferenceConfiguration:
+            Text:
+              Temperature: 0
+              MaxTokens: 4000
+          TemplateConfiguration:
+            Text:
+              Text: |
+                You are a verification executor. Your job is to determine whether a prediction came true by gathering evidence and evaluating it against the verification plan.
+
+                PROCESS:
+                1. Read the prediction statement and verification plan (sources, criteria, steps)
+                2. Execute each verification step using your tools:
+                   - Use Browser to search for and fetch evidence from planned sources
+                   - Use Code Interpreter for calculations or data analysis
+                   - Use current_time to confirm the current date/time
+                3. For each criterion in the plan, record what evidence you found
+                4. Evaluate all evidence against all criteria
+                5. Determine the verdict
+
+                VERDICT RULES:
+                - confirmed: Evidence clearly shows the prediction met ALL criteria
+                - refuted: Evidence clearly shows the prediction failed one or more criteria
+                - inconclusive: Use when ANY of these apply:
+                  - The event has not yet occurred (verification_date is in the future)
+                  - Evidence is contradictory
+                  - Planned sources are unavailable or don't contain relevant information
+                  - You cannot determine truth with reasonable confidence
+
+                CONFIDENCE SCALE:
+                - 0.9-1.0: Strong, unambiguous evidence from multiple reliable sources
+                - 0.7-0.8: Good evidence from at least one reliable source
+                - 0.5-0.6: Partial evidence, some criteria unclear
+                - 0.1-0.4: Weak evidence, mostly reasoning-based
+                - 0.0: No evidence gathered (error case)
+
+                EVIDENCE QUALITY:
+                - Each evidence item must reference a specific source (URL or name)
+                - Each evidence item must state what was found
+                - Each evidence item must link to a specific criterion from the plan
+                - If a tool call fails, note the failure as evidence and continue
+
+                Do NOT guess. If you cannot find sufficient evidence, return inconclusive.
+                It is better to be honest about uncertainty than to produce a wrong verdict.
+
+  VerificationExecutorPromptVersion:
+    Type: AWS::Bedrock::PromptVersion
+    Properties:
+      PromptArn: !GetAtt VerificationExecutorPrompt.Arn
+      Description: "v1 — initial verification executor prompt"
+
 Outputs:
   ParserPromptId:
     Value: !GetAtt ParserPrompt.Id
@@ -633,3 +700,8 @@ Outputs:
     Description: Plan reviewer prompt identifier for fetch_prompt()
   PlanReviewerPromptArn:
     Value: !GetAtt PlanReviewerPrompt.Arn
+  VerificationExecutorPromptId:
+    Value: !GetAtt VerificationExecutorPrompt.Id
+    Description: Verification executor prompt identifier for fetch_prompt()
+  VerificationExecutorPromptArn:
+    Value: !GetAtt VerificationExecutorPrompt.Arn

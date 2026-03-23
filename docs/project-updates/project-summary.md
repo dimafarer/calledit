@@ -158,5 +158,8 @@ Extended PlanReview structured output with score tier metadata, per-dimension as
 - V4-3a (Creation Agent Core) COMPLETE: 3-turn creation flow, 133 tests
 - V4-3b (Clarification & Streaming) COMPLETE: async streaming + clarification rounds, 136 tests
 - V4-4 (Verifiability Scorer) COMPLETE: extended PlanReview with score tier/guidance/dimensions, 148 tests
-- 103 architectural decisions documented
-- Next: Deploy plan-reviewer prompt V2, then V4-5 (Verification Agent)
+- V4-5 split into V4-5a (Verification Agent Core) + V4-5b (Verification Triggers) — Decision 104
+- Separate project per agent: `calleditv4/` (creation), `calleditv4-verification/` (verification) — Decision 105
+- V4-5a (Verification Agent Core) COMPLETE: separate project, sync entrypoint, 22 tests
+- 106 architectural decisions documented
+- Next: Deploy verification prompt, integration test V4-5a, then V4-5b (Triggers)
