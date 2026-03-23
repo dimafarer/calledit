@@ -230,4 +230,28 @@ agentcore invoke --dev '{"not_prompt": "test"}'
 
 # Run v4 unit tests (all test files)
 /home/wsluser/projects/calledit/venv/bin/python -m pytest calleditv4/tests/ -v
+
+# --- V4-3a Creation Flow Commands ---
+
+# Test creation flow — basic prediction
+agentcore invoke --dev '{"prediction_text": "Lakers win tonight", "user_id": "test-user"}'
+
+# Test creation flow — no user_id (defaults to anonymous)
+agentcore invoke --dev '{"prediction_text": "It will rain tomorrow in Seattle"}'
+
+# Test missing fields (should return error JSON)
+agentcore invoke --dev '{"foo": "bar"}'
+
+# Run all v4 tests (133 tests)
+/home/wsluser/projects/calledit/venv/bin/python -m pytest calleditv4/tests/ -v
+
+# Run specific v4 test files
+/home/wsluser/projects/calledit/venv/bin/python -m pytest calleditv4/tests/test_models.py -v
+/home/wsluser/projects/calledit/venv/bin/python -m pytest calleditv4/tests/test_bundle.py -v
+/home/wsluser/projects/calledit/venv/bin/python -m pytest calleditv4/tests/test_prompt_client.py -v
+/home/wsluser/projects/calledit/venv/bin/python -m pytest calleditv4/tests/test_cfn_prompts.py -v
+/home/wsluser/projects/calledit/venv/bin/python -m pytest calleditv4/tests/test_entrypoint.py -v
+
+# Check v4 creation prompt IDs from CloudFormation
+aws cloudformation describe-stacks --stack-name calledit-prompts --query "Stacks[0].Outputs[?contains(OutputKey, 'PredictionParser') || contains(OutputKey, 'VerificationPlanner') || contains(OutputKey, 'PlanReviewer')]" --output table
 ```

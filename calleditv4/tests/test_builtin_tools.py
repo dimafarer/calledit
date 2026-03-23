@@ -1,11 +1,17 @@
 """Unit tests for V4-2 Built-in Tools wiring.
 
-Tests verify tool configuration, system prompt content, and region defaults.
+Tests verify tool configuration, system prompt content, and tool list.
 All tests exercise pure logic (importable constants, list structure) — no
 external service calls.
 
 The one property test (test_agent_exception_returns_error_json) uses a
 user-approved mock (Decision 96 exception) to verify the error handling path.
+
+Updated for V4-3a:
+- AWS_REGION removed from main.py (region from AWS CLI config, not hardcoded)
+- SYSTEM_PROMPT renamed to SIMPLE_PROMPT_SYSTEM
+- TOOLS list now has 3 elements (added current_time)
+- handler() context parameter is now RequestContext, not dict
 """
 
 import json
@@ -21,9 +27,8 @@ from strands_tools.code_interpreter import AgentCoreCodeInterpreter
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from main import (
-    AWS_REGION,
     MODEL_ID,
-    SYSTEM_PROMPT,
+    SIMPLE_PROMPT_SYSTEM,
     TOOLS,
     browser_tool,
     code_interpreter_tool,
@@ -39,12 +44,12 @@ from main import (
 class TestToolWiring:
     """Verify both tools are wired into the TOOLS list correctly."""
 
-    def test_tools_list_has_two_elements(self):
-        """TOOLS list must contain exactly 2 tool callables (Req 1.5)."""
-        assert len(TOOLS) == 2
+    def test_tools_list_has_three_elements(self):
+        """TOOLS list must contain 3 tool callables: browser, code_interpreter, current_time."""
+        assert len(TOOLS) == 3
 
     def test_tools_are_callable(self):
-        """Each element in TOOLS must be callable (Req 1.5)."""
+        """Each element in TOOLS must be callable."""
         for tool in TOOLS:
             assert callable(tool)
 
@@ -58,34 +63,28 @@ class TestToolWiring:
 
 
 class TestSystemPrompt:
-    """Verify system prompt describes available tools."""
+    """Verify simple prompt mode system prompt describes available tools."""
 
     def test_system_prompt_mentions_browser(self):
-        """SYSTEM_PROMPT must describe Browser capability (Req 2.4)."""
-        assert "Browser" in SYSTEM_PROMPT
+        """SIMPLE_PROMPT_SYSTEM must describe Browser capability."""
+        assert "Browser" in SIMPLE_PROMPT_SYSTEM
 
     def test_system_prompt_mentions_code_interpreter(self):
-        """SYSTEM_PROMPT must describe Code Interpreter capability (Req 3.4)."""
-        assert "Code Interpreter" in SYSTEM_PROMPT
-
-
-class TestRegionConfig:
-    """Verify region configuration defaults."""
-
-    def test_aws_region_defaults_to_us_west_2(self):
-        """AWS_REGION must default to 'us-west-2' (Req 1.4)."""
-        assert AWS_REGION == "us-west-2"
+        """SIMPLE_PROMPT_SYSTEM must describe Code Interpreter capability."""
+        assert "Code Interpreter" in SIMPLE_PROMPT_SYSTEM
 
 
 class TestPayloadValidation:
     """Regression check — payload validation unchanged from V4-1."""
 
     def test_missing_prompt_returns_error(self):
-        """Missing prompt key must still return error JSON (Req 1.5)."""
-        result = handler({}, {})
+        """Missing prompt key must still return error JSON."""
+        from bedrock_agentcore import RequestContext
+
+        result = handler({}, RequestContext())
         parsed = json.loads(result)
         assert "error" in parsed
-        assert "prompt" in parsed["error"].lower()
+        assert "prediction_text" in parsed["error"] or "prompt" in parsed["error"]
 
 
 # ---------------------------------------------------------------------------
@@ -110,12 +109,14 @@ class TestPropertyToolExceptions:
     def test_agent_exception_returns_error_json(
         self, mock_model_cls, mock_agent_cls, prompt, error_msg
     ):
-        """For any exception during invocation, handler returns JSON with 'error' key (Req 2.5, 3.5)."""
+        """For any exception during invocation, handler returns JSON with 'error' key."""
+        from bedrock_agentcore import RequestContext
+
         mock_agent = MagicMock()
         mock_agent.side_effect = Exception(error_msg)
         mock_agent_cls.return_value = mock_agent
 
-        result = handler({"prompt": prompt}, {})
+        result = handler({"prompt": prompt}, RequestContext())
 
         parsed = json.loads(result)
         assert "error" in parsed

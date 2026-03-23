@@ -5,8 +5,9 @@ Description: >
   (standalone test graph) read from these managed prompts.
 
   Resources:
-  - 4 Bedrock Prompts (parser, categorizer, VB, review)
-  - 4 Bedrock PromptVersions (v1 = initial migration from hardcoded constants)
+  - 4 v3 Bedrock Prompts (parser, categorizer, VB, review)
+  - 3 v4 Creation Prompts (prediction-parser, verification-planner, plan-reviewer)
+  - Bedrock PromptVersions for all prompts
 
 Parameters:
   ModelId:
@@ -393,6 +394,182 @@ Resources:
       PromptArn: !GetAtt ReviewPrompt.Arn
       Description: "v4 — MCP tool awareness with {{tool_manifest}} variable"
 
+  # =========================================================================
+  # V4 CREATION PROMPTS (3-turn flow)
+  # =========================================================================
+
+  PredictionParserPrompt:
+    Type: AWS::Bedrock::Prompt
+    Properties:
+      Name: calledit-prediction-parser
+      Description: "V4 Creation Turn 1 — extract prediction statement and resolve dates"
+      DefaultVariant: default
+      Tags:
+        Project: calledit
+        Agent: creation
+      Variants:
+        - Name: default
+          ModelId: !Ref ModelId
+          TemplateType: TEXT
+          InferenceConfiguration:
+            Text:
+              Temperature: 0
+              MaxTokens: 2000
+          TemplateConfiguration:
+            Text:
+              InputVariables:
+                - Name: current_date
+              Text: |
+                You are a prediction parser. Your task:
+                1. Extract the user's EXACT prediction statement (preserve their words)
+                2. Resolve time references relative to the current date/time: {{current_date}}
+                3. Determine the verification_date — when this prediction can be checked
+                4. Consider timezone implications for time-sensitive predictions
+
+                TIME RESOLUTION RULES:
+                - "tonight" → same day, 23:00 in the user's assumed timezone
+                - "tomorrow" → next day, end of day
+                - "this weekend" → upcoming Sunday, end of day
+                - "by end of month" → last day of current month
+                - "in 3 days" → current date + 3 days
+                - If no time reference, use reasonable default based on claim type
+                - Use the current_time tool if you need precise current time
+
+                TIMEZONE HANDLING:
+                - FIRST: Call the current_time tool — it returns the server's timezone.
+                  Use this as your initial timezone reference for the user unless
+                  the prediction provides stronger timezone signals.
+                - If the prediction includes a location (e.g., "Lakers game tonight"),
+                  infer the timezone from the location (Lakers → Los Angeles → America/Los_Angeles)
+                  and use that instead of the server timezone.
+                - If the prediction is time-sensitive but has no location context,
+                  use the current_time tool's timezone as the default and note this
+                  assumption in date_reasoning.
+                - Always store verification_date in UTC (ISO 8601 with Z suffix)
+                - Record what timezone you used and why in date_reasoning
+                - Time-of-day references like "tonight", "this morning", "after lunch"
+                  are timezone-dependent — a 3-hour difference between ET and PT can
+                  change when verification should happen
+                - Timezone priority: (1) explicit location in prediction, (2) current_time
+                  tool's timezone, (3) UTC as last resort
+
+                Return a JSON object with these exact fields:
+                - statement: the user's exact prediction text
+                - verification_date: ISO 8601 datetime string in UTC
+                - date_reasoning: explanation of how you resolved the date,
+                  including any timezone assumptions made
+
+  PredictionParserPromptVersion:
+    Type: AWS::Bedrock::PromptVersion
+    Properties:
+      PromptArn: !GetAtt PredictionParserPrompt.Arn
+      Description: "v1 — initial creation parser prompt"
+
+  VerificationPlannerPrompt:
+    Type: AWS::Bedrock::Prompt
+    Properties:
+      Name: calledit-verification-planner
+      Description: "V4 Creation Turn 2 — build verification plan"
+      DefaultVariant: default
+      Tags:
+        Project: calledit
+        Agent: creation
+      Variants:
+        - Name: default
+          ModelId: !Ref ModelId
+          TemplateType: TEXT
+          InferenceConfiguration:
+            Text:
+              Temperature: 0
+              MaxTokens: 3000
+          TemplateConfiguration:
+            Text:
+              InputVariables:
+                - Name: tool_manifest
+              Text: |
+                Based on the prediction you just parsed, build a verification plan.
+
+                AVAILABLE TOOLS:
+                {{tool_manifest}}
+
+                Create a plan with:
+                - sources: list of reliable data sources to check
+                - criteria: list of measurable, objective criteria for truth
+                - steps: ordered list of verification steps to execute
+
+                RULES:
+                - Criteria must match the prediction's specificity exactly
+                - Do NOT add conditions the prediction didn't state
+                - Do NOT omit conditions the prediction did state
+                - Reference available tools by name in sources and steps
+                - For subjective predictions, use self-report verification
+
+                Return a JSON object with sources, criteria, and steps fields.
+                All three must be lists.
+
+  VerificationPlannerPromptVersion:
+    Type: AWS::Bedrock::PromptVersion
+    Properties:
+      PromptArn: !GetAtt VerificationPlannerPrompt.Arn
+      Description: "v1 — initial verification planner prompt"
+
+  PlanReviewerPrompt:
+    Type: AWS::Bedrock::Prompt
+    Properties:
+      Name: calledit-plan-reviewer
+      Description: "V4 Creation Turn 3 — score verifiability and review plan"
+      DefaultVariant: default
+      Tags:
+        Project: calledit
+        Agent: creation
+      Variants:
+        - Name: default
+          ModelId: !Ref ModelId
+          TemplateType: TEXT
+          InferenceConfiguration:
+            Text:
+              Temperature: 0
+              MaxTokens: 3000
+          TemplateConfiguration:
+            Text:
+              Text: |
+                Review the verification plan you just created. Do two things:
+
+                1. SCORE VERIFIABILITY (0.0 to 1.0):
+                Evaluate across 5 dimensions:
+                - Criteria Specificity (30%): Are criteria measurable and unambiguous?
+                - Source Availability (25%): Do planned sources exist and are accessible?
+                - Temporal Clarity (20%): Is the verification date clear and time-bound?
+                  Consider: was a timezone assumed? Could a different timezone change
+                  when verification should happen?
+                - Outcome Objectivity (15%): Is the outcome binary (true/false)?
+                - Tool Coverage (10%): Do available tools cover verification needs?
+
+                2. IDENTIFY ASSUMPTIONS FOR CLARIFICATION:
+                For each assumption in the verification plan that could be wrong:
+                - What specific assumption was made?
+                - What question would confirm or correct it?
+                - Every question MUST reference a specific element from the plan
+
+                TIMEZONE ASSUMPTIONS ARE HIGH-PRIORITY CLARIFICATION TARGETS:
+                - If the parser assumed a timezone for a time-sensitive prediction
+                  (e.g., "tonight", "this morning", "after 6pm"), flag it
+                - Ask the user to confirm their timezone when it affects verification timing
+                - Example: "The verification date assumes Pacific time (Lakers are in LA).
+                  Are you in the Pacific timezone, or should we adjust?"
+
+                Return a JSON object with:
+                - verifiability_score: float 0.0-1.0
+                - verifiability_reasoning: explanation of score across dimensions
+                - reviewable_sections: list of objects, each with section, improvable,
+                  questions, and reasoning fields
+
+  PlanReviewerPromptVersion:
+    Type: AWS::Bedrock::PromptVersion
+    Properties:
+      PromptArn: !GetAtt PlanReviewerPrompt.Arn
+      Description: "v1 — initial plan reviewer prompt (merged score + review)"
+
 Outputs:
   ParserPromptId:
     Value: !GetAtt ParserPrompt.Id
@@ -414,3 +591,18 @@ Outputs:
     Description: Review prompt identifier for fetch_prompt()
   ReviewPromptArn:
     Value: !GetAtt ReviewPrompt.Arn
+  PredictionParserPromptId:
+    Value: !GetAtt PredictionParserPrompt.Id
+    Description: Prediction parser prompt identifier for fetch_prompt()
+  PredictionParserPromptArn:
+    Value: !GetAtt PredictionParserPrompt.Arn
+  VerificationPlannerPromptId:
+    Value: !GetAtt VerificationPlannerPrompt.Id
+    Description: Verification planner prompt identifier for fetch_prompt()
+  VerificationPlannerPromptArn:
+    Value: !GetAtt VerificationPlannerPrompt.Arn
+  PlanReviewerPromptId:
+    Value: !GetAtt PlanReviewerPrompt.Id
+    Description: Plan reviewer prompt identifier for fetch_prompt()
+  PlanReviewerPromptArn:
+    Value: !GetAtt PlanReviewerPrompt.Arn

@@ -118,7 +118,10 @@ First v4 spec executed. Installed AgentCore toolkit, scaffolded `calleditv4/` pr
 ### Update 23 (March 22): V4-2 Built-in Tools Complete
 Wired AgentCore Browser and Code Interpreter into the v4 agent entrypoint (~10 lines of code). Browser validated with Seattle weather search (22 tool calls, 321s). Code Interpreter validated with compound interest calculation (correct, fast). Discovered playwright + nest-asyncio are required deps of strands_tools.browser (Decision 97).
 
-## Current State (March 22, 2026)
+### Update 24 (March 23): V4-3a Creation Agent Core Complete
+First v4 spec with real business logic. Implemented the 3-turn creation flow: prediction text → parse (extract claim, resolve dates with timezone awareness) → plan (build verification plan with tool references) → review (score verifiability 0.0-1.0 + identify assumptions for clarification). Used Strands `structured_output_model` with Pydantic models for type-safe extraction at each turn. Ported v3 `prompt_client` with Decision 98 fallback behavior. Deployed 3 new CloudFormation prompts. DynamoDB save with float→Decimal conversion. 133 automated tests, all 5 integration tests passed. Three new decisions: 98 (dev fails clearly, prod falls back), 99 (3 turns not 4), 100 (LLM-native date resolution).
+
+## Current State (March 23, 2026)
 
 - v3.0.0 released — MCP-powered verification pipeline with Docker Lambda
 - v4 architecture planned — clean rebuild on Amazon Bedrock AgentCore (zero technical debt)
@@ -128,10 +131,10 @@ Wired AgentCore Browser and Code Interpreter into the v4 agent entrypoint (~10 l
 - Golden dataset: 45 base + 23 fuzzy predictions, 10 marked `immediate` for verification
 - 17 specs complete (A1 + A2 + B1 + B2 + B3), v4 specs pending
 - AgentCore steering doc created with pushback protocol and documented deviations
-- Roadmap: Complete eval analysis (Update 21) → v4 spec creation → AgentCore migration
 - v4 spec plan: 11 specs, 36 requirements, ~80-92 tasks, all ≥88% confidence (Decision 92)
-- v4 creation agent: single agent, 4 multi-turn prompts — data-driven choice from 16 eval runs (Decision 94)
 - V4-1 spec (AgentCore Foundation) COMPLETE: `calleditv4/` scaffolded, entrypoint working, dev server validated, 6 tests passing
 - V4-2 spec (Built-in Tools) COMPLETE: Browser + Code Interpreter wired, both validated via agentcore invoke --dev, 15 tests passing
+- V4-3a spec (Creation Agent Core) COMPLETE: 3-turn creation flow working end-to-end, 133 v4 tests passing, all 5 integration tests passed
 - No-mocks policy tightened: mocks require proven value + explicit user approval (Decision 96)
-- 97 architectural decisions documented
+- 100 architectural decisions documented
+- Next: V4-3b (Clarification & Streaming) or V4-4 (Verifiability Scorer) — both can proceed in parallel

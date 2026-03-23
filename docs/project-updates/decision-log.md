@@ -817,3 +817,55 @@ Tightened the no-mocks policy for v4. Decision 78 allowed mocks for unit/propert
 **Date:** March 22, 2026
 
 Initially thought `playwright` and `nest-asyncio` were optional (only needed for the alternative direct-Playwright integration path). Wrong — `strands_tools.browser.browser` imports both at module level (`import nest_asyncio` on line 17, `from playwright.async_api import Browser as PlaywrightBrowser` on line 18). The `AgentCoreBrowser` Strands tool wrapper uses Playwright internally to communicate with the AWS-hosted Chromium session via CDP (Chrome DevTools Protocol). Added both to `calleditv4/pyproject.toml`. The imports worked in the project-level venv (which had them from other dependencies) but `agentcore dev` uses the project's `.venv/` which was missing them.
+
+
+---
+
+## Decision 98: No Fallbacks in Dev, Graceful Fallback in Production
+**Source:** [Project Update 24](24-project-update-v4-3a-creation-agent-core.md) — V4-3a spec planning session
+**Date:** March 23, 2026
+
+The v4 prompt client (`calleditv4/src/prompt_client.py`) has environment-dependent fallback behavior controlled by `CALLEDIT_ENV`. When `CALLEDIT_ENV` is not `"production"` (including unset), Prompt Management failures raise exceptions with clear error messages — fail fast, fail visibly. When `CALLEDIT_ENV=production`, failures fall back to hardcoded default prompts, log a warning, and record `"fallback"` in the version manifest. This is a refinement of Decision 90 (no hardcoded fallbacks in v4) — production needs graceful degradation, but dev should never silently use stale prompts.
+
+
+---
+
+## Decision 99: 3 Turns Not 4 — Merged Score and Review
+**Source:** [Project Update 24](24-project-update-v4-3a-creation-agent-core.md) — V4-3a spec requirements review
+**Date:** March 23, 2026
+
+The original 4-turn creation flow from Decision 94 (parse → plan → score → review) is collapsed to 3 turns (parse → plan → review). The score and review turns are merged into a single `calledit-plan-reviewer` turn because scoring verifiability and identifying assumptions are two perspectives on the same analysis of the verification plan. The merged `PlanReview` Pydantic model produces `verifiability_score`, `verifiability_reasoning`, and `reviewable_sections` in one LLM call. This reduces latency by ~1 Bedrock call per prediction and simplifies the flow without losing output quality.
+
+
+---
+
+## Decision 100: LLM-Native Date Resolution with Timezone Awareness
+**Source:** [Project Update 24](24-project-update-v4-3a-creation-agent-core.md) — V4-3a spec design review
+**Date:** March 23, 2026
+
+v4 replaces v3's custom `parse_relative_date` tool (which used the `dateparser` library + `pytz` for deterministic date parsing) with LLM-native date reasoning. The creation agent gets the `current_time` tool from `strands_tools` (returns current date/time with server timezone), Code Interpreter for complex date math, and timezone-aware prompt instructions. The parser prompt instructs the agent to: (1) call `current_time` first for server timezone as default reference, (2) infer timezone from location context in the prediction (e.g., "Lakers" → Pacific), (3) always store `verification_date` in UTC, (4) record timezone assumptions in `date_reasoning`. The reviewer then flags timezone assumptions as high-priority clarification questions. This eliminates `dateparser` and `pytz` dependencies, makes timezone reasoning transparent (visible in `date_reasoning`), and leverages the model's strong date arithmetic capabilities. The tradeoff: occasional model errors on complex date math, mitigated by Code Interpreter availability and reviewer catch.
+
+
+---
+
+## Decision 98: No Fallbacks in Dev, Graceful Fallback in Production
+**Source:** [Project Update 24](24-project-update-v4-3a-creation-agent-core.md)
+**Date:** March 23, 2026
+
+The v4 prompt client's fallback behavior is controlled by the `CALLEDIT_ENV` environment variable. When `CALLEDIT_ENV` is not `production` (including unset), any Prompt Management API failure raises an exception with a clear error message — fail fast, fail visibly. When `CALLEDIT_ENV=production`, the client falls back to hardcoded default prompts, logs a warning, and records `"fallback"` in the version manifest. This is a middle ground between v3's always-fallback approach (Decision 61, which silently used stale prompts for weeks) and the original v4 plan of no fallbacks at all (Decision 90). In dev, you want to know immediately when Prompt Management is broken. In production, you want the agent to keep running even if Prompt Management has a transient failure.
+
+---
+
+## Decision 99: 3 Turns Not 4 — Merged Score and Review
+**Source:** [Project Update 24](24-project-update-v4-3a-creation-agent-core.md)
+**Date:** March 23, 2026
+
+The original architecture doc (Decision 94) described 4 turns: Parse → Plan → Score → Review. After analysis during spec requirements review, scoring and reviewing were merged into a single `calledit-plan-reviewer` turn. The reasoning: scoring verifiability and identifying assumptions are two perspectives on the same analysis of the verification plan. The reviewer already needs to deeply understand the plan to generate targeted questions — scoring requires the same deep analysis. Two separate LLM calls doing overlapping analysis wastes tokens and latency. The merged `PlanReview` Pydantic model produces `verifiability_score`, `verifiability_reasoning`, and `reviewable_sections` in one call. This reduces latency by ~1 Bedrock call per prediction and simplifies the flow without losing output quality. The 3 turns are: Parse (`calledit-prediction-parser`), Plan (`calledit-verification-planner`), Review (`calledit-plan-reviewer`).
+
+---
+
+## Decision 100: LLM-Native Date Resolution with Timezone Awareness
+**Source:** [Project Update 24](24-project-update-v4-3a-creation-agent-core.md)
+**Date:** March 23, 2026
+
+Replaced v3's custom `parse_relative_date` tool (which used the `dateparser` library + `pytz` for deterministic date parsing) with LLM-native date reasoning. The creation agent gets `current_time` from `strands_tools` (returns current date/time with server timezone), Code Interpreter for complex date math, and timezone-aware prompt instructions. The parser prompt instructs the agent to: (1) call `current_time` first for server timezone as default reference, (2) infer timezone from location context when available (e.g., "Lakers" → Pacific), (3) always store `verification_date` in UTC, (4) record timezone assumptions in `date_reasoning`. The reviewer then flags timezone assumptions as high-priority clarification questions. Timezone priority chain: explicit location in prediction > `current_time` tool's timezone > UTC as last resort. This eliminates `dateparser` and `pytz` dependencies, makes timezone reasoning transparent, and leverages Sonnet 4's strong date arithmetic capabilities. The tradeoff: occasional model errors on complex date math, mitigated by Code Interpreter availability and reviewer catch.
