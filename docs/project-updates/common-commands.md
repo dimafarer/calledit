@@ -219,9 +219,15 @@ cd /home/wsluser/projects/calledit/calleditv4 && agentcore dev
 # Invoke agent locally (requires dev server running)
 agentcore invoke --dev '{"prompt": "Hello, are you working?"}'
 
+# Test browser tool — web search
+agentcore invoke --dev '{"prompt": "Search the web for the current weather in Seattle"}'
+
+# Test code interpreter — calculation
+agentcore invoke --dev '{"prompt": "Calculate the compound interest on $10000 at 5% for 10 years"}'
+
 # Test missing prompt key (should return error JSON)
 agentcore invoke --dev '{"not_prompt": "test"}'
 
-# Run v4 unit tests
-/home/wsluser/projects/calledit/venv/bin/python -m pytest calleditv4/tests/test_entrypoint.py -v
+# Run v4 unit tests (all test files)
+/home/wsluser/projects/calledit/venv/bin/python -m pytest calleditv4/tests/ -v
 ```

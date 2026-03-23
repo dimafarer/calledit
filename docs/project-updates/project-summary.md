@@ -115,6 +115,9 @@ The eval framework is the transferable artifact:
 ### Update 22 (March 22): V4-1 AgentCore Foundation Complete
 First v4 spec executed. Installed AgentCore toolkit, scaffolded `calleditv4/` project, wrote entrypoint with Claude Sonnet 4 and error handling, validated via `agentcore dev` + `agentcore invoke --dev`. Tightened no-mocks policy — mocks now require proven value + explicit user approval (Decision 96).
 
+### Update 23 (March 22): V4-2 Built-in Tools Complete
+Wired AgentCore Browser and Code Interpreter into the v4 agent entrypoint (~10 lines of code). Browser validated with Seattle weather search (22 tool calls, 321s). Code Interpreter validated with compound interest calculation (correct, fast). Discovered playwright + nest-asyncio are required deps of strands_tools.browser (Decision 97).
+
 ## Current State (March 22, 2026)
 
 - v3.0.0 released — MCP-powered verification pipeline with Docker Lambda
@@ -129,5 +132,6 @@ First v4 spec executed. Installed AgentCore toolkit, scaffolded `calleditv4/` pr
 - v4 spec plan: 11 specs, 36 requirements, ~80-92 tasks, all ≥88% confidence (Decision 92)
 - v4 creation agent: single agent, 4 multi-turn prompts — data-driven choice from 16 eval runs (Decision 94)
 - V4-1 spec (AgentCore Foundation) COMPLETE: `calleditv4/` scaffolded, entrypoint working, dev server validated, 6 tests passing
+- V4-2 spec (Built-in Tools) COMPLETE: Browser + Code Interpreter wired, both validated via agentcore invoke --dev, 15 tests passing
 - No-mocks policy tightened: mocks require proven value + explicit user approval (Decision 96)
-- 96 architectural decisions documented
+- 97 architectural decisions documented

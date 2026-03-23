@@ -808,3 +808,12 @@ v3 Lambda backend stays live and untouched through V4-1 to V4-7a. v4 code lives 
 **Date:** March 22, 2026
 
 Tightened the no-mocks policy for v4. Decision 78 allowed mocks for unit/property tests — this is now superseded. Default: NO mocks anywhere. Mocks are only allowed if two conditions are met: (1) the agent demonstrates concrete, specific value that cannot be achieved through pure function tests or real integration tests, and (2) the user gives explicit approval before any mock code is written. Never implement a mock silently. Updated `.kiro/steering/no-mocks-policy.md`. The V4-1 property tests (prompt passthrough, response type, exception handling, missing key) were dropped because they only had value with mocks — the real validation is `agentcore invoke --dev` with real Bedrock calls.
+
+
+---
+
+## Decision 97: playwright and nest-asyncio Are Required Dependencies of AgentCoreBrowser
+**Source:** [Project Update 23](23-project-update-v4-2-builtin-tools.md)
+**Date:** March 22, 2026
+
+Initially thought `playwright` and `nest-asyncio` were optional (only needed for the alternative direct-Playwright integration path). Wrong — `strands_tools.browser.browser` imports both at module level (`import nest_asyncio` on line 17, `from playwright.async_api import Browser as PlaywrightBrowser` on line 18). The `AgentCoreBrowser` Strands tool wrapper uses Playwright internally to communicate with the AWS-hosted Chromium session via CDP (Chrome DevTools Protocol). Added both to `calleditv4/pyproject.toml`. The imports worked in the project-level venv (which had them from other dependencies) but `agentcore dev` uses the project's `.venv/` which was missing them.
