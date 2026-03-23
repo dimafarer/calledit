@@ -137,4 +137,4 @@ First v4 spec with real business logic. Implemented the 3-turn creation flow: pr
 - V4-3a spec (Creation Agent Core) COMPLETE: 3-turn creation flow working end-to-end, 133 v4 tests passing, all 5 integration tests passed
 - No-mocks policy tightened: mocks require proven value + explicit user approval (Decision 96)
 - 100 architectural decisions documented
-- Next: V4-3b (Clarification & Streaming) or V4-4 (Verifiability Scorer) — both can proceed in parallel
+- Next: V4-3b (Clarification & Streaming) — fully specced (requirements + design + tasks), ready to execute

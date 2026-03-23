@@ -869,3 +869,12 @@ The original architecture doc (Decision 94) described 4 turns: Parse → Plan �
 **Date:** March 23, 2026
 
 Replaced v3's custom `parse_relative_date` tool (which used the `dateparser` library + `pytz` for deterministic date parsing) with LLM-native date reasoning. The creation agent gets `current_time` from `strands_tools` (returns current date/time with server timezone), Code Interpreter for complex date math, and timezone-aware prompt instructions. The parser prompt instructs the agent to: (1) call `current_time` first for server timezone as default reference, (2) infer timezone from location context when available (e.g., "Lakers" → Pacific), (3) always store `verification_date` in UTC, (4) record timezone assumptions in `date_reasoning`. The reviewer then flags timezone assumptions as high-priority clarification questions. Timezone priority chain: explicit location in prediction > `current_time` tool's timezone > UTC as last resort. This eliminates `dateparser` and `pytz` dependencies, makes timezone reasoning transparent, and leverages Sonnet 4's strong date arithmetic capabilities. The tradeoff: occasional model errors on complex date math, mitigated by Code Interpreter availability and reviewer catch.
+
+
+---
+
+## Decision 101: User Timezone from Frontend Payload Takes Priority Over Server Timezone
+**Source:** V4-3b spec creation, frontend analysis (March 23, 2026)
+**Date:** March 23, 2026
+
+The v3 React frontend already detects the user's timezone via `Intl.DateTimeFormat().resolvedOptions().timeZone` and sends it with every `makecall` request. V4-3a ignored this — the parser relied on `current_time` tool's server timezone (Decision 100). V4-3b adds `timezone` acceptance from the payload. The timezone priority chain is now: (1) `{{user_timezone}}` from payload (strongest — the user's actual timezone from their browser), (2) explicit location in prediction (e.g., "Lakers" → Pacific), (3) `current_time` tool's server timezone, (4) UTC as last resort. The user's browser timezone is the strongest signal because it's the user's actual location, not an inference. This also applies retroactively to V4-3a's creation flow — the `timezone` field is accepted in the initial creation payload.

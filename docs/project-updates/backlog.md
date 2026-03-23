@@ -319,3 +319,31 @@ The data from Runs 13-14 shows that deterministic evaluators often pass test cas
 - Decision 68: AgentCore as post-verification migration target
 - Decisions 86-91: v4 architecture decisions
 
+
+---
+
+## 14. Add DynamoDB GSI to Replace Full Table Scans
+
+**Source:** V4-3b design review (March 23, 2026)
+**Priority:** Medium — becomes important as prediction volume grows
+
+**Problem:** The v3 verification scanner and the `list-predictions` endpoint use DynamoDB `scan` operations to find predictions. Scans read every item in the table and filter client-side, which is O(n) on table size. This works fine at demo scale (~50 predictions) but becomes expensive and slow as the table grows. The V4-3a integration test used a scan with `begins_with(PK, "PRED#pred-")` to verify DDB saves — this pattern should not carry into production queries.
+
+**Common query patterns that need GSIs:**
+1. **Predictions by user**: "Show me all predictions for user-123" — needs GSI on `user_id`
+2. **Predictions by status**: "Find all pending predictions ready for verification" — needs GSI on `status` + `verification_date`
+3. **Predictions by verification date**: "Find predictions due for verification today" — the EventBridge scanner needs this for efficient batch verification (currently scans the entire table)
+
+**What to do:**
+- Add a GSI with `user_id` as partition key and `created_at` as sort key — enables efficient per-user prediction listing sorted by date
+- Add a GSI with `status` as partition key and `verification_date` as sort key — enables the verification scanner to query only `pending` predictions due before now, instead of scanning everything
+- Update the verification scanner (V4-5) to use the status GSI instead of scan
+- Update the list-predictions endpoint to use the user_id GSI instead of scan
+- Add GSIs to the SAM/CloudFormation template for the `calledit-db` table
+- Consider sparse GSIs (only index items with specific attributes) to minimize GSI storage cost
+
+**References:**
+- Decision 82: DynamoDB requires Decimal not Float
+- V4-3a: DDB save with PK `PRED#{prediction_id}`, SK `BUNDLE`
+- V4-5: Verification Agent (will need efficient pending prediction queries)
+- Backlog item 13: AgentCore migration (GSIs should be added before V4-8 production cutover)
