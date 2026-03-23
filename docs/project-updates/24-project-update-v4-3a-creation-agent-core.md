@@ -180,7 +180,7 @@ All patterns align with the AgentCore steering doc. Using `BedrockAgentCoreApp` 
 
 ### Immediate
 1. **V4-3b (Clarification & Streaming)** or **V4-4 (Verifiability Scorer)** — both can proceed in parallel
-2. V4-3b adds multi-round clarification using `RequestContext.session_id` and WebSocket streaming
+2. V4-3b adds multi-round clarification (state loaded from DDB via `prediction_id`) and async streaming with turn-by-turn progress events. `session_id` is used for observability logging only — not for state lookup
 3. V4-4 adds the verifiability score indicator UI (green/yellow/red)
 4. Pin prompt versions (currently using DRAFT) after prompt iteration with eval framework
 

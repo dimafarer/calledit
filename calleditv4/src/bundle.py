@@ -4,7 +4,7 @@ import json
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 
 
 def generate_prediction_id() -> str:
@@ -22,9 +22,10 @@ def build_bundle(
     verifiability_reasoning: str,
     reviewable_sections: list,
     prompt_versions: Dict[str, str],
+    user_timezone: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Assemble the prediction bundle from all 3 turn outputs."""
-    return {
+    bundle = {
         "prediction_id": prediction_id,
         "user_id": user_id,
         "raw_prediction": raw_prediction,
@@ -38,6 +39,9 @@ def build_bundle(
         "status": "pending",
         "prompt_versions": prompt_versions,
     }
+    if user_timezone is not None:
+        bundle["user_timezone"] = user_timezone
+    return bundle
 
 
 def serialize_bundle(bundle: Dict[str, Any]) -> str:
@@ -67,3 +71,128 @@ def format_ddb_item(bundle: Dict[str, Any]) -> Dict[str, Any]:
     item["PK"] = f"PRED#{bundle['prediction_id']}"
     item["SK"] = "BUNDLE"
     return item
+
+
+def load_bundle_from_ddb(table, prediction_id: str) -> Optional[Dict[str, Any]]:
+    """Load an existing prediction bundle from DynamoDB.
+
+    Args:
+        table: boto3 DynamoDB Table resource
+        prediction_id: The prediction ID (e.g., "pred-abc123...")
+
+    Returns:
+        The bundle dict if found, None otherwise.
+    """
+    response = table.get_item(
+        Key={"PK": f"PRED#{prediction_id}", "SK": "BUNDLE"}
+    )
+    item = response.get("Item")
+    if item is None:
+        return None
+    # Remove DDB keys, return clean bundle
+    item.pop("PK", None)
+    item.pop("SK", None)
+    return item
+
+
+def build_clarification_context(
+    existing_bundle: Dict[str, Any],
+    clarification_answers: List[Dict[str, str]],
+) -> str:
+    """Build the enriched context string for a clarification round.
+
+    Combines the original prediction, the previous round's reviewable
+    sections (the questions), and the user's answers into a single
+    text block that replaces prediction_text in Turn 1.
+
+    Args:
+        existing_bundle: The loaded bundle from DDB
+        clarification_answers: List of {question, answer} dicts
+
+    Returns:
+        A formatted string for the parser prompt input.
+    """
+    raw_prediction = existing_bundle["raw_prediction"]
+    reviewable_sections = existing_bundle.get("reviewable_sections", [])
+
+    parts = [f"Original prediction: {raw_prediction}"]
+
+    if reviewable_sections:
+        parts.append("\nPrevious review identified these areas for improvement:")
+        for section in reviewable_sections:
+            if section.get("improvable"):
+                parts.append(
+                    f"- {section['section']}: {section.get('reasoning', '')}"
+                )
+                for q in section.get("questions", []):
+                    parts.append(f"  Question: {q}")
+
+    parts.append("\nUser's clarification answers:")
+    for qa in clarification_answers:
+        parts.append(f"Q: {qa['question']}")
+        parts.append(f"A: {qa['answer']}")
+
+    parts.append(
+        "\nPlease re-analyze this prediction incorporating the "
+        "clarification answers above."
+    )
+    return "\n".join(parts)
+
+
+def format_ddb_update(
+    prediction_id: str,
+    parsed_claim: Dict[str, Any],
+    verification_plan: Dict[str, Any],
+    verifiability_score: float,
+    verifiability_reasoning: str,
+    reviewable_sections: list,
+    prompt_versions: Dict[str, str],
+    clarification_answers: List[Dict[str, str]],
+    user_timezone: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Build the kwargs for a DynamoDB update_item call.
+
+    Returns a dict suitable for table.update_item(**result).
+    Uses ConditionExpression to prevent phantom updates (Req 7.3).
+    Uses ADD for atomic clarification_rounds increment (Req 7.2).
+    Converts floats to Decimal (Req 7.6).
+    """
+    now = datetime.now(timezone.utc).isoformat()
+
+    update_parts = [
+        "SET parsed_claim = :pc",
+        "verification_plan = :vp",
+        "verifiability_score = :vs",
+        "verifiability_reasoning = :vr",
+        "reviewable_sections = :rs",
+        "prompt_versions = :pv",
+        "updated_at = :ua",
+        "clarification_history = list_append("
+        "if_not_exists(clarification_history, :empty_list), :ch)",
+    ]
+    if user_timezone:
+        update_parts.append("user_timezone = :tz")
+
+    update_expr = ", ".join(update_parts) + " ADD clarification_rounds :one"
+
+    attr_values = {
+        ":pc": _convert_floats_to_decimal(parsed_claim),
+        ":vp": _convert_floats_to_decimal(verification_plan),
+        ":vs": _convert_floats_to_decimal(verifiability_score),
+        ":vr": verifiability_reasoning,
+        ":rs": _convert_floats_to_decimal(reviewable_sections),
+        ":pv": prompt_versions,
+        ":ua": now,
+        ":ch": [{"answers": clarification_answers, "timestamp": now}],
+        ":empty_list": [],
+        ":one": 1,
+    }
+    if user_timezone:
+        attr_values[":tz"] = user_timezone
+
+    return {
+        "Key": {"PK": f"PRED#{prediction_id}", "SK": "BUNDLE"},
+        "UpdateExpression": update_expr,
+        "ExpressionAttributeValues": attr_values,
+        "ConditionExpression": "attribute_exists(PK)",
+    }

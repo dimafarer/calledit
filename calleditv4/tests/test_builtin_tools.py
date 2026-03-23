@@ -12,8 +12,13 @@ Updated for V4-3a:
 - SYSTEM_PROMPT renamed to SIMPLE_PROMPT_SYSTEM
 - TOOLS list now has 3 elements (added current_time)
 - handler() context parameter is now RequestContext, not dict
+
+Updated for V4-3b:
+- handler() is now async and yields stream events
+- Tests use asyncio to collect yielded events
 """
 
+import asyncio
 import json
 import sys
 from pathlib import Path
@@ -34,6 +39,21 @@ from main import (
     code_interpreter_tool,
     handler,
 )
+
+
+def _collect_events(payload, context=None):
+    """Run the async handler and collect all yielded events."""
+    from bedrock_agentcore import RequestContext
+
+    ctx = context or RequestContext()
+
+    async def _gather():
+        events = []
+        async for event in handler(payload, ctx):
+            events.append(event)
+        return events
+
+    return asyncio.get_event_loop().run_until_complete(_gather())
 
 
 # ---------------------------------------------------------------------------
@@ -78,13 +98,12 @@ class TestPayloadValidation:
     """Regression check — payload validation unchanged from V4-1."""
 
     def test_missing_prompt_returns_error(self):
-        """Missing prompt key must still return error JSON."""
-        from bedrock_agentcore import RequestContext
-
-        result = handler({}, RequestContext())
-        parsed = json.loads(result)
-        assert "error" in parsed
-        assert "prediction_text" in parsed["error"] or "prompt" in parsed["error"]
+        """Missing prompt key must yield an error stream event."""
+        events = _collect_events({})
+        assert len(events) == 1
+        parsed = json.loads(events[0])
+        assert parsed["type"] == "error"
+        assert "message" in parsed["data"]
 
 
 # ---------------------------------------------------------------------------
@@ -109,15 +128,14 @@ class TestPropertyToolExceptions:
     def test_agent_exception_returns_error_json(
         self, mock_model_cls, mock_agent_cls, prompt, error_msg
     ):
-        """For any exception during invocation, handler returns JSON with 'error' key."""
-        from bedrock_agentcore import RequestContext
-
+        """For any exception during invocation, handler yields error event with 'error' key."""
         mock_agent = MagicMock()
         mock_agent.side_effect = Exception(error_msg)
         mock_agent_cls.return_value = mock_agent
 
-        result = handler({"prompt": prompt}, RequestContext())
+        events = _collect_events({"prompt": prompt})
 
-        parsed = json.loads(result)
-        assert "error" in parsed
-        assert error_msg in parsed["error"]
+        assert len(events) == 1
+        parsed = json.loads(events[0])
+        assert parsed["type"] == "error"
+        assert error_msg in parsed["data"]["message"]

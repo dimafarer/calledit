@@ -71,3 +71,14 @@ class PlanReview(BaseModel):
         description="Sections with assumptions that could be validated "
         "via clarification questions"
     )
+
+
+class ClarificationAnswer(BaseModel):
+    """A single question-answer pair from a clarification round."""
+
+    question: str = Field(
+        description="The clarification question from the reviewer"
+    )
+    answer: str = Field(
+        description="The user's answer to the clarification question"
+    )

@@ -138,3 +138,21 @@ First v4 spec with real business logic. Implemented the 3-turn creation flow: pr
 - No-mocks policy tightened: mocks require proven value + explicit user approval (Decision 96)
 - 100 architectural decisions documented
 - Next: V4-3b (Clarification & Streaming) — fully specced (requirements + design + tasks), ready to execute
+
+### Update 25 (March 23): V4-3b Clarification & Streaming Complete
+Evolved the V4-3a synchronous entrypoint into an async streaming generator with multi-round clarification support. Handler now yields turn-by-turn stream events (`flow_started`, `turn_complete` ×3, `flow_complete`) instead of returning a single JSON string. Added clarification routing: user answers reviewer questions → agent re-runs 3-turn flow with enriched context → DDB `update_item` (not new item). Clarification cap of 5 rounds (configurable via env var). User timezone from frontend payload (Decision 101) takes priority over server timezone. Three new pure functions in `bundle.py` (`load_bundle_from_ddb`, `build_clarification_context`, `format_ddb_update`). Split `ConditionalCheckFailedException` handling per Req 7.4/7.5. V4-2 test regression fixed for async handler. 136 automated tests passing. No new decisions — all implementation followed existing decisions (94, 96, 98-101).
+
+## Current State (March 23, 2026)
+
+- v3.0.0 released — MCP-powered verification pipeline with Docker Lambda
+- v4 architecture planned — clean rebuild on Amazon Bedrock AgentCore (zero technical debt)
+- Production prompts: parser v1, categorizer v2, VB v3 (tool-aware), review v4 (tool-aware)
+- v4 design: two separate AgentCore agents (creation + verification), verifiability strength score, hybrid memory model, three-layer eval
+- Eval framework: 15 evaluators, 8-page dashboard, `--verify` mode, 17 eval runs
+- Golden dataset: 45 base + 23 fuzzy predictions, 10 marked `immediate` for verification
+- V4-1 (AgentCore Foundation) COMPLETE: scaffolded, entrypoint working, 6 tests
+- V4-2 (Built-in Tools) COMPLETE: Browser + Code Interpreter wired, 15 tests
+- V4-3a (Creation Agent Core) COMPLETE: 3-turn creation flow, 133 tests
+- V4-3b (Clarification & Streaming) COMPLETE: async streaming + clarification rounds, 136 tests
+- 102 architectural decisions documented
+- Next: V4-4 (Verifiability Scorer) or V4-5 (Verification Agent)

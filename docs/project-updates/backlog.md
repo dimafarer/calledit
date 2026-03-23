@@ -288,7 +288,7 @@ The data from Runs 13-14 shows that deterministic evaluators often pass test cas
 
 **Source:** Spec planning session (March 20, 2026), v4 Architecture Planning (March 22, 2026)
 **Priority:** High — next major work after eval analysis
-**Status:** V4-1 (AgentCore Foundation) COMPLETE, V4-2 (Built-in Tools) COMPLETE, V4-3a (Creation Agent Core) COMPLETE. V4-3b (Clarification & Streaming) or V4-4 (Verifiability Scorer) next.
+**Status:** V4-1 (AgentCore Foundation) COMPLETE, V4-2 (Built-in Tools) COMPLETE, V4-3a (Creation Agent Core) COMPLETE, V4-3b (Clarification & Streaming) COMPLETE. V4-4 (Verifiability Scorer) or V4-5 (Verification Agent) next.
 
 **Problem:** The current SAM Lambda architecture was chosen for the class being taught (low cost for students to deploy). Now the project aims to demonstrate best-in-class agent architecture. AgentCore is purpose-built for deploying and operating AI agents with built-in observability, scaling, and lifecycle management.
 

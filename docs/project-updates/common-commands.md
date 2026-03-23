@@ -242,7 +242,7 @@ agentcore invoke --dev '{"prediction_text": "It will rain tomorrow in Seattle"}'
 # Test missing fields (should return error JSON)
 agentcore invoke --dev '{"foo": "bar"}'
 
-# Run all v4 tests (133 tests)
+# Run all v4 tests (136 tests)
 /home/wsluser/projects/calledit/venv/bin/python -m pytest calleditv4/tests/ -v
 
 # Run specific v4 test files
@@ -254,4 +254,18 @@ agentcore invoke --dev '{"foo": "bar"}'
 
 # Check v4 creation prompt IDs from CloudFormation
 aws cloudformation describe-stacks --stack-name calledit-prompts --query "Stacks[0].Outputs[?contains(OutputKey, 'PredictionParser') || contains(OutputKey, 'VerificationPlanner') || contains(OutputKey, 'PlanReviewer')]" --output table
+
+# --- V4-3b Clarification & Streaming Commands ---
+
+# Test streaming creation flow with timezone (Decision 101)
+agentcore invoke --dev '{"prediction_text": "Lakers win tonight", "user_id": "test-user", "timezone": "America/Los_Angeles"}'
+
+# Test clarification round (use prediction_id from creation output)
+agentcore invoke --dev '{"prediction_id": "pred-xxx", "clarification_answers": [{"question": "Does win include overtime?", "answer": "Yes"}], "timezone": "America/Los_Angeles"}'
+
+# Test clarification cap (run 6 rounds — 6th should yield error)
+# Use prediction_id from creation, repeat clarification 6 times
+
+# Test missing fields (should yield error stream event)
+agentcore invoke --dev '{"foo": "bar"}'
 ```

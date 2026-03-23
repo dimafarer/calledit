@@ -878,3 +878,12 @@ Replaced v3's custom `parse_relative_date` tool (which used the `dateparser` lib
 **Date:** March 23, 2026
 
 The v3 React frontend already detects the user's timezone via `Intl.DateTimeFormat().resolvedOptions().timeZone` and sends it with every `makecall` request. V4-3a ignored this — the parser relied on `current_time` tool's server timezone (Decision 100). V4-3b adds `timezone` acceptance from the payload. The timezone priority chain is now: (1) `{{user_timezone}}` from payload (strongest — the user's actual timezone from their browser), (2) explicit location in prediction (e.g., "Lakers" → Pacific), (3) `current_time` tool's server timezone, (4) UTC as last resort. The user's browser timezone is the strongest signal because it's the user's actual location, not an inference. This also applies retroactively to V4-3a's creation flow — the `timezone` field is accepted in the initial creation payload.
+
+
+---
+
+## Decision 102: Hybrid Streaming — Token-by-Token Text + Structured Output Per Turn
+**Source:** V4-3b integration testing (March 23, 2026)
+**Date:** March 23, 2026
+
+Each turn uses `stream_async` with `structured_output_model` to get both real-time text streaming AND type-safe Pydantic extraction. The `stream_async` method yields `"data"` events (token-by-token text chunks) during generation, then a final `"result"` event containing `structured_output`. The entrypoint yields `text` events to the frontend as they arrive (keeping the user engaged with visible reasoning), then yields a `turn_complete` event with the structured JSON when the turn finishes. This gives the v3-style continuous text streaming experience while also delivering clean structured data — no extra model call needed. The `text` event type is added to the stream event format (5 types total: `flow_started`, `text`, `turn_complete`, `flow_complete`, `error`). This was discovered during integration testing when the initial `structured_output_async` approach worked but produced no visible output between turn completions.
