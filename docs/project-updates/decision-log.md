@@ -887,3 +887,12 @@ The v3 React frontend already detects the user's timezone via `Intl.DateTimeForm
 **Date:** March 23, 2026
 
 Each turn uses `stream_async` with `structured_output_model` to get both real-time text streaming AND type-safe Pydantic extraction. The `stream_async` method yields `"data"` events (token-by-token text chunks) during generation, then a final `"result"` event containing `structured_output`. The entrypoint yields `text` events to the frontend as they arrive (keeping the user engaged with visible reasoning), then yields a `turn_complete` event with the structured JSON when the turn finishes. This gives the v3-style continuous text streaming experience while also delivering clean structured data — no extra model call needed. The `text` event type is added to the stream event format (5 types total: `flow_started`, `text`, `turn_complete`, `flow_complete`, `error`). This was discovered during integration testing when the initial `structured_output_async` approach worked but produced no visible output between turn completions.
+
+
+---
+
+## Decision 103: No Legacy Category Mapping — Clean Break from V3 Categories
+**Source:** V4-4 spec creation (March 23, 2026)
+**Date:** March 23, 2026
+
+The v3 system used 3 discrete categories (`auto_verifiable`, `automatable`, `human_only`) with `getVerifiabilityDisplay()` and `CATEGORY_CONFIG` in the frontend. V4 replaces this entirely with a continuous verifiability score (0.0-1.0) plus a 3-tier display system (high/moderate/low with green/yellow/red colors). There is no `legacy_category` field in the PlanReview model or the prediction bundle. No backward compatibility with v3 categories. The v3 frontend will need updating when it connects to v4 — that's V4-7's scope. This is a deliberate clean break to avoid technical debt from maintaining two parallel classification systems.

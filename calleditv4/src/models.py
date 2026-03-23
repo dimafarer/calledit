@@ -55,6 +55,21 @@ class ReviewableSection(BaseModel):
     )
 
 
+class DimensionAssessment(BaseModel):
+    """One dimension's assessment from the plan reviewer."""
+
+    dimension: str = Field(
+        description="Dimension name: criteria_specificity, source_availability, "
+        "temporal_clarity, outcome_objectivity, or tool_coverage"
+    )
+    assessment: str = Field(
+        description="Rating: strong, moderate, or weak"
+    )
+    explanation: str = Field(
+        description="One-line explanation of the rating"
+    )
+
+
 class PlanReview(BaseModel):
     """Turn 3 output: combined verifiability scoring and plan review."""
 
@@ -71,6 +86,18 @@ class PlanReview(BaseModel):
         description="Sections with assumptions that could be validated "
         "via clarification questions"
     )
+    score_tier: str = Field(
+        description="Tier: high (>=0.7), moderate (>=0.4), or low (<0.4)"
+    )
+    score_label: str = Field(
+        description="Human-readable label, e.g. 'High Confidence'"
+    )
+    score_guidance: str = Field(
+        description="Actionable guidance text based on the assessment"
+    )
+    dimension_assessments: List[DimensionAssessment] = Field(
+        description="Exactly 5 entries, one per scoring dimension"
+    )
 
 
 class ClarificationAnswer(BaseModel):
@@ -82,3 +109,20 @@ class ClarificationAnswer(BaseModel):
     answer: str = Field(
         description="The user's answer to the clarification question"
     )
+
+
+def score_to_tier(score: float) -> dict:
+    """Map a verifiability score to deterministic display constants.
+
+    Clamps score to [0.0, 1.0] before computing tier.
+    Returns dict with keys: tier, label, color, icon.
+    """
+    score = max(0.0, min(1.0, score))
+    if score >= 0.7:
+        return {"tier": "high", "label": "High Confidence",
+                "color": "#166534", "icon": "🟢"}
+    if score >= 0.4:
+        return {"tier": "moderate", "label": "Moderate Confidence",
+                "color": "#854d0e", "icon": "🟡"}
+    return {"tier": "low", "label": "Low Confidence",
+            "color": "#991b1b", "icon": "🔴"}

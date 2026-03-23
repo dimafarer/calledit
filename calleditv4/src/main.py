@@ -42,7 +42,7 @@ import boto3
 # Add src to path for sibling module imports (models, bundle, prompt_client)
 sys.path.insert(0, os.path.dirname(__file__))
 
-from models import ClarificationAnswer, ParsedClaim, PlanReview, VerificationPlan
+from models import ClarificationAnswer, ParsedClaim, PlanReview, VerificationPlan, score_to_tier
 from prompt_client import fetch_prompt, get_prompt_version_manifest
 from bundle import (
     build_bundle,
@@ -271,6 +271,7 @@ async def handler(payload: dict, context: RequestContext):
             yield turn_event
 
             # Update DDB (Req 7.1-7.6)
+            review_dump = plan_review.model_dump()
             update_params = format_ddb_update(
                 prediction_id=prediction_id,
                 parsed_claim=parsed_claim.model_dump(),
@@ -283,6 +284,11 @@ async def handler(payload: dict, context: RequestContext):
                 prompt_versions=get_prompt_version_manifest(),
                 clarification_answers=answers_raw,
                 user_timezone=user_timezone,
+                score_tier=review_dump["score_tier"],
+                score_label=review_dump["score_label"],
+                score_guidance=review_dump["score_guidance"],
+                dimension_assessments=review_dump["dimension_assessments"],
+                tier_display=score_to_tier(plan_review.verifiability_score),
             )
 
             # Build the updated bundle for the response
@@ -298,6 +304,12 @@ async def handler(payload: dict, context: RequestContext):
                 "prompt_versions": get_prompt_version_manifest(),
                 "clarification_rounds": current_rounds + 1,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
+                # V4-4: Score tier fields from PlanReview structured output
+                "score_tier": review_dump["score_tier"],
+                "score_label": review_dump["score_label"],
+                "score_guidance": review_dump["score_guidance"],
+                "dimension_assessments": review_dump["dimension_assessments"],
+                "tier_display": score_to_tier(plan_review.verifiability_score),
             }
             if user_timezone:
                 updated_bundle["user_timezone"] = user_timezone
@@ -411,6 +423,14 @@ async def handler(payload: dict, context: RequestContext):
                 prompt_versions=get_prompt_version_manifest(),
                 user_timezone=user_timezone,
             )
+
+            # V4-4: Inject score tier fields from PlanReview structured output
+            review_dump = plan_review.model_dump()
+            bundle["score_tier"] = review_dump["score_tier"]
+            bundle["score_label"] = review_dump["score_label"]
+            bundle["score_guidance"] = review_dump["score_guidance"]
+            bundle["dimension_assessments"] = review_dump["dimension_assessments"]
+            bundle["tier_display"] = score_to_tier(plan_review.verifiability_score)
 
             # Save to DDB — failure doesn't block response
             try:

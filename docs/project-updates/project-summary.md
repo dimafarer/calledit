@@ -142,6 +142,9 @@ First v4 spec with real business logic. Implemented the 3-turn creation flow: pr
 ### Update 25 (March 23): V4-3b Clarification & Streaming Complete
 Evolved the V4-3a synchronous entrypoint into an async streaming generator with multi-round clarification support. Handler now yields turn-by-turn stream events (`flow_started`, `turn_complete` ×3, `flow_complete`) instead of returning a single JSON string. Added clarification routing: user answers reviewer questions → agent re-runs 3-turn flow with enriched context → DDB `update_item` (not new item). Clarification cap of 5 rounds (configurable via env var). User timezone from frontend payload (Decision 101) takes priority over server timezone. Three new pure functions in `bundle.py` (`load_bundle_from_ddb`, `build_clarification_context`, `format_ddb_update`). Split `ConditionalCheckFailedException` handling per Req 7.4/7.5. V4-2 test regression fixed for async handler. 136 automated tests passing. No new decisions — all implementation followed existing decisions (94, 96, 98-101).
 
+### Update 26 (March 23): V4-4 Verifiability Scorer Complete
+Extended PlanReview structured output with score tier metadata, per-dimension assessments, and LLM-generated guidance text. First design was over-engineered (separate scorer.py module with regex parsing) — simplified to let the LLM produce everything via structured output. New `DimensionAssessment` Pydantic model, 4 new PlanReview fields (`score_tier`, `score_label`, `score_guidance`, `dimension_assessments`), deterministic `score_to_tier()` function for color/icon mapping. No legacy category — clean break from v3 (Decision 103). Updated plan-reviewer prompt in CloudFormation. Strands structured_output_model populated new fields correctly even before prompt deploy. 148 tests passing.
+
 ## Current State (March 23, 2026)
 
 - v3.0.0 released — MCP-powered verification pipeline with Docker Lambda
@@ -154,5 +157,6 @@ Evolved the V4-3a synchronous entrypoint into an async streaming generator with 
 - V4-2 (Built-in Tools) COMPLETE: Browser + Code Interpreter wired, 15 tests
 - V4-3a (Creation Agent Core) COMPLETE: 3-turn creation flow, 133 tests
 - V4-3b (Clarification & Streaming) COMPLETE: async streaming + clarification rounds, 136 tests
-- 102 architectural decisions documented
-- Next: V4-4 (Verifiability Scorer) or V4-5 (Verification Agent)
+- V4-4 (Verifiability Scorer) COMPLETE: extended PlanReview with score tier/guidance/dimensions, 148 tests
+- 103 architectural decisions documented
+- Next: Deploy plan-reviewer prompt V2, then V4-5 (Verification Agent)

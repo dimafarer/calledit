@@ -533,7 +533,7 @@ Resources:
           TemplateConfiguration:
             Text:
               Text: |
-                Review the verification plan you just created. Do two things:
+                Review the verification plan you just created. Do three things:
 
                 1. SCORE VERIFIABILITY (0.0 to 1.0):
                 Evaluate across 5 dimensions:
@@ -545,7 +545,23 @@ Resources:
                 - Outcome Objectivity (15%): Is the outcome binary (true/false)?
                 - Tool Coverage (10%): Do available tools cover verification needs?
 
-                2. IDENTIFY ASSUMPTIONS FOR CLARIFICATION:
+                2. DIMENSION ASSESSMENTS AND SCORE TIER:
+                For each of the 5 dimensions above, provide a structured assessment:
+                - dimension: one of criteria_specificity, source_availability, temporal_clarity, outcome_objectivity, tool_coverage
+                - assessment: one of strong (score >= 0.7), moderate (0.4-0.69), weak (< 0.4)
+                - explanation: one-line explanation of the rating
+
+                Based on your verifiability_score:
+                - If score >= 0.7: set score_tier to "high", score_label to "High Confidence"
+                - If score >= 0.4 and < 0.7: set score_tier to "moderate", score_label to "Moderate Confidence"
+                - If score < 0.4: set score_tier to "low", score_label to "Low Confidence"
+
+                For score_guidance, write actionable text:
+                - High confidence: brief encouragement, note what makes this prediction well-suited for verification
+                - Moderate confidence: specific improvement suggestions referencing the weak dimensions by name
+                - Low confidence: identify the primary barriers and provide concrete steps to make the prediction more verifiable
+
+                3. IDENTIFY ASSUMPTIONS FOR CLARIFICATION:
                 For each assumption in the verification plan that could be wrong:
                 - What specific assumption was made?
                 - What question would confirm or correct it?
@@ -561,6 +577,10 @@ Resources:
                 Return a JSON object with:
                 - verifiability_score: float 0.0-1.0
                 - verifiability_reasoning: explanation of score across dimensions
+                - score_tier: "high", "moderate", or "low"
+                - score_label: "High Confidence", "Moderate Confidence", or "Low Confidence"
+                - score_guidance: actionable guidance text
+                - dimension_assessments: list of 5 objects, each with dimension, assessment, explanation
                 - reviewable_sections: list of objects, each with section, improvable,
                   questions, and reasoning fields
 
@@ -569,6 +589,13 @@ Resources:
     Properties:
       PromptArn: !GetAtt PlanReviewerPrompt.Arn
       Description: "v1 — initial plan reviewer prompt (merged score + review)"
+
+  PlanReviewerPromptVersionV2:
+    Type: AWS::Bedrock::PromptVersion
+    DependsOn: PlanReviewerPromptVersion
+    Properties:
+      PromptArn: !GetAtt PlanReviewerPrompt.Arn
+      Description: "v2 — V4-4 dimension assessments, score tier, and guidance text"
 
 Outputs:
   ParserPromptId:

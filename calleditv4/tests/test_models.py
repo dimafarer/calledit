@@ -17,7 +17,31 @@ from pydantic import Field, ValidationError
 # Add src to path so we can import models
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from models import ParsedClaim, PlanReview, ReviewableSection, VerificationPlan
+from models import (
+    DimensionAssessment,
+    ParsedClaim,
+    PlanReview,
+    ReviewableSection,
+    VerificationPlan,
+    score_to_tier,
+)
+
+
+# Default V4-4 fields for PlanReview construction in tests
+_DEFAULT_DIMS = [
+    DimensionAssessment(dimension="criteria_specificity", assessment="strong", explanation="test"),
+    DimensionAssessment(dimension="source_availability", assessment="strong", explanation="test"),
+    DimensionAssessment(dimension="temporal_clarity", assessment="moderate", explanation="test"),
+    DimensionAssessment(dimension="outcome_objectivity", assessment="strong", explanation="test"),
+    DimensionAssessment(dimension="tool_coverage", assessment="strong", explanation="test"),
+]
+
+_V44_FIELDS = {
+    "score_tier": "high",
+    "score_label": "High Confidence",
+    "score_guidance": "Good to go.",
+    "dimension_assessments": _DEFAULT_DIMS,
+}
 
 
 # ---------------------------------------------------------------------------
@@ -137,6 +161,7 @@ class TestPlanReviewStructure:
             verifiability_score=0.85,
             verifiability_reasoning="Good plan",
             reviewable_sections=[],
+            **_V44_FIELDS,
         )
         assert review.verifiability_score == 0.85
 
@@ -145,6 +170,7 @@ class TestPlanReviewStructure:
             verifiability_score=0.5,
             verifiability_reasoning="Moderate confidence",
             reviewable_sections=[],
+            **_V44_FIELDS,
         )
         assert review.verifiability_reasoning == "Moderate confidence"
 
@@ -159,9 +185,22 @@ class TestPlanReviewStructure:
             verifiability_score=0.7,
             verifiability_reasoning="OK",
             reviewable_sections=[section],
+            **_V44_FIELDS,
         )
         assert len(review.reviewable_sections) == 1
         assert review.reviewable_sections[0].section == "sources"
+
+    def test_has_v44_score_tier_fields(self):
+        review = PlanReview(
+            verifiability_score=0.8,
+            verifiability_reasoning="test",
+            reviewable_sections=[],
+            **_V44_FIELDS,
+        )
+        assert review.score_tier == "high"
+        assert review.score_label == "High Confidence"
+        assert review.score_guidance == "Good to go."
+        assert len(review.dimension_assessments) == 5
 
 
 class TestFieldDescriptions:
@@ -204,9 +243,21 @@ class TestFieldDescriptions:
             "verifiability_score",
             "verifiability_reasoning",
             "reviewable_sections",
+            "score_tier",
+            "score_label",
+            "score_guidance",
+            "dimension_assessments",
         ):
             assert descs[field_name] is not None, (
                 f"PlanReview.{field_name} missing Field(description=...)"
+            )
+            assert len(descs[field_name]) > 0
+
+    def test_dimension_assessment_fields_have_descriptions(self):
+        descs = self._get_field_descriptions(DimensionAssessment)
+        for field_name in ("dimension", "assessment", "explanation"):
+            assert descs[field_name] is not None, (
+                f"DimensionAssessment.{field_name} missing Field(description=...)"
             )
             assert len(descs[field_name]) > 0
 
@@ -224,77 +275,120 @@ class TestPlanReviewScoreValidation:
     @settings(max_examples=100)
     @given(score=st.floats(min_value=0.0, max_value=1.0, allow_nan=False))
     def test_valid_scores_accepted(self, score):
-        """For any float within [0.0, 1.0], PlanReview construction succeeds.
-
-        **Validates: Requirements 5.4**
-        """
+        """For any float within [0.0, 1.0], PlanReview construction succeeds."""
         review = PlanReview(
             verifiability_score=score,
             verifiability_reasoning="test",
             reviewable_sections=[],
+            **_V44_FIELDS,
         )
         assert review.verifiability_score == score
 
     @settings(max_examples=100)
     @given(score=st.floats(min_value=1.0001, allow_nan=False, allow_infinity=False))
     def test_scores_above_one_rejected(self, score):
-        """For any float > 1.0, PlanReview construction raises ValidationError.
-
-        **Validates: Requirements 5.4**
-        """
+        """For any float > 1.0, PlanReview construction raises ValidationError."""
         with pytest.raises(ValidationError):
             PlanReview(
                 verifiability_score=score,
                 verifiability_reasoning="test",
                 reviewable_sections=[],
+                **_V44_FIELDS,
             )
 
     @settings(max_examples=100)
     @given(score=st.floats(max_value=-0.0001, allow_nan=False, allow_infinity=False))
     def test_scores_below_zero_rejected(self, score):
-        """For any float < 0.0, PlanReview construction raises ValidationError.
-
-        **Validates: Requirements 5.4**
-        """
+        """For any float < 0.0, PlanReview construction raises ValidationError."""
         with pytest.raises(ValidationError):
             PlanReview(
                 verifiability_score=score,
                 verifiability_reasoning="test",
                 reviewable_sections=[],
+                **_V44_FIELDS,
             )
 
     def test_nan_rejected(self):
-        """NaN is not a valid score.
-
-        **Validates: Requirements 5.4**
-        """
         with pytest.raises(ValidationError):
             PlanReview(
                 verifiability_score=float("nan"),
                 verifiability_reasoning="test",
                 reviewable_sections=[],
+                **_V44_FIELDS,
             )
 
     def test_positive_infinity_rejected(self):
-        """Positive infinity is not a valid score.
-
-        **Validates: Requirements 5.4**
-        """
         with pytest.raises(ValidationError):
             PlanReview(
                 verifiability_score=float("inf"),
                 verifiability_reasoning="test",
                 reviewable_sections=[],
+                **_V44_FIELDS,
             )
 
     def test_negative_infinity_rejected(self):
-        """Negative infinity is not a valid score.
-
-        **Validates: Requirements 5.4**
-        """
         with pytest.raises(ValidationError):
             PlanReview(
                 verifiability_score=float("-inf"),
                 verifiability_reasoning="test",
                 reviewable_sections=[],
+                **_V44_FIELDS,
             )
+
+
+# ---------------------------------------------------------------------------
+# V4-4: score_to_tier tests
+# ---------------------------------------------------------------------------
+
+
+class TestScoreToTier:
+    """Verify score_to_tier() boundary behavior and output structure."""
+
+    def test_high_tier_at_0_7(self):
+        result = score_to_tier(0.7)
+        assert result["tier"] == "high"
+        assert result["label"] == "High Confidence"
+        assert result["color"] == "#166534"
+        assert result["icon"] == "🟢"
+
+    def test_high_tier_at_1_0(self):
+        result = score_to_tier(1.0)
+        assert result["tier"] == "high"
+
+    def test_moderate_tier_at_0_4(self):
+        result = score_to_tier(0.4)
+        assert result["tier"] == "moderate"
+        assert result["label"] == "Moderate Confidence"
+        assert result["color"] == "#854d0e"
+        assert result["icon"] == "🟡"
+
+    def test_moderate_tier_at_0_69(self):
+        result = score_to_tier(0.69)
+        assert result["tier"] == "moderate"
+
+    def test_low_tier_at_0_0(self):
+        result = score_to_tier(0.0)
+        assert result["tier"] == "low"
+        assert result["label"] == "Low Confidence"
+        assert result["color"] == "#991b1b"
+        assert result["icon"] == "🔴"
+
+    def test_low_tier_at_0_39(self):
+        result = score_to_tier(0.39)
+        assert result["tier"] == "low"
+
+    def test_clamps_negative(self):
+        result = score_to_tier(-0.5)
+        assert result["tier"] == "low"
+
+    def test_clamps_above_one(self):
+        result = score_to_tier(1.5)
+        assert result["tier"] == "high"
+
+    def test_output_has_four_keys(self):
+        result = score_to_tier(0.5)
+        assert set(result.keys()) == {"tier", "label", "color", "icon"}
+
+    def test_no_legacy_category_in_plan_review(self):
+        """Verify PlanReview schema does NOT include legacy_category (Decision 103)."""
+        assert "legacy_category" not in PlanReview.model_fields

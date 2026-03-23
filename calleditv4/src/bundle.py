@@ -149,6 +149,11 @@ def format_ddb_update(
     prompt_versions: Dict[str, str],
     clarification_answers: List[Dict[str, str]],
     user_timezone: Optional[str] = None,
+    score_tier: Optional[str] = None,
+    score_label: Optional[str] = None,
+    score_guidance: Optional[str] = None,
+    dimension_assessments: Optional[list] = None,
+    tier_display: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Build the kwargs for a DynamoDB update_item call.
 
@@ -172,6 +177,13 @@ def format_ddb_update(
     ]
     if user_timezone:
         update_parts.append("user_timezone = :tz")
+    # V4-4: Score tier fields
+    if score_tier is not None:
+        update_parts.append("score_tier = :st")
+        update_parts.append("score_label = :sl")
+        update_parts.append("score_guidance = :sg")
+        update_parts.append("dimension_assessments = :da")
+        update_parts.append("tier_display = :td")
 
     update_expr = ", ".join(update_parts) + " ADD clarification_rounds :one"
 
@@ -189,6 +201,12 @@ def format_ddb_update(
     }
     if user_timezone:
         attr_values[":tz"] = user_timezone
+    if score_tier is not None:
+        attr_values[":st"] = score_tier
+        attr_values[":sl"] = score_label
+        attr_values[":sg"] = score_guidance
+        attr_values[":da"] = _convert_floats_to_decimal(dimension_assessments)
+        attr_values[":td"] = _convert_floats_to_decimal(tier_display)
 
     return {
         "Key": {"PK": f"PRED#{prediction_id}", "SK": "BUNDLE"},
