@@ -1,32 +1,46 @@
 # CalledIt Project Summary
 
-A condensed narrative of the CalledIt project from inception through 10 project updates. Use this alongside `decision-log.md` for full context.
+A condensed narrative of the CalledIt project — from inception through v3 (Lambda-based pipeline) to v4 (AgentCore clean rebuild). Use this alongside `decision-log.md` for full context.
 
 ---
 
 ## What CalledIt Is
 
-CalledIt is a prediction verification platform. Users make predictions ("Lakers win tonight", "it'll rain tomorrow", "Miriam will be home by 3pm") through a mobile-first web app. The system analyzes each prediction, builds a structured verification plan (what to check, where to check it, when to check), and categorizes it by verifiability. The goal: understand the user's intent and repackage it into a machine-actionable verification plan.
+CalledIt is a prediction verification platform built on Amazon Bedrock AgentCore. Users make predictions ("Lakers win tonight", "it'll rain tomorrow", "S&P 500 closes above 5000 by Friday") through a mobile-first React PWA. Two specialized AI agents — a creation agent and a verification agent — collaborate through a shared DynamoDB prediction bundle to understand the user's intent, build a machine-actionable verification plan, score verifiability on a continuous 0.0–1.0 scale, and autonomously verify predictions when their verification date arrives.
+
+The system demonstrates production-grade AI agent deployment: AgentCore Runtime for serverless agent hosting with session isolation, Cognito JWT authentication for browser-to-agent WebSocket streaming, CloudFront + S3 for the frontend, and a three-layer eval architecture (Strands Evals SDK → AgentCore Evaluations → Bedrock Evaluations) for continuous quality monitoring.
+
+## Architecture (v4)
+
+Two AgentCore Runtime deployments with shared infrastructure:
+
+- **Creation Agent** — user-facing, streaming. Receives predictions via WebSocket, runs a 3-turn prompt flow (parse → plan → review), scores verifiability, supports multi-round clarification, saves structured prediction bundles to DynamoDB.
+- **Verification Agent** — batch, autonomous. Triggered by EventBridge every 15 minutes via a scanner Lambda. Loads prediction bundles from DynamoDB, gathers real evidence using AgentCore Browser + Code Interpreter, produces structured verdicts (confirmed/refuted/inconclusive).
+
+Both agents use Claude Sonnet 4 via Bedrock, AgentCore built-in tools (Browser + Code Interpreter), and Bedrock Prompt Management for versioned prompts. The prediction bundle in DynamoDB is the contract between them.
 
 ## Tech Stack
 
-- React frontend (mobile-first PWA) with WebSocket streaming
-- AWS Lambda backend (Python, SAM/CloudFormation)
-- Strands Agents SDK for multi-agent AI pipeline
-- Amazon Bedrock (Claude Sonnet 4) for model inference
-- DynamoDB for prediction storage and eval data
-- Cognito for auth (with auto-refresh for mobile UX)
-- SnapStart on all 8 Lambda functions (82% cold start improvement)
+- **Frontend:** React PWA (TypeScript, Vite) served via CloudFront + private S3 (OAC)
+- **Agent Runtime:** Amazon Bedrock AgentCore Runtime (two separate deployments)
+- **Model:** Claude Sonnet 4 via Amazon Bedrock
+- **Tools:** AgentCore Browser (Chromium in Firecracker microVM) + Code Interpreter (Python sandbox)
+- **Auth:** Cognito User Pool with JWT authorization on both API Gateway HTTP API and AgentCore WebSocket
+- **Storage:** DynamoDB (`calledit-v4` table with GSIs for user listing and scanner queries)
+- **Prompts:** Bedrock Prompt Management with immutable versions (no hardcoded fallbacks)
+- **Scheduling:** EventBridge → Scanner Lambda → Verification Agent
+- **Infrastructure:** CloudFormation/SAM templates under `infrastructure/`
+- **Eval:** Strands Evals SDK (local), AgentCore Evaluations (deployed), Bedrock Evaluations (production)
 
-## The Agent Pipeline
+## Key Design Decisions
 
-Four specialized agents in a Strands Graph:
-1. Parser — extracts the factual claim, strips framing ("I bet"), resolves temporal references
-2. Categorizer — routes to `auto_verifiable`, `automatable`, or `human_only` based on available tools
-3. Verification Builder — creates the verification plan (criteria, method, sources, steps)
-4. ReviewAgent — identifies gaps and asks clarification questions
-
-The pipeline supports multi-round refinement: user makes prediction → sees structured output → optionally clarifies → agents refine.
+- **Two agents, not one** — different prompts, memory needs, scaling profiles, and observability. Creation scales with users, verification scales with EventBridge batch size.
+- **Verifiability strength score** — continuous 0.0–1.0 score replaces the v3 3-category system. Users see a green/yellow/red indicator and can choose to clarify to improve the score.
+- **Single agent, multi-turn prompts** — the creation agent runs 3 sequential prompt turns in one Strands Agent. Validated by 16 eval runs showing equivalent quality to a 4-agent serial graph, with simpler code and no silo problem.
+- **Hybrid memory model** — DynamoDB for structured prediction bundles (exact fields, precise lookup), AgentCore Memory for conversational context (semantic search, user preferences). Each used for its strengths.
+- **Built-in tools first, Gateway later** — AgentCore Browser + Code Interpreter cover web search, URL fetching, JS rendering, and calculations with zero external API keys. Gateway with domain-specific APIs (Brave, Alpha Vantage) is Phase 2.
+- **JWT auth for browser WebSocket** — browser connects directly to AgentCore Runtime via WebSocket using Cognito JWT in the `Sec-WebSocket-Protocol` header. No SigV4 presigned URLs, no streaming proxy Lambda.
+- **Spec-driven development** — 20+ specs with requirements → design → tasks, property-based testing with Hypothesis, 121 documented architectural decisions.
 
 ## Project Evolution (10 Updates)
 
@@ -92,25 +106,23 @@ Planned the v4 clean rebuild on Amazon Bedrock AgentCore. Three architectural in
 
 ## The Eval Framework (Portfolio Centerpiece)
 
-The eval framework is the transferable artifact:
+The eval framework demonstrates production-grade AI quality assurance across three layers:
+
+**Layer 1 — Strands Evals SDK (Inner Loop):** Local development, prompt iteration, architecture comparison. Golden dataset with 68 test cases, 15 evaluators (6 LLM judges + 9 deterministic), pluggable backend system. Fast feedback in minutes.
+
+**Layer 2 — AgentCore Evaluations (Bridge):** Deployed agent evaluation with span-level trace analysis. Online eval (every Nth request) + on-demand eval (triggered runs). Production-like traffic patterns on real AgentCore Runtime.
+
+**Layer 3 — Bedrock Evaluations (Outer Loop):** Production quality monitoring at scale. LLM-as-judge on production samples, human evaluation for edge cases, trend monitoring over days/weeks.
+
+The dashboard hero page shows the complete eval lifecycle for any prompt version or configuration change — from local experiment → deployed agent validation → production confidence.
+
+Key artifacts:
 - Golden dataset with ground truth metadata (45 base + 23 fuzzy predictions)
-- 12 evaluators: 6 LLM judges (IntentPreservation, CriteriaMethodAlignment, IntentExtraction, CategorizationJustification, ClarificationRelevance, PipelineCoherence) + 6 deterministic
-- Pluggable backend system for architecture comparison (serial graph vs single agent)
-- Verification-Builder-centric composite score as primary metric
-- Streamlit dashboard with 7 pages for visual analysis
+- 15 evaluators including 6 LLM judges (IntentPreservation, CriteriaMethodAlignment, IntentExtraction, CategorizationJustification, ClarificationRelevance, PipelineCoherence)
+- 8-page Streamlit dashboard (Trends, Heatmap, Prompt Correlation, Reasoning Explorer, Coherence View, Fuzzy Convergence, Architecture Comparison, Verification Alignment)
 - DynamoDB reasoning store for full model traces
 - Bedrock Prompt Management with immutable versions
-- 13 eval runs with isolated single-variable testing methodology
-- Score tracking with regression detection and prompt version correlation
-
-## Key Technical Decisions
-
-- Spec-driven development with Kiro (11 specs, each with requirements → design → tasks)
-- Property-based testing with Hypothesis for correctness properties
-- Isolated single-variable testing for prompt iteration (change one thing per run)
-- Frontend-as-session for refinement state (deliberate architectural choice, not a shortcut)
-- Two-tier evaluator strategy (deterministic catches structure, LLM judge catches reasoning)
-- Verification Builder output as the primary eval target (not categorization)
+- 17+ eval runs with isolated single-variable testing methodology
 
 ### Update 22 (March 22): V4-1 AgentCore Foundation Complete
 First v4 spec executed. Installed AgentCore toolkit, scaffolded `calleditv4/` project, wrote entrypoint with Claude Sonnet 4 and error handling, validated via `agentcore dev` + `agentcore invoke --dev`. Tightened no-mocks policy — mocks now require proven value + explicit user approval (Decision 96).
@@ -145,24 +157,17 @@ Evolved the V4-3a synchronous entrypoint into an async streaming generator with 
 ### Update 26 (March 23): V4-4 Verifiability Scorer Complete
 Extended PlanReview structured output with score tier metadata, per-dimension assessments, and LLM-generated guidance text. First design was over-engineered (separate scorer.py module with regex parsing) — simplified to let the LLM produce everything via structured output. New `DimensionAssessment` Pydantic model, 4 new PlanReview fields (`score_tier`, `score_label`, `score_guidance`, `dimension_assessments`), deterministic `score_to_tier()` function for color/icon mapping. No legacy category — clean break from v3 (Decision 103). Updated plan-reviewer prompt in CloudFormation. Strands structured_output_model populated new fields correctly even before prompt deploy. 148 tests passing.
 
-## Current State (March 23, 2026)
+## Current State (March 24, 2026)
 
-- v3.0.0 released — MCP-powered verification pipeline with Docker Lambda
-- v4 architecture planned — clean rebuild on Amazon Bedrock AgentCore (zero technical debt)
-- Production prompts: parser v1, categorizer v2, VB v3 (tool-aware), review v4 (tool-aware)
-- v4 design: two separate AgentCore agents (creation + verification), verifiability strength score, hybrid memory model, three-layer eval
-- Eval framework: 15 evaluators, 8-page dashboard, `--verify` mode, 17 eval runs
-- Golden dataset: 45 base + 23 fuzzy predictions, 10 marked `immediate` for verification
-- V4-1 (AgentCore Foundation) COMPLETE: scaffolded, entrypoint working, 6 tests
-- V4-2 (Built-in Tools) COMPLETE: Browser + Code Interpreter wired, 15 tests
-- V4-3a (Creation Agent Core) COMPLETE: 3-turn creation flow, 133 tests
-- V4-3b (Clarification & Streaming) COMPLETE: async streaming + clarification rounds, 136 tests
-- V4-4 (Verifiability Scorer) COMPLETE: extended PlanReview with score tier/guidance/dimensions, 148 tests
-- V4-5 split into V4-5a (Verification Agent Core) + V4-5b (Verification Triggers) — Decision 104
-- Separate project per agent: `calleditv4/` (creation), `calleditv4-verification/` (verification) — Decision 105
-- V4-5a (Verification Agent Core) COMPLETE: separate project, sync entrypoint, 22 tests
-- V4-5a integration tested: prompt deployed (ZQQNZIP6SK), DDB pipeline validated end-to-end (30s for simple predictions, 408s for Browser-heavy — context overflow documented)
-- V4-5b (Verification Triggers) COMPLETE: GSI on status+verification_date, scanner Lambda at infrastructure/verification-scanner/, EventBridge schedule, dual invocation mode
-- 110 architectural decisions documented
-- Revised execution order (Decisions 107-110): deploy agents → frontend cutover → eval baseline → Memory integration
-- Next: V4-8a (agentcore launch for both agents)
+- v4 production cutover in progress — both agents deployed to AgentCore Runtime, frontend infrastructure live
+- Creation Agent: deployed, WebSocket handler + HTTP entrypoint, JWT auth configured with Cognito
+- Verification Agent: deployed, sync handler, invoked by scanner Lambda via EventBridge
+- Frontend: React PWA at `frontend-v4/`, served via CloudFront + private S3 (OAC), Cognito auth
+- Infrastructure: 3 CloudFormation stacks (`v4-persistent-resources`, `v4-frontend`, `v4-scanner`)
+- DynamoDB: `calledit-v4` table with 2 GSIs (user listing + scanner queries), clean v4 key format
+- Eval framework: 15 evaluators, 8-page Streamlit dashboard, `--verify` mode, 17+ eval runs
+- Golden dataset: 45 base + 23 fuzzy predictions with ground truth metadata
+- 170 automated tests passing (148 creation + 22 verification)
+- 121 architectural decisions documented across 29 project updates
+- v3 infrastructure running in parallel (untouched) until v4 is validated
+- Next: complete browser WebSocket connectivity, end-to-end validation, eval baseline on deployed agents
