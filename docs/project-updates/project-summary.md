@@ -163,5 +163,6 @@ Extended PlanReview structured output with score tier metadata, per-dimension as
 - V4-5a (Verification Agent Core) COMPLETE: separate project, sync entrypoint, 22 tests
 - V4-5a integration tested: prompt deployed (ZQQNZIP6SK), DDB pipeline validated end-to-end (30s for simple predictions, 408s for Browser-heavy — context overflow documented)
 - V4-5b (Verification Triggers) COMPLETE: GSI on status+verification_date, scanner Lambda at infrastructure/verification-scanner/, EventBridge schedule, dual invocation mode
-- 106 architectural decisions documented
-- Next: V4-6 (Memory Integration)
+- 110 architectural decisions documented
+- Revised execution order (Decisions 107-110): deploy agents → frontend cutover → eval baseline → Memory integration
+- Next: V4-8a (agentcore launch for both agents)

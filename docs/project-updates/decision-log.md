@@ -921,3 +921,35 @@ Each AgentCore agent gets its own project directory: `calleditv4/` for the creat
 **Date:** March 23, 2026
 
 The creation and verification agents share ~20 lines of code (DDB key format `PK=PRED#{id}/SK=BUNDLE`, `_convert_floats_to_decimal()` utility). Rather than extracting a shared package (adds packaging complexity) or importing across projects (fragile coupling), the shared code is duplicated in each project. This keeps each agent self-contained and independently deployable. If shared code grows significantly, extract a `calledit-common` package.
+
+---
+
+## Decision 107: Deploy Agents Before Memory Integration
+**Source:** [Project Update 28](28-project-update-v4-5-complete-next-steps.md)
+**Date:** March 24, 2026
+
+Both agents work end-to-end without AgentCore Memory. DDB bundles carry all state for clarification rounds (creation agent) and verification execution (verification agent). Memory (STM + LTM) is additive — it makes the agents smarter but isn't required for core functionality. Deploy first via `agentcore launch`, add Memory second, measure the delta with the eval framework.
+
+---
+
+## Decision 108: Frontend Cutover Accepts Downtime
+**Source:** [Project Update 28](28-project-update-v4-5-complete-next-steps.md)
+**Date:** March 24, 2026
+
+The React PWA (S3 + CloudFront) will be pointed at v4 AgentCore agents, replacing the v3 Lambda backend. No blue/green deployment, no feature flags, no gradual rollout. Downtime during cutover is acceptable — this is a demo/educational project with no external users depending on uptime.
+
+---
+
+## Decision 109: Eval Baseline Before Memory
+**Source:** [Project Update 28](28-project-update-v4-5-complete-next-steps.md)
+**Date:** March 24, 2026
+
+Run the eval framework against the deployed v4 agents to establish a quality baseline before adding Memory. Then add Memory and rerun to measure improvement. This follows the isolated single-variable testing methodology (Decision 50) — Memory is the single variable between the two eval runs.
+
+---
+
+## Decision 110: Scanner Deploys with Schedule Disabled
+**Source:** [Project Update 28](28-project-update-v4-5-complete-next-steps.md)
+**Date:** March 24, 2026
+
+The verification scanner SAM template deploys with `Enabled: false` on the EventBridge rule. The scanner requires `VERIFICATION_AGENT_ID` (from `agentcore launch`) to invoke the verification agent. Enable the schedule after the verification agent is deployed and the agent ID is known.
