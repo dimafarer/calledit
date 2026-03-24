@@ -948,8 +948,40 @@ Run the eval framework against the deployed v4 agents to establish a quality bas
 
 ---
 
-## Decision 110: Scanner Deploys with Schedule Disabled
+## Decision 110: Presigned WebSocket URL for Frontend-to-Agent Connectivity
 **Source:** [Project Update 28](28-project-update-v4-5-complete-next-steps.md)
 **Date:** March 24, 2026
 
-The verification scanner SAM template deploys with `Enabled: false` on the EventBridge rule. The scanner requires `VERIFICATION_AGENT_ID` (from `agentcore launch`) to invoke the verification agent. Enable the schedule after the verification agent is deployed and the agent ID is known.
+AgentCore Runtime natively supports WebSocket connections via `AgentCoreRuntimeClient.generate_presigned_url()`. The frontend flow: (1) call a small Lambda with Cognito JWT, (2) Lambda validates JWT and generates a presigned `wss://` URL (valid 300s), (3) frontend opens WebSocket directly to AgentCore Runtime — no proxy Lambda for streaming. This eliminates the v3 WebSocket API Gateway + Lambda proxy pattern entirely. Only a tiny "get presigned URL" Lambda is needed. `ListPredictions` stays as a simple REST DDB query. Scanner Lambda deploys with EventBridge schedule disabled — enable after `agentcore launch` provides the agent ID.
+
+---
+
+## Decision 111: Fresh Infrastructure Instances for v4
+**Source:** [Project Update 28](28-project-update-v4-5-complete-next-steps.md)
+**Date:** March 24, 2026
+
+Create new CloudFront + S3 + API Gateway HTTP API for v4, rather than modifying the v3 `calledit-backend` SAM stack. v3 stays running untouched until v4 is validated. Cutover is a DNS/CloudFront swap. Shared resources (DDB table, Cognito user pool, Prompt Management) are reused. Clean v3 teardown after cutover (just delete the stack).
+
+---
+
+## Decision 112: S3 Bucket in Separate CloudFormation Template
+**Source:** [Project Update 28](28-project-update-v4-5-complete-next-steps.md)
+**Date:** March 24, 2026
+
+The v4 S3 bucket for the React frontend is defined in its own CloudFormation template, separate from the main v4 infrastructure stack. S3 buckets can't be cleanly rolled back by CloudFormation if non-empty (failed delete = stuck stack). Separate template means: create once, never touch again, reference from the main stack via exports or parameters. The bucket is private with all public access blocked (per AWS security requirements), served via CloudFront OAC.
+
+---
+
+## Decision 113: Separate v4 DynamoDB Table — Clean Break from v3
+**Source:** [Project Update 28](28-project-update-v4-5-complete-next-steps.md)
+**Date:** March 24, 2026
+
+Create a new `calledit-v4` DynamoDB table for v4 predictions instead of sharing `calledit-db` with v3. The v3 table uses `PK=USER:{userId}`, `SK=PREDICTION#{timestamp}` — the v4 format is `PK=PRED#{prediction_id}`, `SK=BUNDLE`. Sharing the table means either maintaining two key formats or scanning with filters. Neither is acceptable. The new table is CloudFormation-managed with GSIs defined from day one: `user_id` + `created_at` for listing, `status` + `verification_date` for the scanner. No technical debt, no scanning.
+
+---
+
+## Decision 114: v4 DDB Table in Same Template as S3 Bucket
+**Source:** [Project Update 28](28-project-update-v4-5-complete-next-steps.md)
+**Date:** March 24, 2026
+
+The v4 DynamoDB table is defined in the same "persistent resources" CloudFormation template as the S3 bucket (`infrastructure/v4-frontend-bucket/template.yaml`, renamed conceptually to "v4 persistent resources"). Both are create-once-never-delete resources that other stacks reference. DDB tables have the same rollback problem as S3 buckets — deleting a table with data is destructive and irreversible.

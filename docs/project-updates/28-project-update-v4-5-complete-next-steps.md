@@ -131,7 +131,15 @@ AgentCore Identity is another option — it provides workload identity tokens an
 
 - **Decision 109:** Eval framework update before Memory integration. Establish a v4 baseline with the eval framework so Memory's impact can be measured with data, not intuition.
 
-- **Decision 110:** Thin Lambda proxy for frontend-to-AgentCore connectivity. Lambda Function URL (or API Gateway HTTP API) handles Cognito JWT validation and SigV4 signing to AgentCore Runtime API. Replaces the entire v3 Lambda backend with ~50 lines of proxy code.
+- **Decision 110:** Presigned WebSocket URL for frontend-to-agent connectivity. AgentCore Runtime natively supports WebSocket via `generate_presigned_url()`. Frontend calls a small Lambda (Cognito JWT → presigned WSS URL), then connects directly to AgentCore — no streaming proxy needed. Replaces the earlier "thin Lambda proxy" plan.
+
+- **Decision 111:** Fresh infrastructure instances for v4. New CloudFront + S3 + API Gateway HTTP API, not in-place updates to the v3 stack. v3 stays running until v4 is validated. Shared resources (DDB, Cognito, Prompt Management) reused.
+
+- **Decision 112:** S3 bucket in separate CloudFormation template. Non-empty buckets can't be rolled back by CloudFormation. Separate template: create once, never touch, reference from main stack.
+
+- **Decision 113:** Separate v4 DynamoDB table `calledit-v4`. Clean break from v3 key format (`PK=USER:{id}` → `PK=PRED#{id}`). CloudFormation-managed with GSIs from day one: `user_id` + `created_at` for listing, `status` + `verification_date` for scanner. No scanning, no v3 baggage.
+
+- **Decision 114:** v4 DDB table in same persistent resources template as S3 bucket. Both are create-once-never-delete resources. Template at `infrastructure/v4-persistent-resources/template.yaml`.
 
 ## What the Next Agent Should Do
 
