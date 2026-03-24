@@ -39,6 +39,9 @@ def build_bundle(
         "status": "pending",
         "prompt_versions": prompt_versions,
     }
+    # V4-5b: Promote verification_date to top-level for GSI indexing
+    if parsed_claim.get("verification_date"):
+        bundle["verification_date"] = parsed_claim["verification_date"]
     if user_timezone is not None:
         bundle["user_timezone"] = user_timezone
     return bundle
@@ -172,6 +175,7 @@ def format_ddb_update(
         "reviewable_sections = :rs",
         "prompt_versions = :pv",
         "updated_at = :ua",
+        "verification_date = :vd",
         "clarification_history = list_append("
         "if_not_exists(clarification_history, :empty_list), :ch)",
     ]
@@ -195,6 +199,7 @@ def format_ddb_update(
         ":rs": _convert_floats_to_decimal(reviewable_sections),
         ":pv": prompt_versions,
         ":ua": now,
+        ":vd": parsed_claim.get("verification_date", ""),
         ":ch": [{"answers": clarification_answers, "timestamp": now}],
         ":empty_list": [],
         ":one": 1,

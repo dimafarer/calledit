@@ -291,3 +291,24 @@ aws dynamodb scan --table-name calledit-db --filter-expression "#s = :pending" -
 # Check verification executor prompt ID
 aws cloudformation describe-stacks --stack-name calledit-prompts --query "Stacks[0].Outputs[?contains(OutputKey, 'VerificationExecutor')]" --output table
 ```
+
+## Verification Scanner (V4-5b)
+
+```bash
+# Create GSI (one-time setup)
+bash infrastructure/verification-scanner/setup_gsi.sh
+
+# Check GSI status
+aws dynamodb describe-table --table-name calledit-db --query "Table.GlobalSecondaryIndexes[?IndexName=='status-verification_date-index'].IndexStatus" --output text
+
+# Deploy scanner Lambda
+cd /home/wsluser/projects/calledit/infrastructure/verification-scanner
+sam build && sam deploy --guided
+
+# Test scanner locally (requires verification agent dev server running)
+# Set VERIFICATION_AGENT_ENDPOINT=http://localhost:8080 in template.yaml params
+# Then invoke the scanner Lambda directly
+
+# Check table stats
+aws dynamodb describe-table --table-name calledit-db --query "Table.{ItemCount:ItemCount,TableSizeBytes:TableSizeBytes,BillingMode:BillingModeSummary.BillingMode,GSIs:GlobalSecondaryIndexes[*].{Name:IndexName,ItemCount:ItemCount,SizeBytes:IndexSizeBytes,Status:IndexStatus}}" --output json
+```

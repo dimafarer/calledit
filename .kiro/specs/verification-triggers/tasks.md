@@ -6,12 +6,12 @@ Implement the scheduling layer that finds due predictions in DynamoDB and invoke
 
 ## Tasks
 
-- [ ] 1. Promote `verification_date` to top-level DDB attribute
-  - [ ] 1.1 Update `build_bundle()` in `calleditv4/src/bundle.py`
+- [x] 1. Promote `verification_date` to top-level DDB attribute
+  - [x] 1.1 Update `build_bundle()` in `calleditv4/src/bundle.py`
     - Extract `parsed_claim["verification_date"]` and write it as a top-level `verification_date` field in the returned bundle dict
     - Must be set before `format_ddb_item()` is called so it becomes a top-level DDB attribute the GSI can index
     - _Requirements: 1.1, 1.3_
-  - [ ] 1.2 Update `format_ddb_update()` in `calleditv4/src/bundle.py`
+  - [x] 1.2 Update `format_ddb_update()` in `calleditv4/src/bundle.py`
     - Add `verification_date` to the SET expression so clarification rounds also update the top-level field from `parsed_claim["verification_date"]`
     - _Requirements: 1.1, 1.3_
   - [ ]* 1.3 Update property tests in `calleditv4/tests/test_bundle.py`
@@ -19,25 +19,25 @@ Implement the scheduling layer that finds due predictions in DynamoDB and invoke
     - Add assertions to `TestDdbItemFormat` verifying the top-level `verification_date` survives `format_ddb_item()`
     - _Requirements: 1.1_
 
-- [ ] 2. Create GSI setup script
-  - [ ] 2.1 Create `infrastructure/verification-scanner/setup_gsi.sh`
+- [x] 2. Create GSI setup script
+  - [x] 2.1 Create `infrastructure/verification-scanner/setup_gsi.sh`
     - Write the `aws dynamodb update-table` command to add `status-verification_date-index` GSI to `calledit-db`
     - GSI partition key: `status` (String), sort key: `verification_date` (String)
     - Projection: INCLUDE with `prediction_id` as non-key attribute
     - Make the script executable and include a wait command for GSI to become ACTIVE
     - _Requirements: 1.1, 1.2, 1.3_
 
-- [ ] 3. Implement scanner Lambda core
-  - [ ] 3.1 Create `infrastructure/verification-scanner/scanner.py` with `extract_prediction_id()`
+- [x] 3. Implement scanner Lambda core
+  - [x] 3.1 Create `infrastructure/verification-scanner/scanner.py` with `extract_prediction_id()`
     - Implement `extract_prediction_id(item: dict) -> str | None` that extracts prediction_id from the `prediction_id` projected attribute or parses `PK` (`PRED#pred-xxx` → `pred-xxx`)
     - Returns `None` if PK doesn't start with `PRED#` and no `prediction_id` attribute exists
     - _Requirements: 2.5_
-  - [ ] 3.2 Implement `query_due_predictions()` in `scanner.py`
+  - [x] 3.2 Implement `query_due_predictions()` in `scanner.py`
     - Query the GSI with `status = "pending"` and `verification_date <= now_iso` as KeyConditionExpression
     - Handle pagination by following `LastEvaluatedKey` until all results are collected
     - Return list of all matching items
     - _Requirements: 1.5, 2.2, 2.3_
-  - [ ] 3.3 Implement `lambda_handler()` in `scanner.py`
+  - [x] 3.3 Implement `lambda_handler()` in `scanner.py`
     - Entry point: `lambda_handler(event, context) -> dict`
     - Validate env vars (`VERIFICATION_AGENT_ID` or `VERIFICATION_AGENT_ENDPOINT` must be set)
     - Call `query_due_predictions()`, iterate results sequentially
@@ -48,30 +48,30 @@ Implement the scheduling layer that finds due predictions in DynamoDB and invoke
     - If zero predictions found, log INFO and return summary with all zeros
     - _Requirements: 2.1, 2.2, 2.4, 3.1, 3.2, 3.5, 3.6, 3.7, 4.1, 4.2, 4.3_
 
-- [ ] 4. Implement invocation client abstraction
-  - [ ] 4.1 Implement `AgentCoreInvoker` and `HttpInvoker` classes in `scanner.py`
+- [x] 4. Implement invocation client abstraction
+  - [x] 4.1 Implement `AgentCoreInvoker` and `HttpInvoker` classes in `scanner.py`
     - `AgentCoreInvoker`: uses `AgentCoreRuntimeClient` (boto3) to invoke the deployed verification agent with `{"prediction_id": "<id>"}` payload
     - `HttpInvoker`: uses `urllib.request` to HTTP POST to the dev endpoint (e.g., `http://localhost:8080`) with the same payload
     - Both expose an `invoke(prediction_id: str) -> dict` method returning parsed JSON response
     - _Requirements: 3.1, 3.3, 3.4_
-  - [ ] 4.2 Implement `build_invocation_client()` factory in `scanner.py`
+  - [x] 4.2 Implement `build_invocation_client()` factory in `scanner.py`
     - If `VERIFICATION_AGENT_ENDPOINT` env var is set → return `HttpInvoker`
     - Else if `VERIFICATION_AGENT_ID` env var is set → return `AgentCoreInvoker`
     - Else → raise configuration error
     - _Requirements: 3.3, 3.4_
 
-- [ ] 5. Checkpoint — Verify core scanner logic
+- [x] 5. Checkpoint — Verify core scanner logic
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Create SAM template and requirements
-  - [ ] 6.1 Create `infrastructure/verification-scanner/template.yaml`
+- [x] 6. Create SAM template and requirements
+  - [x] 6.1 Create `infrastructure/verification-scanner/template.yaml`
     - Define `VerificationScannerFunction` as `AWS::Serverless::Function` with Python 3.12, zip packaging, 900s timeout, 256MB memory
     - Define `ScannerScheduleRule` as EventBridge rule with `rate(15 minutes)`
     - Define IAM policies: DynamoDB Query on `calledit-db` table and `status-verification_date-index` GSI, plus AgentCore Runtime invoke
     - Set environment variables: `DYNAMODB_TABLE_NAME`, `GSI_NAME`, `VERIFICATION_AGENT_ID`, `VERIFICATION_AGENT_ENDPOINT`
     - Include commented instructions for GSI creation (reference `setup_gsi.sh`)
     - _Requirements: 1.4, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6_
-  - [ ] 6.2 Create `infrastructure/verification-scanner/requirements.txt`
+  - [x] 6.2 Create `infrastructure/verification-scanner/requirements.txt`
     - Add `boto3` as the only runtime dependency
     - _Requirements: 5.1_
 
@@ -121,7 +121,7 @@ Implement the scheduling layer that finds due predictions in DynamoDB and invoke
     - Verification agent returns `{"status": "error"}` → counted as failure
     - _Requirements: 2.5, 3.3, 3.4, 3.5, 4.3_
 
-- [ ] 8. Final checkpoint — Ensure all tests pass
+- [x] 8. Final checkpoint — Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
   - Run: `/home/wsluser/projects/calledit/venv/bin/python -m pytest infrastructure/verification-scanner/tests/ -v`
   - Run: `/home/wsluser/projects/calledit/venv/bin/python -m pytest calleditv4/tests/test_bundle.py -v`

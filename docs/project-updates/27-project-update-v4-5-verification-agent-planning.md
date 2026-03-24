@@ -224,3 +224,39 @@ Key design decisions:
 - GSI via CLI script (calledit-db not CloudFormation-managed)
 - Dual invocation: AgentCoreRuntimeClient (prod) / HTTP POST (dev)
 - Prerequisite: promote `verification_date` to top-level DDB attribute
+
+## V4-5b Execution Results
+
+### Implementation
+All 6 required tasks completed (Tasks 1-6, 8). Optional test tasks (7.1-7.8) skipped for faster MVP.
+
+1. Prerequisite: Promoted `verification_date` to top-level DDB attribute in `build_bundle()` and `format_ddb_update()`. Existing property test caught the new field — updated `REQUIRED_FIELDS` set.
+2. GSI setup: Created `setup_gsi.sh`, ran it. GSI took ~7 minutes to become ACTIVE (normal for DynamoDB backfill). GSI shows 0 items because existing predictions don't have top-level `verification_date` — new predictions will be indexed.
+3. Scanner Lambda: `extract_prediction_id()`, `query_due_predictions()` with pagination, `lambda_handler()` with fail-forward pattern.
+4. Invocation clients: `HttpInvoker` (dev, HTTP POST to agentcore dev server) and `AgentCoreInvoker` (prod, AgentCoreRuntimeClient). Factory selects based on env vars.
+5. SAM template: Python 3.12 zip Lambda, 900s timeout, EventBridge rate(15 minutes), DynamoDB + GSI query permissions, AgentCore invoke permissions.
+6. Requirements.txt: boto3 only.
+
+### Test Results
+- 148 creation agent tests passing (no regressions from `verification_date` promotion)
+- 22 verification agent tests passing
+- 170 total tests across both projects
+
+### DDB Table Stats
+- 18 items, ~57KB total
+- PAY_PER_REQUEST billing (essentially free at this scale)
+- GSI `status-verification_date-index` ACTIVE, 0 items (sparse — existing items lack top-level `verification_date`)
+
+### Files Created
+- `infrastructure/verification-scanner/scanner.py` — Scanner Lambda handler
+- `infrastructure/verification-scanner/setup_gsi.sh` — GSI creation script
+- `infrastructure/verification-scanner/template.yaml` — SAM template
+- `infrastructure/verification-scanner/requirements.txt` — boto3 dependency
+
+### Files Modified
+- `calleditv4/src/bundle.py` — `verification_date` promoted to top-level in `build_bundle()` and `format_ddb_update()`
+- `calleditv4/tests/test_bundle.py` — Added `verification_date` to `REQUIRED_FIELDS`
+- `calleditv4-verification/src/prompt_client.py` — Updated `PROMPT_IDENTIFIERS` with real prompt ID `ZQQNZIP6SK`
+- `docs/project-updates/27-project-update-v4-5-verification-agent-planning.md` — This file (integration + execution results)
+- `docs/project-updates/project-summary.md` — Updated current state
+- `docs/project-updates/common-commands.md` — Added verification agent commands

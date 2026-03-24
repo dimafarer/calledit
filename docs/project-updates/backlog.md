@@ -288,7 +288,7 @@ The data from Runs 13-14 shows that deterministic evaluators often pass test cas
 
 **Source:** Spec planning session (March 20, 2026), v4 Architecture Planning (March 22, 2026)
 **Priority:** High — next major work after eval analysis
-**Status:** V4-1 (AgentCore Foundation) COMPLETE, V4-2 (Built-in Tools) COMPLETE, V4-3a (Creation Agent Core) COMPLETE, V4-3b (Clarification & Streaming) COMPLETE. V4-4 (Verifiability Scorer) or V4-5 (Verification Agent) next.
+**Status:** V4-1 (AgentCore Foundation) COMPLETE, V4-2 (Built-in Tools) COMPLETE, V4-3a (Creation Agent Core) COMPLETE, V4-3b (Clarification & Streaming) COMPLETE, V4-4 (Verifiability Scorer) COMPLETE, V4-5a (Verification Agent Core) COMPLETE + integration tested, V4-5b (Verification Triggers) COMPLETE. V4-6 (Memory Integration) next.
 
 **Problem:** The current SAM Lambda architecture was chosen for the class being taught (low cost for students to deploy). Now the project aims to demonstrate best-in-class agent architecture. AgentCore is purpose-built for deploying and operating AI agents with built-in observability, scaling, and lifecycle management.
 
@@ -326,6 +326,7 @@ The data from Runs 13-14 shows that deterministic evaluators often pass test cas
 
 **Source:** V4-3b design review (March 23, 2026)
 **Priority:** Medium — becomes important as prediction volume grows
+**Status:** COMPLETE (V4-5b) — GSI `status-verification_date-index` created on `calledit-db`. Scanner Lambda queries it.
 
 **Problem:** The v3 verification scanner and the `list-predictions` endpoint use DynamoDB `scan` operations to find predictions. Scans read every item in the table and filter client-side, which is O(n) on table size. This works fine at demo scale (~50 predictions) but becomes expensive and slow as the table grows. The V4-3a integration test used a scan with `begins_with(PK, "PRED#pred-")` to verify DDB saves — this pattern should not carry into production queries.
 

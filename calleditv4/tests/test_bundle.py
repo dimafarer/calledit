@@ -127,6 +127,7 @@ class TestBundleAssemblyInvariants:
         "raw_prediction",
         "parsed_claim",
         "verification_plan",
+        "verification_date",
         "verifiability_score",
         "verifiability_reasoning",
         "reviewable_sections",
