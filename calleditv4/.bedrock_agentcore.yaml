@@ -3,13 +3,13 @@ agents:
   calleditv4_Agent:
     name: calleditv4_Agent
     language: python
-    node_version: null
+    node_version: '20'
     entrypoint: /home/wsluser/projects/calledit/calleditv4/src/main.py
     deployment_type: direct_code_deploy
-    runtime_type: PYTHON_3_10
-    platform: linux/amd64
+    runtime_type: PYTHON_3_12
+    platform: linux/arm64
     container_runtime: null
-    source_path: /home/wsluser/projects/calledit/calleditv4/src
+    source_path: /home/wsluser/projects/calledit/calleditv4
     aws:
       execution_role: arn:aws:iam::894249332178:role/AmazonBedrockAgentCoreSDKRuntime-us-west-2-5a297cfdfd
       execution_role_auto_create: false
@@ -38,13 +38,13 @@ agents:
       execution_role: null
       source_bucket: null
     memory:
-      mode: NO_MEMORY
-      memory_id: null
-      memory_arn: null
-      memory_name: null
+      mode: STM_ONLY
+      memory_id: calleditv4_Agent_mem-JVB6D78I1x
+      memory_arn: arn:aws:bedrock-agentcore:us-west-2:894249332178:memory/calleditv4_Agent_mem-JVB6D78I1x
+      memory_name: calleditv4_Agent_mem
       event_expiry_days: 30
-      first_invoke_memory_check_done: false
-      was_created_by_toolkit: false
+      first_invoke_memory_check_done: true
+      was_created_by_toolkit: true
     identity:
       credential_providers: []
       workload: null
@@ -54,8 +54,14 @@ agents:
       signing_algorithm: ES384
       issuer_url: null
       duration_seconds: 300
-    authorizer_configuration: null
-    request_header_configuration: null
+    authorizer_configuration:
+      customJWTAuthorizer:
+        discoveryUrl: https://cognito-idp.us-west-2.amazonaws.com/us-west-2_GOEwUjJtv/.well-known/openid-configuration
+        allowedClients:
+        - 753gn25jle081ajqabpd4lbin9
+    request_header_configuration:
+      requestHeaderAllowlist:
+      - Authorization
     oauth_configuration: null
     api_key_env_var_name: null
     api_key_credential_provider_name: null

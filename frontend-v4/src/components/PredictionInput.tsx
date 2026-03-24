@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { getPresignedUrl, connectAndStream, StreamEvent } from '../services/agentCoreWebSocket';
+import { connectAndStream, StreamEvent } from '../services/agentCoreWebSocket';
 
 const PredictionInput = () => {
   const [prompt, setPrompt] = useState('');
@@ -22,10 +22,14 @@ const PredictionInput = () => {
       const token = getToken();
       if (!token) { setError('Not authenticated'); setIsStreaming(false); return; }
 
-      const { url } = await getPresignedUrl(token);
+      // Use access token for AgentCore WebSocket JWT auth (not id token)
+      const accessToken = localStorage.getItem('accessToken');
+      if (!accessToken) { setError('No access token available'); setIsStreaming(false); return; }
+
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-      connectAndStream(url, { prediction_text: prompt, timezone }, {
+      // Decision 121: Connect directly with JWT, no presigned URL needed
+      connectAndStream(accessToken, { prediction_text: prompt, timezone }, {
         onEvent: (event: StreamEvent) => {
           switch (event.type) {
             case 'flow_started':

@@ -1033,3 +1033,11 @@ AgentCore Runtime has two separate protocol contracts: `@app.entrypoint` for HTT
 **Date:** March 24, 2026
 
 The correct IAM permission for WebSocket connections is `bedrock-agentcore:InvokeAgentRuntimeWithWebSocketStream`, not `bedrock:InvokeAgent` or `bedrock-agentcore:InvokeAgentRuntime`.
+
+---
+
+## Decision 121: JWT Bearer Token Auth for Browser-to-Agent WebSocket (Replaces Presigned URL)
+**Source:** [Project Update 29](29-project-update-v4-8a-production-cutover.md)
+**Date:** March 24, 2026
+
+The presigned URL (SigV4) approach for browser-to-agent WebSocket connectivity doesn't work because browsers send an `Origin` header that AgentCore rejects on SigV4-signed WebSocket connections. AgentCore natively supports JWT bearer token auth for WebSocket — the browser passes the Cognito JWT via the `Sec-WebSocket-Protocol` header (base64url-encoded). This eliminates the Presigned URL Lambda for the WebSocket path. The agent must be configured with `--authorizer-config` pointing to the Cognito user pool's OIDC discovery URL. Replaces Decision 110 for the browser WebSocket path.

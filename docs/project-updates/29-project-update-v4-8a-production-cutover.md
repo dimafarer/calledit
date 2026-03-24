@@ -115,17 +115,27 @@ Resources defined:
 
 5. **Wrong IAM permission for presigned URL:** Template used `bedrock:InvokeAgent` — the correct permission for AgentCore Runtime is `bedrock-agentcore:InvokeAgentRuntime` (and `bedrock-agentcore:InvokeAgentRuntimeWithWebSocketStream` for WebSocket).
 
-6. **CRITICAL — WebSocket 424 Failed Dependency (BLOCKING):** The presigned URL generates correctly and the frontend receives it, but the WebSocket connection to AgentCore Runtime fails with HTTP 424. Root cause: the creation agent only has `@app.entrypoint` (HTTP streaming handler) but does NOT have `@app.websocket` handler. AgentCore Runtime requires a separate `@app.websocket` decorator for WebSocket connections — it's a different protocol contract than HTTP streaming. The `agentcore invoke` CLI uses HTTP `InvokeAgentRuntime`, not WebSocket, which is why CLI invocation works but browser WebSocket fails. This requires adding a `@app.websocket` handler to the creation agent. See Decision 119.
+6. **CRITICAL — WebSocket 424 Failed Dependency (RESOLVED):** The presigned URL generates correctly and the frontend receives it, but the WebSocket connection to AgentCore Runtime fails with HTTP 424. Root cause: the creation agent only has `@app.entrypoint` (HTTP streaming handler) but does NOT have `@app.websocket` handler. AgentCore Runtime requires a separate `@app.websocket` decorator for WebSocket connections — it's a different protocol contract than HTTP streaming. Fixed by adding `@app.websocket` handler (Decision 119).
 
-### What's Next (Remaining Tasks)
+7. **SigV4 presigned URL rejected from browser (RESOLVED by pivot to JWT):** Even after adding the WebSocket handler, SigV4 presigned URLs fail from browsers — no response headers returned. Works from Python CLI. Root cause: browsers send an `Origin` header that AgentCore rejects on SigV4-signed WebSocket connections. Pivoted to JWT bearer token auth via `Sec-WebSocket-Protocol` header (Decision 121). Browser connects directly with Cognito access token — no presigned URL Lambda needed.
 
-- **BLOCKER — WebSocket handler:** Add `@app.websocket` handler to creation agent (see Decision 119 below)
-- **Task 7:** ~~Deploy `calledit-v4-frontend` stack~~ DONE (but needs IAM permission fix after WebSocket handler is added)
-- **Task 8:** ~~Checkpoint~~ DONE
-- **Task 9:** ~~Build `frontend-v4/` React PWA~~ DONE (deployed to S3 + CloudFront)
-- **Task 10:** ~~Build and deploy frontend~~ DONE
-- **Task 11:** ~~Update scanner Lambda~~ DONE (deployed as `calledit-v4-scanner` stack)
-- **Task 12:** End-to-end validation — blocked on WebSocket fix
+8. **Request header allowlist wildcard rejected:** `X-Amzn-Bedrock-AgentCore-Runtime-Custom-*` wildcard not allowed — regex requires actual alphanumeric characters. Fixed by removing the wildcard, keeping only `Authorization`.
+
+9. **Agent execution role missing permissions:** AgentCore auto-created execution role lacks `bedrock:GetPrompt`, `bedrock:InvokeModel`, and `dynamodb:*` permissions. Fixed by adding inline policy via CLI. This is a manual step — AgentCore doesn't auto-configure these.
+
+### End-to-End Flow Validated
+
+Browser → Cognito login → JWT in `Sec-WebSocket-Protocol` → AgentCore WebSocket → creation agent → 3-turn streaming (parse → plan → review) → events streamed to browser in real-time. Prediction ID generated, agent reasoning visible in UI. DDB save pending verification of permissions.
+
+Known issue: streaming comes in large chunks (per-turn batches) instead of token-by-token. Root cause: WebSocket handler proxies through HTTP handler's generator which batches text events. Fix: refactor WebSocket handler to call `stream_async()` directly.
+
+### What's Next (Remaining Polish)
+
+- **Streaming granularity:** Refactor WebSocket handler to call `stream_async()` directly instead of proxying through HTTP handler — enables token-by-token streaming like v3 Lambda had
+- **Frontend display:** Render structured output (parsed claim, verification plan, score indicator) from `turn_complete` and `flow_complete` events, not just raw text
+- **Verification agent role:** Add same IAM inline policy to verification agent execution role
+- **Presigned URL Lambda cleanup:** Can be removed from the frontend stack (JWT auth replaced it for WebSocket)
+- **IAM permission scoping:** Scope wildcard `bedrock-agentcore:InvokeAgentRuntimeWithWebSocketStream` back to specific resource ARN
 
 ### Decision 119: Add @app.websocket handler to creation agent
 

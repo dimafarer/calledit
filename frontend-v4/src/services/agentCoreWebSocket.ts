@@ -1,11 +1,14 @@
 /**
- * AgentCore WebSocket Service — v4 presigned URL → direct WebSocket
+ * AgentCore WebSocket Service — v4 JWT auth → direct WebSocket
  *
- * Replaces v3's API Gateway WebSocket proxy pattern.
- * Flow: POST /presigned-url → wss:// → SSE stream events
+ * Decision 121: Browser connects directly to AgentCore Runtime using
+ * Cognito JWT via Sec-WebSocket-Protocol header (base64url-encoded).
+ * No presigned URL Lambda needed for the WebSocket path.
  */
 
 const V4_API_URL = import.meta.env.VITE_V4_API_URL;
+const AGENT_RUNTIME_ARN = import.meta.env.VITE_AGENT_RUNTIME_ARN;
+const AGENT_WS_REGION = import.meta.env.VITE_AWS_REGION || 'us-west-2';
 
 export interface StreamEvent {
   type: 'flow_started' | 'text' | 'turn_complete' | 'flow_complete' | 'error';
@@ -19,66 +22,47 @@ export interface StreamCallbacks {
   onClose: () => void;
 }
 
-/** Call POST /presigned-url with Cognito JWT, returns wss:// URL + session_id */
-export async function getPresignedUrl(token: string): Promise<{ url: string; session_id: string }> {
-  const response = await fetch(`${V4_API_URL}/presigned-url`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Presigned URL request failed (${response.status}): ${body}`);
-  }
-
-  return response.json();
+/** Base64url encode a string (no padding, URL-safe) */
+function base64urlEncode(str: string): string {
+  return btoa(str)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
 }
 
-/** Parse SSE-formatted data from WebSocket message */
-export function parseSSEEvents(raw: string): StreamEvent[] {
-  const events: StreamEvent[] = [];
-  const parts = raw.split('\n\n');
-
-  for (const part of parts) {
-    const trimmed = part.trim();
-    if (!trimmed) continue;
-
-    // Strip "data: " prefix if present
-    const jsonStr = trimmed.startsWith('data: ') ? trimmed.slice(6) : trimmed;
-
-    try {
-      const parsed = JSON.parse(jsonStr);
-      if (parsed && parsed.type) {
-        events.push(parsed as StreamEvent);
-      }
-    } catch {
-      // Skip malformed events, log for debugging
-      console.warn('Failed to parse SSE event:', jsonStr.slice(0, 100));
-    }
-  }
-
-  return events;
+/** Build the AgentCore WebSocket URL */
+function buildWsUrl(): string {
+  const encodedArn = encodeURIComponent(AGENT_RUNTIME_ARN);
+  return `wss://bedrock-agentcore.${AGENT_WS_REGION}.amazonaws.com/runtimes/${encodedArn}/ws`;
 }
 
-/** Open WebSocket to presigned URL, send prediction, stream events back */
+/** Open WebSocket to AgentCore with JWT auth, send prediction, stream events back */
 export function connectAndStream(
-  wssUrl: string,
+  token: string,
   payload: { prediction_text: string; user_id?: string; timezone?: string },
   callbacks: StreamCallbacks,
 ): WebSocket {
-  const ws = new WebSocket(wssUrl);
+  const wssUrl = buildWsUrl();
+  const base64Token = base64urlEncode(token);
+
+  // AgentCore accepts JWT via Sec-WebSocket-Protocol header (Decision 121)
+  const ws = new WebSocket(wssUrl, [
+    `base64UrlBearerAuthorization.${base64Token}`,
+    'base64UrlBearerAuthorization',
+  ]);
 
   ws.onopen = () => {
     ws.send(JSON.stringify(payload));
   };
 
   ws.onmessage = (event) => {
-    const events = parseSSEEvents(event.data);
-    for (const e of events) {
-      callbacks.onEvent(e);
+    try {
+      const parsed = JSON.parse(event.data);
+      if (parsed && parsed.type) {
+        callbacks.onEvent(parsed as StreamEvent);
+      }
+    } catch {
+      console.warn('Failed to parse WebSocket message:', String(event.data).slice(0, 100));
     }
   };
 

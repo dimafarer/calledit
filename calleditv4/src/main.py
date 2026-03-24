@@ -146,6 +146,44 @@ async def _run_streaming_turn(agent, prompt, model_cls, turn_number,
     return structured, turn_event, text_events
 
 
+async def _run_streaming_turn_ws(agent, prompt, model_cls, turn_number,
+                                  turn_name, prediction_id, websocket):
+    """WebSocket variant — sends each token immediately for real-time UX.
+
+    Same logic as _run_streaming_turn but sends events via websocket.send_json()
+    as they arrive instead of collecting into a list.
+    """
+    structured = None
+
+    async for event in agent.stream_async(
+        prompt, structured_output_model=model_cls
+    ):
+        if "data" in event:
+            await websocket.send_json({
+                "type": "text",
+                "prediction_id": prediction_id,
+                "data": {
+                    "turn_number": turn_number,
+                    "turn_name": turn_name,
+                    "content": event["data"],
+                },
+            })
+        elif "result" in event:
+            structured = event["result"].structured_output
+
+    turn_event = {
+        "type": "turn_complete",
+        "prediction_id": prediction_id,
+        "data": {
+            "turn_number": turn_number,
+            "turn_name": turn_name,
+            "output": structured.model_dump() if structured else {},
+        },
+    }
+    await websocket.send_json(turn_event)
+    return structured
+
+
 @app.entrypoint
 async def handler(payload: dict, context: RequestContext):
     """Async streaming entrypoint — routes to creation, clarification, or simple mode.
@@ -485,45 +523,143 @@ async def handler(payload: dict, context: RequestContext):
         })
 
 
-if __name__ == "__main__":
-    app.run()
-
-
 @app.websocket
 async def websocket_handler(websocket, context):
-    """WebSocket entrypoint — same creation/clarification flow, different transport.
+    """WebSocket entrypoint — token-by-token streaming directly to browser.
 
-    Decision 119: AgentCore requires @app.websocket for presigned URL connections.
-    The @app.entrypoint handler (HTTP streaming) stays for CLI/API compatibility.
-    This handler reuses the same flow logic but sends events via websocket.send_json().
+    Decision 119: @app.websocket for browser WebSocket connections.
+    Decision 121: JWT auth via Sec-WebSocket-Protocol header.
+
+    Unlike the HTTP handler which batches text events per turn, this handler
+    sends each token immediately via websocket.send_json() for real-time UX.
     """
     await websocket.accept()
     try:
         payload = await websocket.receive_json()
         logger.info(f"WebSocket received payload: {list(payload.keys())}")
+        user_timezone = payload.get("timezone")
 
-        # Run the same handler logic — it yields JSON strings
-        async for event_json in handler(payload, context):
-            # handler yields JSON strings, parse and send as JSON objects
+        # --- Creation route (most common from browser) ---
+        if "prediction_text" in payload:
+            prediction_id = generate_prediction_id()
+            user_id = payload.get("user_id", "anonymous")
+
+            await websocket.send_json({
+                "type": "flow_started",
+                "prediction_id": prediction_id,
+                "data": {
+                    "flow_type": "creation",
+                    "clarification_round": 0,
+                    "session_id": getattr(context, "session_id", None),
+                },
+            })
+
             try:
-                event_obj = json.loads(event_json)
-                await websocket.send_json(event_obj)
-            except (json.JSONDecodeError, TypeError):
-                # If it's not valid JSON, send as-is wrapped in a text event
-                await websocket.send_json({"type": "text", "data": {"content": str(event_json)}})
+                current_date = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                tool_manifest = _get_tool_manifest()
+                model = BedrockModel(model_id=MODEL_ID)
+                agent = Agent(model=model, tools=TOOLS)
+
+                # Turn 1: Parse
+                parse_variables = {"current_date": current_date}
+                if user_timezone:
+                    parse_variables["user_timezone"] = user_timezone
+                parse_prompt = fetch_prompt("prediction_parser", variables=parse_variables)
+                parse_input = f"{parse_prompt}\n\nPrediction: {payload['prediction_text']}"
+                parsed_claim = await _run_streaming_turn_ws(
+                    agent, parse_input, ParsedClaim, 1, "parse", prediction_id, websocket
+                )
+
+                # Turn 2: Plan
+                plan_prompt = fetch_prompt("verification_planner", variables={"tool_manifest": tool_manifest})
+                verification_plan = await _run_streaming_turn_ws(
+                    agent, plan_prompt, VerificationPlan, 2, "plan", prediction_id, websocket
+                )
+
+                # Turn 3: Review
+                review_prompt = fetch_prompt("plan_reviewer")
+                plan_review = await _run_streaming_turn_ws(
+                    agent, review_prompt, PlanReview, 3, "review", prediction_id, websocket
+                )
+
+                # Assemble and save bundle
+                bundle = build_bundle(
+                    prediction_id=prediction_id, user_id=user_id,
+                    raw_prediction=payload["prediction_text"],
+                    parsed_claim=parsed_claim.model_dump(),
+                    verification_plan=verification_plan.model_dump(),
+                    verifiability_score=plan_review.verifiability_score,
+                    verifiability_reasoning=plan_review.verifiability_reasoning,
+                    reviewable_sections=[s.model_dump() for s in plan_review.reviewable_sections],
+                    prompt_versions=get_prompt_version_manifest(),
+                    user_timezone=user_timezone,
+                )
+                review_dump = plan_review.model_dump()
+                bundle["score_tier"] = review_dump["score_tier"]
+                bundle["score_label"] = review_dump["score_label"]
+                bundle["score_guidance"] = review_dump["score_guidance"]
+                bundle["dimension_assessments"] = review_dump["dimension_assessments"]
+                bundle["tier_display"] = score_to_tier(plan_review.verifiability_score)
+
+                try:
+                    ddb = boto3.resource("dynamodb")
+                    table = ddb.Table(DYNAMODB_TABLE_NAME)
+                    table.put_item(Item=format_ddb_item(bundle))
+                except Exception as save_err:
+                    logger.error(f"DDB save failed for {prediction_id}: {save_err}", exc_info=True)
+                    bundle["save_error"] = str(save_err)
+
+                await websocket.send_json({
+                    "type": "flow_complete",
+                    "prediction_id": prediction_id,
+                    "data": bundle,
+                })
+
+            except Exception as e:
+                logger.error(f"Creation flow failed for {prediction_id}: {e}", exc_info=True)
+                await websocket.send_json({
+                    "type": "error", "prediction_id": prediction_id,
+                    "data": {"message": str(e)},
+                })
+
+        # --- Simple prompt mode ---
+        elif "prompt" in payload:
+            try:
+                model = BedrockModel(model_id=MODEL_ID)
+                agent = Agent(model=model, system_prompt=SIMPLE_PROMPT_SYSTEM, tools=TOOLS)
+                response = agent(payload["prompt"])
+                await websocket.send_json({
+                    "type": "flow_complete", "prediction_id": "",
+                    "data": {"response": str(response)},
+                })
+            except Exception as e:
+                await websocket.send_json({
+                    "type": "error", "prediction_id": "",
+                    "data": {"message": str(e)},
+                })
+
+        # --- Missing fields ---
+        else:
+            await websocket.send_json({
+                "type": "error", "prediction_id": "",
+                "data": {"message": "Missing 'prediction_text' or 'prompt' field in payload"},
+            })
 
     except Exception as e:
         logger.error(f"WebSocket handler error: {e}", exc_info=True)
         try:
             await websocket.send_json({
-                "type": "error",
-                "prediction_id": "",
+                "type": "error", "prediction_id": "",
                 "data": {"message": str(e)},
             })
         except Exception:
-            pass  # Connection may already be closed
+            pass
     finally:
         try:
             await websocket.close()
         except Exception:
             pass
+
+
+if __name__ == "__main__":
+    app.run()
