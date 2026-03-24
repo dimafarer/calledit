@@ -59,7 +59,7 @@ Resources:
           Properties:
             Schedule: rate(15 minutes)
             Description: Scan for predictions due for verification
-            Enabled: true
+            Enabled: false  # Decision 110: enable after agentcore launch
 
 Outputs:
   VerificationScannerFunctionArn:
