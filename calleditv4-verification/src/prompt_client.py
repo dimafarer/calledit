@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 # Verification prompt identifier — populated after CloudFormation deploy
 PROMPT_IDENTIFIERS: Dict[str, str] = {
-    "verification_executor": "PLACEHOLDER",
+    "verification_executor": "ZQQNZIP6SK",
 }
 
 _prompt_version_manifest: Dict[str, str] = {}

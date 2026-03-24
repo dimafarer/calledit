@@ -269,3 +269,25 @@ agentcore invoke --dev '{"prediction_id": "pred-xxx", "clarification_answers": [
 # Test missing fields (should yield error stream event)
 agentcore invoke --dev '{"foo": "bar"}'
 ```
+
+## AgentCore v4 — Verification Agent (calleditv4-verification/)
+
+```bash
+# Start verification agent dev server (requires TTY — run in terminal)
+cd /home/wsluser/projects/calledit/calleditv4-verification && agentcore dev
+
+# Invoke verification agent with a prediction_id
+agentcore invoke --dev '{"prediction_id": "pred-3f52a1b2-97b1-4c59-ac1c-f3cc26886156"}'
+
+# Run verification agent unit tests (22 tests)
+/home/wsluser/projects/calledit/venv/bin/python -m pytest calleditv4-verification/tests/ -v
+
+# Check DDB for verification result
+aws dynamodb get-item --table-name calledit-db --key '{"PK":{"S":"PRED#pred-xxx"},"SK":{"S":"BUNDLE"}}' --projection-expression "#s,verdict,confidence,reasoning,verified_at" --expression-attribute-names '{"#s":"status"}' --output json
+
+# Find pending predictions for testing
+aws dynamodb scan --table-name calledit-db --filter-expression "#s = :pending" --expression-attribute-names '{"#s":"status"}' --expression-attribute-values '{":pending":{"S":"pending"}}' --projection-expression "PK,parsed_claim.statement" --max-items 5 --output json
+
+# Check verification executor prompt ID
+aws cloudformation describe-stacks --stack-name calledit-prompts --query "Stacks[0].Outputs[?contains(OutputKey, 'VerificationExecutor')]" --output table
+```

@@ -161,5 +161,7 @@ Extended PlanReview structured output with score tier metadata, per-dimension as
 - V4-5 split into V4-5a (Verification Agent Core) + V4-5b (Verification Triggers) — Decision 104
 - Separate project per agent: `calleditv4/` (creation), `calleditv4-verification/` (verification) — Decision 105
 - V4-5a (Verification Agent Core) COMPLETE: separate project, sync entrypoint, 22 tests
+- V4-5a integration tested: prompt deployed (ZQQNZIP6SK), DDB pipeline validated end-to-end (30s for simple predictions, 408s for Browser-heavy — context overflow documented)
+- V4-5b (Verification Triggers) SPECCED: requirements + design + tasks complete. GSI on status+verification_date, scanner Lambda, EventBridge schedule.
 - 106 architectural decisions documented
-- Next: Deploy verification prompt, integration test V4-5a, then V4-5b (Triggers)
+- Next: Execute V4-5b tasks, then V4-6 (Memory Integration)

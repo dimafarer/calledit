@@ -171,3 +171,56 @@ All 7 tasks completed:
 - `infrastructure/prompt-management/template.yaml` — VerificationExecutorPrompt + PromptVersion + Outputs
 - `docs/project-updates/decision-log.md` — Decisions 104-106
 - `docs/project-updates/project-summary.md` — Update 27 entry
+
+## V4-5a Integration Test Results
+
+### Prompt Deployment
+- Deployed `calledit-verification-executor` prompt via CloudFormation
+- Prompt ID: `ZQQNZIP6SK`
+- Updated `PROMPT_IDENTIFIERS` in `calleditv4-verification/src/prompt_client.py`
+
+### Test 1: Lakers Prediction (Browser-heavy)
+- Prediction: "Lakers win tonight" (pred-3f52a1b2)
+- Agent tried 6+ Browser tool calls to scrape NBA.com, ESPN, Lakers.com, CBS Sports, Yahoo Sports
+- Browser returned large HTML pages that accumulated in conversation history
+- Bedrock threw context window overflow error
+- Agent recovered, produced inconclusive verdict with confidence 0.0
+- DDB updated: status changed from `pending` to `inconclusive`, verdict/reasoning/verified_at written
+- Total time: 408 seconds
+- Finding: Browser tool is not suitable for sports score verification — returns too much HTML, overflows context. Confirms Phase 2 Gateway + Brave Search is needed.
+
+### Test 2: "test" Prediction (Code Interpreter)
+- Prediction: "test" (pred-80ac8e26)
+- Agent used Code Interpreter and logical analysis (no Browser scraping)
+- Correctly determined "test" is not a verifiable prediction
+- Verdict: inconclusive, confidence: 0.95
+- DDB updated: status changed from `pending` to `inconclusive`
+- Total time: 30 seconds
+- Clean end-to-end pipeline validation
+
+### Pipeline Components Validated
+- DDB load (get_item with PK/SK) ✅
+- Prompt fetch from Bedrock Prompt Management ✅
+- Strands Agent invocation with structured_output_model ✅
+- VerificationResult Pydantic model extraction ✅
+- DDB update with ConditionExpression ✅
+- Status transition (pending → inconclusive) ✅
+- JSON return with required fields ✅
+- Never-raise error handling (context overflow caught) ✅
+
+### Known Limitations
+- Browser tool context overflow: scraping multiple sports sites fills the context window. The agent loses track of the original prediction data after too many Browser calls. This is the expected limitation documented in the architecture doc — Gateway + Brave Search (Phase 2) will address it.
+- `agentcore invoke --dev` has a 180s read timeout. Browser-heavy verifications exceed this. The server continues processing, but the client disconnects. In production (V4-5b EventBridge trigger), this won't be an issue since the agent runs to completion independently.
+
+## V4-5b Spec Created
+
+Created the V4-5b (Verification Triggers) spec with fresh v4 content, replacing the old v3 Spec B2:
+- `.kiro/specs/verification-triggers/requirements.md` — 5 requirements, 22 acceptance criteria
+- `.kiro/specs/verification-triggers/design.md` — GSI design, scanner Lambda, dual invocation mode, 7 correctness properties
+- `.kiro/specs/verification-triggers/tasks.md` — 8 top-level tasks
+
+Key design decisions:
+- Scanner at `infrastructure/verification-scanner/` (infrastructure, not an agent)
+- GSI via CLI script (calledit-db not CloudFormation-managed)
+- Dual invocation: AgentCoreRuntimeClient (prod) / HTTP POST (dev)
+- Prerequisite: promote `verification_date` to top-level DDB attribute

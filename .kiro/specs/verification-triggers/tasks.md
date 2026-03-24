@@ -1,113 +1,136 @@
-# Implementation Plan: Verification Triggers & Storage (Spec B2)
+# Implementation Plan — V4-5b: Verification Triggers
 
 ## Overview
 
-Create the DynamoDB storage utility (`verification_store.py`), the EventBridge-triggered scanner Lambda (`verification_scanner.py`), update the SAM template with the new `VerificationScannerFunction` resource, and write tests. All code is Python, tests use Hypothesis for property-based testing and pytest for unit tests. Per Decision 78, tests hit real DynamoDB and real Bedrock — no mocks. Test records use `USER:TEST-{uuid}` PK prefixes and clean up after themselves.
+Implement the scheduling layer that finds due predictions in DynamoDB and invokes the V4-5a verification agent. Tasks are ordered: prerequisite DDB changes → GSI setup script → scanner Lambda code → invocation clients → SAM template → tests → checkpoints. All code is Python 3.12 with boto3 only (no Strands, no AgentCore SDK in the scanner Lambda itself).
 
 ## Tasks
 
-- [x] 1. Create `verification_store.py` — DynamoDB storage utility
-  - [x] 1.1 Create `backend/calledit-backend/handlers/strands_make_call/verification_store.py`
-    - Implement `store_verification_result(user_id: str, sort_key: str, outcome: dict) -> bool`
-    - Construct `PK=USER:{user_id}` from the `user_id` argument
-    - Use `UpdateExpression` with `SET verification_result = :vr, #s = :status, updatedAt = :ts`
-    - Use `ExpressionAttributeNames` to alias `#s` → `status` (DynamoDB reserved word)
-    - Set `:status` from `outcome.get('status', 'inconclusive')`
-    - Set `:ts` to `datetime.now(timezone.utc).isoformat()`
-    - Wrap entire body in `try/except Exception` — log at ERROR level, return `False` on failure
-    - Never raise — always return `True` or `False`
-    - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7_
+- [ ] 1. Promote `verification_date` to top-level DDB attribute
+  - [ ] 1.1 Update `build_bundle()` in `calleditv4/src/bundle.py`
+    - Extract `parsed_claim["verification_date"]` and write it as a top-level `verification_date` field in the returned bundle dict
+    - Must be set before `format_ddb_item()` is called so it becomes a top-level DDB attribute the GSI can index
+    - _Requirements: 1.1, 1.3_
+  - [ ] 1.2 Update `format_ddb_update()` in `calleditv4/src/bundle.py`
+    - Add `verification_date` to the SET expression so clarification rounds also update the top-level field from `parsed_claim["verification_date"]`
+    - _Requirements: 1.1, 1.3_
+  - [ ]* 1.3 Update property tests in `calleditv4/tests/test_bundle.py`
+    - Add assertions to `TestBundleAssemblyInvariants` verifying `verification_date` is present as a top-level field
+    - Add assertions to `TestDdbItemFormat` verifying the top-level `verification_date` survives `format_ddb_item()`
+    - _Requirements: 1.1_
 
-- [x] 2. Create `verification_scanner.py` — Scanner Lambda handler
-  - [x] 2.1 Create `backend/calledit-backend/handlers/strands_make_call/verification_scanner.py` with scan logic
-    - Implement `lambda_handler(event, context)` as the EventBridge entry point
-    - Scan `calledit-db` with `FilterExpression`: `status=PENDING` AND `verifiable_category=auto_verifiable`
-    - Handle pagination via `LastEvaluatedKey` loop
-    - Filter results in code: `verification_date <= now` (string comparison, `YYYY-MM-DD HH:MM:SS` format)
-    - Extract `user_id` by stripping `USER:` prefix from `PK`
-    - If DynamoDB scan raises, log at ERROR level and return immediately (no partial processing)
-    - _Requirements: 2.1, 2.2, 2.3, 2.7_
+- [ ] 2. Create GSI setup script
+  - [ ] 2.1 Create `infrastructure/verification-scanner/setup_gsi.sh`
+    - Write the `aws dynamodb update-table` command to add `status-verification_date-index` GSI to `calledit-db`
+    - GSI partition key: `status` (String), sort key: `verification_date` (String)
+    - Projection: INCLUDE with `prediction_id` as non-key attribute
+    - Make the script executable and include a wait command for GSI to become ACTIVE
+    - _Requirements: 1.1, 1.2, 1.3_
 
-  - [x] 2.2 Implement per-prediction verification loop with timeout
-    - Process eligible predictions sequentially (no concurrency — MCP singleton constraint)
-    - Call `run_verification(prediction_record)` from Spec B1 for each eligible prediction
-    - Use `threading.Thread` + `thread.join(timeout=60)` for 60-second per-prediction timeout
-    - On timeout: build `inconclusive` outcome with `"reasoning": "Verification timed out after 60 seconds"`
-    - Call `store_verification_result(user_id, sort_key, outcome)` with the result
-    - If `run_verification()` raises, catch exception, log, and continue to next prediction
-    - If `store_verification_result()` returns `False`, increment failed counter and continue
-    - Track counts: total_scanned, eligible, verified, failed, outcomes by status
-    - Log summary dict at end of invocation
-    - Return `dict` with `statusCode` and summary
-    - _Requirements: 2.3, 2.4, 2.5, 2.6, 2.8, 2.10_
+- [ ] 3. Implement scanner Lambda core
+  - [ ] 3.1 Create `infrastructure/verification-scanner/scanner.py` with `extract_prediction_id()`
+    - Implement `extract_prediction_id(item: dict) -> str | None` that extracts prediction_id from the `prediction_id` projected attribute or parses `PK` (`PRED#pred-xxx` → `pred-xxx`)
+    - Returns `None` if PK doesn't start with `PRED#` and no `prediction_id` attribute exists
+    - _Requirements: 2.5_
+  - [ ] 3.2 Implement `query_due_predictions()` in `scanner.py`
+    - Query the GSI with `status = "pending"` and `verification_date <= now_iso` as KeyConditionExpression
+    - Handle pagination by following `LastEvaluatedKey` until all results are collected
+    - Return list of all matching items
+    - _Requirements: 1.5, 2.2, 2.3_
+  - [ ] 3.3 Implement `lambda_handler()` in `scanner.py`
+    - Entry point: `lambda_handler(event, context) -> dict`
+    - Validate env vars (`VERIFICATION_AGENT_ID` or `VERIFICATION_AGENT_ENDPOINT` must be set)
+    - Call `query_due_predictions()`, iterate results sequentially
+    - For each prediction: extract ID, invoke verification agent, parse response, track success/failure
+    - Log error and continue on individual prediction failures (fail-forward)
+    - Log and return invocation summary with `total_found`, `total_invoked`, `total_succeeded`, `total_failed`, `failures` list
+    - If GSI query fails, log ERROR and exit immediately
+    - If zero predictions found, log INFO and return summary with all zeros
+    - _Requirements: 2.1, 2.2, 2.4, 3.1, 3.2, 3.5, 3.6, 3.7, 4.1, 4.2, 4.3_
 
-- [x] 3. Checkpoint — Storage and scanner modules verified
-  - Ensure both modules import cleanly, ask the user if questions arise.
+- [ ] 4. Implement invocation client abstraction
+  - [ ] 4.1 Implement `AgentCoreInvoker` and `HttpInvoker` classes in `scanner.py`
+    - `AgentCoreInvoker`: uses `AgentCoreRuntimeClient` (boto3) to invoke the deployed verification agent with `{"prediction_id": "<id>"}` payload
+    - `HttpInvoker`: uses `urllib.request` to HTTP POST to the dev endpoint (e.g., `http://localhost:8080`) with the same payload
+    - Both expose an `invoke(prediction_id: str) -> dict` method returning parsed JSON response
+    - _Requirements: 3.1, 3.3, 3.4_
+  - [ ] 4.2 Implement `build_invocation_client()` factory in `scanner.py`
+    - If `VERIFICATION_AGENT_ENDPOINT` env var is set → return `HttpInvoker`
+    - Else if `VERIFICATION_AGENT_ID` env var is set → return `AgentCoreInvoker`
+    - Else → raise configuration error
+    - _Requirements: 3.3, 3.4_
 
-- [x] 4. Update SAM template with VerificationScannerFunction
-  - [x] 4.1 Add `VerificationScannerFunction` resource to `backend/calledit-backend/template.yaml`
-    - `PackageType: Image` (Docker Lambda, same image as MakeCallStreamFunction)
-    - `ImageConfig.Command: [verification_scanner.lambda_handler]` (CMD override)
-    - `Timeout: 900`, `MemorySize: 512`
-    - Same env vars: `PROMPT_VERSION_PARSER`, `PROMPT_VERSION_CATEGORIZER`, `PROMPT_VERSION_VB`, `PROMPT_VERSION_REVIEW`, `BRAVE_API_KEY`
-    - Policies: `DynamoDBCrudPolicy` on `calledit-db`, Bedrock invoke/stream/list, Bedrock Prompt Management (`bedrock-agent:GetPrompt`)
-    - NO WebSocket `execute-api:ManageConnections` permission (scanner doesn't send WS messages)
-    - NO `calledit-eval-reasoning` DynamoDB policy (scanner doesn't write eval data)
-    - Add `Events.ScheduledScan` with `Type: Schedule`, `Schedule: rate(15 minutes)`, `Enabled: true`
-    - Use same `Metadata` block (DockerTag, DockerContext, Dockerfile) as MakeCallStreamFunction
-    - _Requirements: 2.1, 2.9_
-
-- [x] 5. Checkpoint — SAM template validates
-  - Ensure SAM template is syntactically valid, ask the user if questions arise.
-
-- [x] 6. Write tests for verification triggers
-  - [x] 6.1 Create `backend/calledit-backend/tests/test_verification_triggers.py` with unit tests
-    - Test `store_verification_result()` with a real DynamoDB item — seed a test item, call store, read back, verify `verification_result`, `status`, and `updatedAt` are set correctly and all original fields preserved
-    - Test `store_verification_result()` with invalid key — verify returns `False` without raising
-    - Test `store_verification_result()` with malformed outcome (None, empty dict, string) — verify returns `False` without raising
-    - Test scanner with real DynamoDB items — seed items with various `status`/`verifiable_category`/`verification_date` combinations, run scanner, verify only eligible items were processed
-    - Test scanner with empty table (no matching items) — verify completes with zero processed
-    - Test scanner summary logging — verify log contains expected counts
-    - All tests use `USER:TEST-{uuid}` PK prefix and clean up after themselves
-    - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 2.2, 2.3, 2.4, 2.7, 2.10_
-
-  - [ ]* 6.2 Write property test: store_verification_result never raises (Property 1)
-    - **Property 1: store_verification_result never raises**
-    - Generate random `user_id` strings, `sort_key` strings, and adversarial `outcome` dicts (including None, empty, non-dict values)
-    - Verify function never raises and always returns a boolean (`True` or `False`)
-    - Uses real DynamoDB — test PK prefix `USER:TEST-{uuid}`, cleanup after
-    - Test file: `backend/calledit-backend/tests/test_verification_triggers.py`
-    - **Validates: Requirements 1.1, 1.5**
-
-  - [ ]* 6.3 Write property test: Store round-trip preserves existing fields (Property 2)
-    - **Property 2: Round-trip preserves existing fields and writes verification fields**
-    - Seed a real DynamoDB item with random extra fields, call `store_verification_result` with a random valid outcome, read item back
-    - Verify: (a) `verification_result` equals the outcome dict, (b) `status` equals `outcome['status']`, (c) `updatedAt` is valid ISO 8601, (d) all pre-existing fields unchanged
-    - Uses real DynamoDB — test PK prefix `USER:TEST-{uuid}`, cleanup after
-    - Test file: `backend/calledit-backend/tests/test_verification_triggers.py`
-    - **Validates: Requirements 1.2, 1.3, 1.4, 1.6**
-
-  - [ ]* 6.4 Write property test: Scanner processes exactly eligible predictions (Property 3)
-    - **Property 3: Scanner processes exactly the eligible predictions**
-    - Extract the scanner's eligibility filtering logic as a pure function
-    - Generate random prediction records with varying `status`, `verifiable_category`, and `verification_date`
-    - Verify the filter selects exactly records where `status=PENDING` AND `verifiable_category=auto_verifiable` AND `verification_date <= now`
-    - Pure function test — no DynamoDB needed for this property
-    - Test file: `backend/calledit-backend/tests/test_verification_triggers.py`
-    - **Validates: Requirements 2.2, 2.3, 2.4**
-
-- [x] 7. Final checkpoint — All tests pass
+- [ ] 5. Checkpoint — Verify core scanner logic
   - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 6. Create SAM template and requirements
+  - [ ] 6.1 Create `infrastructure/verification-scanner/template.yaml`
+    - Define `VerificationScannerFunction` as `AWS::Serverless::Function` with Python 3.12, zip packaging, 900s timeout, 256MB memory
+    - Define `ScannerScheduleRule` as EventBridge rule with `rate(15 minutes)`
+    - Define IAM policies: DynamoDB Query on `calledit-db` table and `status-verification_date-index` GSI, plus AgentCore Runtime invoke
+    - Set environment variables: `DYNAMODB_TABLE_NAME`, `GSI_NAME`, `VERIFICATION_AGENT_ID`, `VERIFICATION_AGENT_ENDPOINT`
+    - Include commented instructions for GSI creation (reference `setup_gsi.sh`)
+    - _Requirements: 1.4, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6_
+  - [ ] 6.2 Create `infrastructure/verification-scanner/requirements.txt`
+    - Add `boto3` as the only runtime dependency
+    - _Requirements: 5.1_
+
+- [ ] 7. Write property-based and unit tests
+  - [ ]* 7.1 Write property test for prediction ID extraction
+    - **Property 1: Prediction ID Extraction**
+    - Test in `infrastructure/verification-scanner/tests/test_scanner_properties.py`
+    - For any PK in format `PRED#<id>`, `extract_prediction_id` returns `<id>`. For PK not starting with `PRED#` and no `prediction_id` attr, returns `None`.
+    - **Validates: Requirements 2.5**
+  - [ ]* 7.2 Write property test for GSI query construction
+    - **Property 2: GSI Query Filters Correctly**
+    - Test in `infrastructure/verification-scanner/tests/test_scanner_properties.py`
+    - For any ISO 8601 timestamp, the query uses `status = "pending"` as partition key and `verification_date <= now` as sort key condition.
+    - **Validates: Requirements 1.5, 2.2**
+  - [ ]* 7.3 Write property test for pagination
+    - **Property 3: Pagination Collects All Results**
+    - Test in `infrastructure/verification-scanner/tests/test_scanner_properties.py`
+    - For any sequence of paginated responses, `query_due_predictions` returns concatenation of all items with no items lost or duplicated.
+    - **Validates: Requirements 2.3**
+  - [ ]* 7.4 Write property test for invocation payload format
+    - **Property 4: Invocation Payload Format**
+    - Test in `infrastructure/verification-scanner/tests/test_scanner_properties.py`
+    - For any prediction ID string, the payload is exactly `{"prediction_id": "<id>"}` with no extra fields.
+    - **Validates: Requirements 3.1**
+  - [ ]* 7.5 Write property test for response parsing
+    - **Property 5: Response Parsing Extracts Status**
+    - Test in `infrastructure/verification-scanner/tests/test_scanner_properties.py`
+    - For any valid JSON with a `status` field, the scanner parses it correctly. For invalid JSON, treats as error.
+    - **Validates: Requirements 3.5**
+  - [ ]* 7.6 Write property test for error resilience
+    - **Property 6: Error Resilience**
+    - Test in `infrastructure/verification-scanner/tests/test_scanner_properties.py`
+    - For N predictions with K failures, scanner attempts all N and summary reports (N-K) succeeded and K failed.
+    - **Validates: Requirements 3.6**
+  - [ ]* 7.7 Write property test for summary count consistency
+    - **Property 7: Summary Count Consistency**
+    - Test in `infrastructure/verification-scanner/tests/test_scanner_properties.py`
+    - For any run: `total_succeeded + total_failed == total_invoked` and `total_invoked <= total_found`.
+    - **Validates: Requirements 4.1, 4.2**
+  - [ ]* 7.8 Write unit tests in `infrastructure/verification-scanner/tests/test_scanner_unit.py`
+    - `extract_prediction_id` with `PK="PRED#pred-abc123"` returns `"pred-abc123"`
+    - `extract_prediction_id` with missing PK returns `None`
+    - Client selection: `VERIFICATION_AGENT_ENDPOINT` set → `HttpInvoker`
+    - Client selection: only `VERIFICATION_AGENT_ID` set → `AgentCoreInvoker`
+    - Client selection: neither set → raises configuration error
+    - Empty GSI response → summary with all zeros
+    - Verification agent returns `{"status": "error"}` → counted as failure
+    - _Requirements: 2.5, 3.3, 3.4, 3.5, 4.3_
+
+- [ ] 8. Final checkpoint — Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+  - Run: `/home/wsluser/projects/calledit/venv/bin/python -m pytest infrastructure/verification-scanner/tests/ -v`
+  - Run: `/home/wsluser/projects/calledit/venv/bin/python -m pytest calleditv4/tests/test_bundle.py -v`
 
 ## Notes
 
 - Tasks marked with `*` are optional and can be skipped for faster MVP
-- Each task references specific requirements for traceability
+- All Python commands use `/home/wsluser/projects/calledit/venv/bin/python`
+- Decision 96: No mocks. Property tests exercise pure logic. Integration tests hit real DDB.
+- The scanner Lambda uses boto3 only — no Strands, no AgentCore SDK
+- Each property test maps to a correctness property from the design document
 - Checkpoints ensure incremental validation
-- Property tests validate the 3 correctness properties from the design document
-- Unit tests validate specific examples and edge cases
-- All tests go in `backend/calledit-backend/tests/test_verification_triggers.py`
-- All Python commands must use `/home/wsluser/projects/calledit/venv/bin/python`
-- Per Decision 78: NO MOCKS — tests hit real DynamoDB and real Bedrock
-- Test records use `USER:TEST-{uuid}` PK prefixes and clean up after themselves
-- Scanner shares same Docker image as MakeCallStreamFunction (CMD override in SAM)
