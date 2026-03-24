@@ -17,6 +17,10 @@ import logging
 import os
 import sys
 
+# Ensure AWS region is set for all boto3 calls in AgentCore Runtime
+if not os.environ.get("AWS_DEFAULT_REGION"):
+    os.environ["AWS_DEFAULT_REGION"] = os.environ.get("AWS_REGION", "us-west-2")
+
 import boto3
 from bedrock_agentcore import RequestContext
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
@@ -37,7 +41,7 @@ logger = logging.getLogger(__name__)
 app = BedrockAgentCoreApp()
 
 MODEL_ID = "us.anthropic.claude-sonnet-4-20250514-v1:0"
-DYNAMODB_TABLE_NAME = os.environ.get("DYNAMODB_TABLE_NAME", "calledit-db")
+DYNAMODB_TABLE_NAME = os.environ.get("DYNAMODB_TABLE_NAME", "calledit-v4")
 
 browser_tool = AgentCoreBrowser()
 code_interpreter_tool = AgentCoreCodeInterpreter()

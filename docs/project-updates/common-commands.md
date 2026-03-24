@@ -312,3 +312,60 @@ sam build && sam deploy --guided
 # Check table stats
 aws dynamodb describe-table --table-name calledit-db --query "Table.{ItemCount:ItemCount,TableSizeBytes:TableSizeBytes,BillingMode:BillingModeSummary.BillingMode,GSIs:GlobalSecondaryIndexes[*].{Name:IndexName,ItemCount:ItemCount,SizeBytes:IndexSizeBytes,Status:IndexStatus}}" --output json
 ```
+
+
+## V4 Infrastructure Deployment
+
+```bash
+# Deploy persistent resources (S3 bucket + DDB table)
+cd /home/wsluser/projects/calledit
+aws cloudformation deploy \
+  --template-file infrastructure/v4-persistent-resources/template.yaml \
+  --stack-name calledit-v4-persistent-resources
+
+# Deploy frontend stack (CloudFront + HTTP API + Lambdas)
+cd /home/wsluser/projects/calledit/infrastructure/v4-frontend
+sam build && sam deploy \
+  --stack-name calledit-v4-frontend \
+  --capabilities CAPABILITY_IAM \
+  --resolve-s3 \
+  --parameter-overrides \
+    CognitoUserPoolId=us-west-2_GOEwUjJtv \
+    CognitoUserPoolClientId=753gn25jle081ajqabpd4lbin9 \
+    CreationAgentRuntimeArn=arn:aws:bedrock-agentcore:us-west-2:894249332178:runtime/calleditv4_Agent-AJiwpKBxRW \
+    FrontendBucketName=calledit-v4-persistent-resources-v4frontendbucket-tjqdqan1gbuy \
+    FrontendBucketArn=arn:aws:s3:::calledit-v4-persistent-resources-v4frontendbucket-tjqdqan1gbuy \
+    FrontendBucketDomainName=calledit-v4-persistent-resources-v4frontendbucket-tjqdqan1gbuy.s3.us-west-2.amazonaws.com \
+    DynamoDBTableArn=arn:aws:dynamodb:us-west-2:894249332178:table/calledit-v4
+
+# Deploy scanner Lambda
+cd /home/wsluser/projects/calledit/infrastructure/verification-scanner
+sam build && sam deploy \
+  --stack-name calledit-v4-scanner \
+  --capabilities CAPABILITY_IAM \
+  --resolve-s3 \
+  --parameter-overrides \
+    DynamoDBTableName=calledit-v4 \
+    VerificationAgentId=calleditv4_verification_Agent-77DiT7GHdH
+
+# Build and deploy frontend-v4
+cd /home/wsluser/projects/calledit/frontend-v4
+npm run build
+aws s3 sync dist/ s3://calledit-v4-persistent-resources-v4frontendbucket-tjqdqan1gbuy --delete
+aws cloudfront create-invalidation --distribution-id E1V0EF85NP9DXQ --paths "/*"
+
+# Check stack outputs
+aws cloudformation describe-stacks --stack-name calledit-v4-persistent-resources --query "Stacks[0].Outputs" --output table
+aws cloudformation describe-stacks --stack-name calledit-v4-frontend --query "Stacks[0].Outputs" --output table
+
+# Launch agents (requires TTY)
+cd /home/wsluser/projects/calledit/calleditv4 && agentcore launch
+cd /home/wsluser/projects/calledit/calleditv4-verification && agentcore launch
+
+# Agent status
+cd /home/wsluser/projects/calledit/calleditv4 && agentcore status
+cd /home/wsluser/projects/calledit/calleditv4-verification && agentcore status
+
+# V4 frontend URL
+# https://d2fngmclz6psil.cloudfront.net
+```

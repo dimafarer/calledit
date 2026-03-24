@@ -1,0 +1,139 @@
+import { createContext, useContext, useEffect, useState, useRef } from 'react';
+
+interface AuthContextType {
+  isAuthenticated: boolean;
+  login: () => void;
+  logout: () => void;
+  getToken: () => string | null;
+}
+
+const TOKEN_KEYS = {
+  ID: 'idToken',
+  ACCESS: 'accessToken',
+  REFRESH: 'refreshToken',
+  EXPIRY: 'tokenExpiry'
+};
+
+const ENV = {
+  REGION: import.meta.env.VITE_AWS_REGION,
+  CLIENT_ID: import.meta.env.VITE_COGNITO_CLIENT_ID,
+  DOMAIN_PREFIX: import.meta.env.VITE_COGNITO_DOMAIN_PREFIX,
+  REDIRECT_URI: import.meta.env.DEV 
+    ? import.meta.env.VITE_COGNITO_DEV_REDIRECT_URI
+    : import.meta.env.VITE_COGNITO_PROD_REDIRECT_URI
+};
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const codeProcessed = useRef(false);
+  const cognitoDomain = `https://${ENV.DOMAIN_PREFIX}.auth.${ENV.REGION}.amazoncognito.com`;
+
+  const login = () => {
+    const queryParams = new URLSearchParams({
+      client_id: ENV.CLIENT_ID,
+      response_type: 'code',
+      scope: 'email openid profile',
+      redirect_uri: ENV.REDIRECT_URI,
+    });
+    window.location.href = `${cognitoDomain}/login?${queryParams.toString()}&cookie_consent=true`;
+  };
+
+  const logout = () => {
+    Object.values(TOKEN_KEYS).forEach(key => localStorage.removeItem(key));
+    setIsAuthenticated(false);
+  };
+
+  const getToken = () => localStorage.getItem(TOKEN_KEYS.ID);
+
+  const refreshTokens = async () => {
+    const refreshToken = localStorage.getItem(TOKEN_KEYS.REFRESH);
+    if (!refreshToken) { logout(); return false; }
+    try {
+      const params = new URLSearchParams({
+        grant_type: 'refresh_token', client_id: ENV.CLIENT_ID, refresh_token: refreshToken
+      });
+      const response = await fetch(`${cognitoDomain}/oauth2/token`, {
+        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString(),
+      });
+      if (!response.ok) throw new Error('Token refresh failed');
+      const data = await response.json();
+      const expiryTime = Date.now() + ((data.expires_in || 86400) * 1000) - (5 * 60 * 1000);
+      localStorage.setItem(TOKEN_KEYS.ID, data.id_token);
+      localStorage.setItem(TOKEN_KEYS.ACCESS, data.access_token);
+      localStorage.setItem(TOKEN_KEYS.EXPIRY, expiryTime.toString());
+      if (data.refresh_token) localStorage.setItem(TOKEN_KEYS.REFRESH, data.refresh_token);
+      setIsAuthenticated(true);
+      return true;
+    } catch (error) { console.error('Token refresh error:', error); logout(); return false; }
+  };
+
+  const checkAndRefreshToken = async () => {
+    const expiry = localStorage.getItem(TOKEN_KEYS.EXPIRY);
+    const refreshToken = localStorage.getItem(TOKEN_KEYS.REFRESH);
+    if (!refreshToken) return false;
+    if (!expiry || parseInt(expiry) <= Date.now() + (10 * 60 * 1000)) return await refreshTokens();
+    return true;
+  };
+
+  const handleTokenExchange = async (authCode: string) => {
+    try {
+      const params = new URLSearchParams({
+        grant_type: 'authorization_code', client_id: ENV.CLIENT_ID, code: authCode, redirect_uri: ENV.REDIRECT_URI
+      });
+      const response = await fetch(`${cognitoDomain}/oauth2/token`, {
+        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString(),
+      });
+      const text = await response.text();
+      if (!response.ok) throw new Error(`Token exchange failed: ${text}`);
+      const data = JSON.parse(text);
+      const expiryTime = Date.now() + ((data.expires_in || 86400) * 1000) - (5 * 60 * 1000);
+      localStorage.setItem(TOKEN_KEYS.ID, data.id_token);
+      localStorage.setItem(TOKEN_KEYS.ACCESS, data.access_token);
+      localStorage.setItem(TOKEN_KEYS.REFRESH, data.refresh_token);
+      localStorage.setItem(TOKEN_KEYS.EXPIRY, expiryTime.toString());
+      setIsAuthenticated(true);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } catch (error) { console.error('Authentication error:', error); }
+  };
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const authCode = urlParams.get('code');
+    if (authCode && !codeProcessed.current) {
+      codeProcessed.current = true;
+      handleTokenExchange(authCode);
+    } else {
+      const initAuth = async () => {
+        const token = localStorage.getItem(TOKEN_KEYS.ID);
+        const refreshToken = localStorage.getItem(TOKEN_KEYS.REFRESH);
+        if (token || refreshToken) {
+          const isValid = await checkAndRefreshToken();
+          if (isValid) setIsAuthenticated(true);
+        }
+      };
+      initAuth();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const interval = setInterval(() => checkAndRefreshToken(), 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
+  return (
+    <AuthContext.Provider value={{ isAuthenticated, login, logout, getToken }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
+  return context;
+}
+
+export { AuthContext, AuthProvider, useAuth };

@@ -22,7 +22,7 @@ import boto3
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-DYNAMODB_TABLE_NAME = os.environ.get("DYNAMODB_TABLE_NAME", "calledit-db")
+DYNAMODB_TABLE_NAME = os.environ.get("DYNAMODB_TABLE_NAME", "calledit-v4")
 GSI_NAME = os.environ.get("GSI_NAME", "status-verification_date-index")
 
 

@@ -11,7 +11,7 @@ Description: >
 Parameters:
   DynamoDBTableName:
     Type: String
-    Default: calledit-db
+    Default: calledit-v4
   GSIName:
     Type: String
     Default: status-verification_date-index
@@ -59,7 +59,7 @@ Resources:
           Properties:
             Schedule: rate(15 minutes)
             Description: Scan for predictions due for verification
-            Enabled: false  # Decision 110: enable after agentcore launch
+            Enabled: true  # V4-8a: enabled after agentcore launch
 
 Outputs:
   VerificationScannerFunctionArn:

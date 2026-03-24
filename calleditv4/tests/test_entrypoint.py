@@ -56,9 +56,9 @@ class TestConstants:
         """SIMPLE_PROMPT_SYSTEM must identify the agent as CalledIt v4."""
         assert "CalledIt v4" in SIMPLE_PROMPT_SYSTEM
 
-    def test_dynamodb_table_name_defaults_to_calledit_db(self):
-        """DYNAMODB_TABLE_NAME defaults to calledit-db."""
-        assert DYNAMODB_TABLE_NAME == "calledit-db"
+    def test_dynamodb_table_name_defaults_to_calledit_v4(self):
+        """DYNAMODB_TABLE_NAME defaults to calledit-v4."""
+        assert DYNAMODB_TABLE_NAME == "calledit-v4"
 
     def test_tools_list_has_three_elements(self):
         """TOOLS list must have 3 elements: browser, code_interpreter, current_time."""

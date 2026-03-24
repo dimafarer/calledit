@@ -280,7 +280,17 @@ Replaces the v3 `WebSocketService` and `CallService` for prediction creation:
 
 ### 7. AgentCore WebSocket Message Format
 
-The creation agent's async handler yields events. AgentCore wraps these in SSE format over WebSocket:
+The creation agent supports two protocol contracts simultaneously:
+
+**HTTP streaming** (`@app.entrypoint` — used by `agentcore invoke` CLI):
+The handler is `async def handler(payload, context)` that yields SSE-formatted strings.
+
+**WebSocket bidirectional** (`@app.websocket` — used by browser presigned URL):
+The handler is `async def websocket_handler(websocket, context)` that receives JSON via `websocket.receive_json()` and sends JSON events via `websocket.send_json()`.
+
+Both handlers share the same creation flow logic (parse → plan → score → save to DDB). The difference is the transport: HTTP yields strings, WebSocket sends JSON objects.
+
+WebSocket event format sent to the frontend:
 
 ```
 data: {"type": "flow_started", "prediction_id": "pred-xxx", "data": {...}}\n\n

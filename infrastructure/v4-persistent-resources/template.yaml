@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  CalledIt V4 Persistent Resources — S3 bucket for frontend + DynamoDB table.
+  These are create-once-never-delete resources, separated from the main v4
+  frontend stack so that a rollback cannot delete a non-empty bucket or
+  table with data (Decision 112, 114).
+
+Resources:
+  # --- S3 Bucket for V4 Frontend ---
+  V4FrontendBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  # --- DynamoDB Table for V4 Predictions ---
+  V4PredictionsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: calledit-v4
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+        - AttributeName: user_id
+          AttributeType: S
+        - AttributeName: created_at
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+        - AttributeName: verification_date
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: user_id-created_at-index
+          KeySchema:
+            - AttributeName: user_id
+              KeyType: HASH
+            - AttributeName: created_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: status-verification_date-index
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+            - AttributeName: verification_date
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+Outputs:
+  V4FrontendBucketName:
+    Description: V4 frontend S3 bucket name
+    Value: !Ref V4FrontendBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-BucketName'
+
+  V4FrontendBucketArn:
+    Description: V4 frontend S3 bucket ARN
+    Value: !GetAtt V4FrontendBucket.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-BucketArn'
+
+  V4FrontendBucketRegionalDomainName:
+    Description: Regional domain name for CloudFront origin
+    Value: !GetAtt V4FrontendBucket.RegionalDomainName
+    Export:
+      Name: !Sub '${AWS::StackName}-BucketDomainName'
+
+  V4PredictionsTableName:
+    Description: V4 DynamoDB table name
+    Value: !Ref V4PredictionsTable
+    Export:
+      Name: !Sub '${AWS::StackName}-TableName'
+
+  V4PredictionsTableArn:
+    Description: V4 DynamoDB table ARN
+    Value: !GetAtt V4PredictionsTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-TableArn'

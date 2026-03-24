@@ -67,9 +67,10 @@ samconfig.toml
 
 # Environment files with sensitive data
 .env
-.env.local
-.env.production
-.env.development
+.env.*
+*.env
+frontend-v4/.env*
+infrastructure/**/.env*
 
 # Build artifacts that may contain sensitive data
 frontend/dist/

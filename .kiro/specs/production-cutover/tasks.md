@@ -6,8 +6,8 @@ Deploy both v4 AgentCore agents, build new v4 frontend infrastructure (S3 + DDB 
 
 ## Tasks
 
-- [ ] 1. Create persistent resources CloudFormation template
-  - [ ] 1.1 Create `infrastructure/v4-persistent-resources/template.yaml` with S3 bucket and DynamoDB table
+- [x] 1. Create persistent resources CloudFormation template
+  - [x] 1.1 Create `infrastructure/v4-persistent-resources/template.yaml` with S3 bucket and DynamoDB table
     - Define `V4FrontendBucket`: private S3 bucket, all `PublicAccessBlockConfiguration` flags `true`, `SSEAlgorithm: AES256`
     - Define `V4PredictionsTable`: table name `calledit-v4`, `PK` (String) partition key, `SK` (String) sort key, `PAY_PER_REQUEST` billing
     - Add GSI `user_id-created_at-index`: partition key `user_id` (String), sort key `created_at` (String)
@@ -19,29 +19,29 @@ Deploy both v4 AgentCore agents, build new v4 frontend infrastructure (S3 + DDB 
     - Parse the CloudFormation template YAML and verify: `AccessControl: Private`, all four `PublicAccessBlockConfiguration` flags `true`, `SSEAlgorithm: AES256`
     - **Validates: Requirements 3.2, 3.3, 3.4**
 
-- [ ] 2. Deploy persistent resources and launch AgentCore agents
-  - [ ] 2.1 Deploy the `calledit-v4-persistent-resources` CloudFormation stack
+- [x] 2. Deploy persistent resources and launch AgentCore agents
+  - [x] 2.1 Deploy the `calledit-v4-persistent-resources` CloudFormation stack
     - Run `aws cloudformation deploy --template-file infrastructure/v4-persistent-resources/template.yaml --stack-name calledit-v4-persistent-resources`
     - Verify stack outputs: bucket name, bucket ARN, table name, table ARN
     - _Requirements: 2.1, 2.6, 3.1, 3.5, 3.6_
-  - [ ] 2.2 Launch Creation Agent via `agentcore launch`
+  - [x] 2.2 Launch Creation Agent via `agentcore launch`
     - Run `agentcore launch` from `calleditv4/` directory (requires TTY — ask user to run)
     - Ensure `DYNAMODB_TABLE_NAME=calledit-v4` is set in agent environment
     - Capture the Creation Agent runtime ARN from launch output
     - Validate with `agentcore invoke` — expect valid streaming response
     - _Requirements: 1.1, 1.3, 2.7_
-  - [ ] 2.3 Launch Verification Agent via `agentcore launch`
+  - [x] 2.3 Launch Verification Agent via `agentcore launch`
     - Run `agentcore launch` from `calleditv4-verification/` directory (requires TTY — ask user to run)
     - Ensure `DYNAMODB_TABLE_NAME=calledit-v4` is set in agent environment
     - Capture the Verification Agent runtime ARN from launch output
     - Validate with `agentcore invoke` — expect JSON response with `prediction_id`, `verdict`, `confidence`, `status`
     - _Requirements: 1.2, 1.4, 2.7_
 
-- [ ] 3. Checkpoint — Persistent resources deployed, both agents running
+- [x] 3. Checkpoint — Persistent resources deployed, both agents running
   - Ensure persistent resources stack is deployed and both agents respond to `agentcore invoke`. Ask the user if questions arise.
 
-- [ ] 4. Create Presigned URL Lambda
-  - [ ] 4.1 Create `infrastructure/v4-frontend/presigned_url/handler.py`
+- [x] 4. Create Presigned URL Lambda
+  - [x] 4.1 Create `infrastructure/v4-frontend/presigned_url/handler.py`
     - Extract `sub` (user_id) from `event.requestContext.authorizer.jwt.claims`
     - Call `AgentCoreRuntimeClient.generate_presigned_url(runtime_arn=CREATION_AGENT_RUNTIME_ARN)` using `bedrock-agentcore` SDK
     - Return `{"url": "wss://...", "session_id": "<uuid>"}` with HTTP 200
@@ -49,7 +49,7 @@ Deploy both v4 AgentCore agents, build new v4 frontend infrastructure (S3 + DDB 
     - On unexpected exception, return HTTP 500 with generic error
     - Environment variable: `CREATION_AGENT_RUNTIME_ARN`
     - _Requirements: 5.2, 5.3, 5.4, 5.5, 5.6, 5.7_
-  - [ ] 4.2 Create `infrastructure/v4-frontend/presigned_url/requirements.txt`
+  - [x] 4.2 Create `infrastructure/v4-frontend/presigned_url/requirements.txt`
     - Add `bedrock-agentcore` dependency for `AgentCoreRuntimeClient`
     - _Requirements: 5.2_
   - [ ]* 4.3 Write property test for JWT claim extraction (Presigned URL Lambda)
@@ -61,8 +61,8 @@ Deploy both v4 AgentCore agents, build new v4 frontend infrastructure (S3 + DDB 
     - For any successful `generate_presigned_url()` call, verify the Lambda returns HTTP 200 with JSON body containing `url` starting with `wss://` and `session_id` as a valid UUID
     - **Validates: Requirements 5.5**
 
-- [ ] 5. Create ListPredictions Lambda
-  - [ ] 5.1 Create `infrastructure/v4-frontend/list_predictions/handler.py`
+- [x] 5. Create ListPredictions Lambda
+  - [x] 5.1 Create `infrastructure/v4-frontend/list_predictions/handler.py`
     - Extract `sub` from `event.requestContext.authorizer.jwt.claims`
     - Query `calledit-v4` table's `user_id-created_at-index` GSI with `user_id = sub`, `ScanIndexForward=False` for descending sort
     - Return `{"results": [...]}` with fields: `prediction_id`, `raw_prediction`, `status`, `verification_date`, `verifiability_score`, `verification_result`, `created_at`
@@ -71,7 +71,7 @@ Deploy both v4 AgentCore agents, build new v4 frontend infrastructure (S3 + DDB 
     - On unexpected exception, return HTTP 500 with `{"error": "Unexpected error: ..."}`
     - Environment variable: `DYNAMODB_TABLE_NAME` (default `calledit-v4`)
     - _Requirements: 7.2, 7.3, 7.4, 7.5, 7.6, 7.7_
-  - [ ] 5.2 Create `infrastructure/v4-frontend/list_predictions/requirements.txt`
+  - [x] 5.2 Create `infrastructure/v4-frontend/list_predictions/requirements.txt`
     - Add `boto3` dependency
     - _Requirements: 7.2_
   - [ ]* 5.3 Write property test for JWT claim extraction (ListPredictions Lambda)
@@ -83,8 +83,8 @@ Deploy both v4 AgentCore agents, build new v4 frontend infrastructure (S3 + DDB 
     - For any set of DynamoDB prediction items, verify the Lambda returns JSON where each prediction in `results` contains `prediction_id`, `status`, `verification_date`, and optionally `verification_result`
     - **Validates: Requirements 7.5**
 
-- [ ] 6. Create main frontend CloudFormation template
-  - [ ] 6.1 Create `infrastructure/v4-frontend/template.yaml` with CloudFront, OAC, HTTP API, and Lambda resources
+- [x] 6. Create main frontend CloudFormation template
+  - [x] 6.1 Create `infrastructure/v4-frontend/template.yaml` with CloudFront, OAC, HTTP API, and Lambda resources
     - Define parameters: `CognitoUserPoolId`, `CognitoUserPoolClientId`, `DynamoDBTableName`, `CreationAgentRuntimeArn`, `FrontendBucketName`, `FrontendBucketArn`, `FrontendBucketDomainName`
     - Define `CloudFrontOAC`: Origin Access Control with SigV4, always sign, S3 origin type
     - Define `CloudFrontDistribution`: `ViewerProtocolPolicy: redirect-to-https`, `DefaultRootObject: index.html`, custom error responses for 403/404 → `/index.html` with 200
@@ -98,36 +98,36 @@ Deploy both v4 AgentCore agents, build new v4 frontend infrastructure (S3 + DDB 
     - Export outputs: `CloudFrontDomainName`, `CloudFrontDistributionId`, `HttpApiUrl`
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 5.1, 5.8, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 7.1, 7.8, 11.1, 11.2_
 
-- [ ] 7. Deploy main frontend stack
-  - [ ] 7.1 Deploy the `calledit-v4-frontend` CloudFormation stack
+- [x] 7. Deploy main frontend stack
+  - [x] 7.1 Deploy the `calledit-v4-frontend` CloudFormation stack
     - Run `aws cloudformation deploy` with parameters: Cognito user pool ID/client ID from `calledit-backend` stack, DynamoDB table name `calledit-v4`, Creation Agent runtime ARN, frontend bucket name/ARN/domain from persistent resources stack
     - Verify stack outputs: CloudFront domain, distribution ID, HTTP API URL
     - _Requirements: 4.1, 5.1, 6.1, 6.6, 11.1_
 
-- [ ] 8. Checkpoint — Frontend infrastructure deployed
+- [x] 8. Checkpoint — Frontend infrastructure deployed
   - Ensure CloudFront distribution is deployed, HTTP API is accessible, both Lambdas are created. Ask the user if questions arise.
 
-- [ ] 9. Update frontend React code for v4
-  - [ ] 9.1 Create `frontend/src/services/agentCoreWebSocket.ts` — new WebSocket service for AgentCore
+- [x] 9. Update frontend React code for v4
+  - [x] 9.1 Create `frontend/src/services/agentCoreWebSocket.ts` — new WebSocket service for AgentCore
     - Implement `getPresignedUrl(apiUrl, token)`: calls `POST /presigned-url` with Cognito JWT, returns `{url, session_id}`
     - Implement `connectAndStream(wssUrl, predictionPayload, callbacks)`: opens native WebSocket to presigned URL, sends prediction payload, parses SSE-formatted events (`data: {...}\n\n`), emits typed events (`flow_started`, `text`, `turn_complete`, `flow_complete`)
     - Handle connection errors with retry callback
     - Handle WebSocket drop mid-stream with partial results + error callback
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6_
-  - [ ] 9.2 Update `frontend/src/components/PredictionInput.tsx` for v4 WebSocket flow
+  - [x] 9.2 Update `frontend/src/components/PredictionInput.tsx` for v4 WebSocket flow
     - Replace direct `axios.get` to `/strands-make-call` with presigned URL → WebSocket flow using `agentCoreWebSocket.ts`
     - Call `POST /presigned-url` on v4 HTTP API, then open WebSocket to returned URL
     - Parse SSE stream events and update UI progressively
     - _Requirements: 8.1, 8.2, 8.3, 8.4_
-  - [ ] 9.3 Update `frontend/src/components/ListPredictions.tsx` for v4 API
+  - [x] 9.3 Update `frontend/src/components/ListPredictions.tsx` for v4 API
     - Change endpoint from `VITE_APIGATEWAY + '/list-predictions'` to `VITE_V4_API_URL + '/predictions'`
     - Update response field mapping to match v4 schema (`raw_prediction`, `verifiability_score`, etc.)
     - _Requirements: 9.2_
-  - [ ] 9.4 Update `frontend/src/services/apiService.ts` for v4 API base URL
+  - [x] 9.4 Update `frontend/src/services/apiService.ts` for v4 API base URL
     - Add v4 API instance using `VITE_V4_API_URL` environment variable
     - Keep existing v3 API instance for backward compatibility during transition
     - _Requirements: 9.1_
-  - [ ] 9.5 Update `frontend/.env` with v4 environment variables
+  - [x] 9.5 Update `frontend/.env` with v4 environment variables
     - Add `VITE_V4_API_URL` with the HTTP API invoke URL from stack output
     - Update `VITE_COGNITO_PROD_REDIRECT_URI` to the v4 CloudFront domain
     - _Requirements: 9.1, 9.3_
@@ -137,17 +137,17 @@ Deploy both v4 AgentCore agents, build new v4 frontend infrastructure (S3 + DDB 
     - Use fast-check library (TypeScript)
     - **Validates: Requirements 8.3**
 
-- [ ] 10. Build and deploy frontend
-  - [ ] 10.1 Build React PWA and deploy to S3
+- [x] 10. Build and deploy frontend
+  - [x] 10.1 Build React PWA and deploy to S3
     - Run `npm run build` in `frontend/` directory
     - Run `aws s3 sync frontend/dist/ s3://{bucket-name} --delete` to deploy build artifacts
     - _Requirements: 9.4_
-  - [ ] 10.2 Invalidate CloudFront cache
+  - [x] 10.2 Invalidate CloudFront cache
     - Run `aws cloudfront create-invalidation --distribution-id {dist-id} --paths "/*"`
     - _Requirements: 9.5_
 
-- [ ] 11. Update scanner Lambda for v4
-  - [ ] 11.1 Update `infrastructure/verification-scanner/template.yaml` for v4 table
+- [-] 11. Update scanner Lambda for v4
+  - [x] 11.1 Update `infrastructure/verification-scanner/template.yaml` for v4 table
     - Change `DynamoDBTableName` default from `calledit-db` to `calledit-v4`
     - Verify `VerificationAgentId` parameter is passed during deployment
     - _Requirements: 1.5, 10.1_
@@ -159,6 +159,33 @@ Deploy both v4 AgentCore agents, build new v4 frontend infrastructure (S3 + DDB 
 
 - [ ] 12. Final checkpoint — End-to-end validation
   - Validate the full flow: CloudFront serves React PWA, login via Cognito, make a prediction via presigned WebSocket, check prediction list via GET /predictions, verify scanner runs on schedule. Ensure all tests pass, ask the user if questions arise.
+  - _Requirements: 1.3, 1.4, 8.1, 8.2, 8.3, 8.4, 9.2, 9.4, 9.5, 10.2, 11.3, 11.4_
+
+- [ ] 13. Add @app.websocket handler to creation agent (Decision 119)
+  - [ ] 13.1 Add `@app.websocket` handler to `calleditv4/src/main.py`
+    - Add `websocket_handler(websocket, context)` alongside existing `@app.entrypoint` handler
+    - Accept connection with `await websocket.accept()`
+    - Receive prediction payload via `await websocket.receive_json()`
+    - Route to creation/clarification flow (reuse existing logic)
+    - Send stream events via `await websocket.send_json()` instead of yielding SSE strings
+    - Handle errors gracefully, always close WebSocket in finally block
+    - _Requirements: 8.1, 8.2, 8.3, 8.4_
+  - [ ] 13.2 Update existing tests for WebSocket handler compatibility
+    - Ensure existing 148 creation agent tests still pass
+    - Add unit test for WebSocket handler routing
+  - [ ] 13.3 Redeploy creation agent via `agentcore launch`
+    - Requires TTY — ask user to run
+    - Validate with presigned URL WebSocket test from Python
+
+- [ ] 14. Fix Presigned URL Lambda IAM permission (Decision 120)
+  - [ ] 14.1 Update `infrastructure/v4-frontend/template.yaml` IAM policy
+    - Change action from wildcard to `bedrock-agentcore:InvokeAgentRuntimeWithWebSocketStream`
+    - Scope resource back to creation agent ARN
+  - [ ] 14.2 Redeploy `calledit-v4-frontend` stack
+
+- [ ] 15. Final end-to-end validation
+  - Test full flow: CloudFront → login → make prediction → WebSocket streams events → prediction list shows result
+  - Verify scanner runs on schedule via CloudWatch logs
   - _Requirements: 1.3, 1.4, 8.1, 8.2, 8.3, 8.4, 9.2, 9.4, 9.5, 10.2, 11.3, 11.4_
 
 ## Notes

@@ -29,6 +29,10 @@ import os
 import sys
 from datetime import datetime, timezone
 
+# Ensure AWS region is set for all boto3 calls in AgentCore Runtime
+if not os.environ.get("AWS_DEFAULT_REGION"):
+    os.environ["AWS_DEFAULT_REGION"] = os.environ.get("AWS_REGION", "us-west-2")
+
 from bedrock_agentcore import RequestContext
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from strands import Agent
@@ -59,7 +63,7 @@ logger = logging.getLogger(__name__)
 app = BedrockAgentCoreApp()
 
 MODEL_ID = "us.anthropic.claude-sonnet-4-20250514-v1:0"
-DYNAMODB_TABLE_NAME = os.environ.get("DYNAMODB_TABLE_NAME", "calledit-db")
+DYNAMODB_TABLE_NAME = os.environ.get("DYNAMODB_TABLE_NAME", "calledit-v4")
 MAX_CLARIFICATION_ROUNDS = int(
     os.environ.get("MAX_CLARIFICATION_ROUNDS", "5")
 )
@@ -483,3 +487,43 @@ async def handler(payload: dict, context: RequestContext):
 
 if __name__ == "__main__":
     app.run()
+
+
+@app.websocket
+async def websocket_handler(websocket, context):
+    """WebSocket entrypoint — same creation/clarification flow, different transport.
+
+    Decision 119: AgentCore requires @app.websocket for presigned URL connections.
+    The @app.entrypoint handler (HTTP streaming) stays for CLI/API compatibility.
+    This handler reuses the same flow logic but sends events via websocket.send_json().
+    """
+    await websocket.accept()
+    try:
+        payload = await websocket.receive_json()
+        logger.info(f"WebSocket received payload: {list(payload.keys())}")
+
+        # Run the same handler logic — it yields JSON strings
+        async for event_json in handler(payload, context):
+            # handler yields JSON strings, parse and send as JSON objects
+            try:
+                event_obj = json.loads(event_json)
+                await websocket.send_json(event_obj)
+            except (json.JSONDecodeError, TypeError):
+                # If it's not valid JSON, send as-is wrapped in a text event
+                await websocket.send_json({"type": "text", "data": {"content": str(event_json)}})
+
+    except Exception as e:
+        logger.error(f"WebSocket handler error: {e}", exc_info=True)
+        try:
+            await websocket.send_json({
+                "type": "error",
+                "prediction_id": "",
+                "data": {"message": str(e)},
+            })
+        except Exception:
+            pass  # Connection may already be closed
+    finally:
+        try:
+            await websocket.close()
+        except Exception:
+            pass

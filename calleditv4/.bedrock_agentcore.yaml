@@ -11,14 +11,14 @@ agents:
     container_runtime: null
     source_path: /home/wsluser/projects/calledit/calleditv4/src
     aws:
-      execution_role: null
-      execution_role_auto_create: true
-      account: null
-      region: null
+      execution_role: arn:aws:iam::894249332178:role/AmazonBedrockAgentCoreSDKRuntime-us-west-2-5a297cfdfd
+      execution_role_auto_create: false
+      account: '894249332178'
+      region: us-west-2
       ecr_repository: null
       ecr_auto_create: false
-      s3_path: null
-      s3_auto_create: true
+      s3_path: s3://bedrock-agentcore-codebuild-sources-894249332178-us-west-2
+      s3_auto_create: false
       network_configuration:
         network_mode: PUBLIC
         network_mode_config: null
@@ -30,8 +30,8 @@ agents:
         idle_runtime_session_timeout: null
         max_lifetime: null
     bedrock_agentcore:
-      agent_id: null
-      agent_arn: null
+      agent_id: calleditv4_Agent-AJiwpKBxRW
+      agent_arn: arn:aws:bedrock-agentcore:us-west-2:894249332178:runtime/calleditv4_Agent-AJiwpKBxRW
       agent_session_id: null
     codebuild:
       project_name: null

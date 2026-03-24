@@ -985,3 +985,51 @@ Create a new `calledit-v4` DynamoDB table for v4 predictions instead of sharing 
 **Date:** March 24, 2026
 
 The v4 DynamoDB table is defined in the same "persistent resources" CloudFormation template as the S3 bucket (`infrastructure/v4-frontend-bucket/template.yaml`, renamed conceptually to "v4 persistent resources"). Both are create-once-never-delete resources that other stacks reference. DDB tables have the same rollback problem as S3 buckets — deleting a table with data is destructive and irreversible.
+
+---
+
+## Decision 115: No Separate v4 Infrastructure Directory for Scanner/Prompts
+**Source:** [Project Update 29](29-project-update-v4-8a-production-cutover.md)
+**Date:** March 24, 2026
+
+`infrastructure/verification-scanner/` is already v4-only (v3 scanner is in `backend/`). `infrastructure/prompt-management/` is shared v3+v4. No need to create v4-specific versions of these. The persistent resources template (`infrastructure/v4-persistent-resources/`) contains only the S3 bucket and DDB table.
+
+---
+
+## Decision 116: Reuse Existing Cognito User Pool
+**Source:** [Project Update 29](29-project-update-v4-8a-production-cutover.md)
+**Date:** March 24, 2026
+
+Reuse the Cognito User Pool from the `calledit-backend` stack rather than creating a new one. Creating a new pool would mean new user accounts. V4 references it by parameter (User Pool ID + Client ID). At v3 teardown, Cognito resources will be extracted to `infrastructure/cognito/template.yaml` via CloudFormation resource import.
+
+---
+
+## Decision 117: Separate frontend-v4/ Directory
+**Source:** [Project Update 29](29-project-update-v4-8a-production-cutover.md)
+**Date:** March 24, 2026
+
+New `frontend-v4/` directory for the v4 React PWA. Copy good parts from v3 `frontend/` (Cognito auth, component structure, styling), rewrite the technical debt (v3 WebSocket proxy, REST API integration). V3 `frontend/` stays untouched until v4 is validated, then gets archived.
+
+---
+
+## Decision 118: AWS_DEFAULT_REGION Fix for AgentCore Runtime
+**Source:** [Project Update 29](29-project-update-v4-8a-production-cutover.md)
+**Date:** March 24, 2026
+
+Both agent entrypoints set `AWS_DEFAULT_REGION` from `AWS_REGION` env var (or default `us-west-2`) at import time. AgentCore Runtime doesn't inherit AWS CLI config, so boto3 calls without explicit region fail.
+
+---
+
+## Decision 119: Add @app.websocket Handler to Creation Agent
+**Source:** [Project Update 29](29-project-update-v4-8a-production-cutover.md)
+**Date:** March 24, 2026
+
+AgentCore Runtime has two separate protocol contracts: `@app.entrypoint` for HTTP streaming and `@app.websocket` for WebSocket bidirectional streaming. The presigned URL flow (Decision 110) requires `@app.websocket`. Both coexist in the same agent. The WebSocket handler receives payloads via `websocket.receive_json()` and sends events via `websocket.send_json()`. The existing `@app.entrypoint` stays for CLI/API compatibility.
+
+---
+
+## Decision 120: Presigned URL Lambda IAM Permission
+**Source:** [Project Update 29](29-project-update-v4-8a-production-cutover.md)
+**Date:** March 24, 2026
+
+The correct IAM permission for WebSocket connections is `bedrock-agentcore:InvokeAgentRuntimeWithWebSocketStream`, not `bedrock:InvokeAgent` or `bedrock-agentcore:InvokeAgentRuntime`.

@@ -1,0 +1,240 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  CalledIt V4 Frontend — CloudFront + OAC + HTTP API + Presigned URL Lambda
+  + ListPredictions Lambda. References persistent resources (S3 bucket + DDB)
+  from the calledit-v4-persistent-resources stack.
+
+Parameters:
+  CognitoUserPoolId:
+    Type: String
+    Description: Cognito User Pool ID from calledit-backend stack
+  CognitoUserPoolClientId:
+    Type: String
+    Description: Cognito User Pool Client ID from calledit-backend stack
+  CreationAgentRuntimeArn:
+    Type: String
+    Description: ARN from agentcore launch for the creation agent
+  FrontendBucketName:
+    Type: String
+    Description: S3 bucket name from v4-persistent-resources stack
+  FrontendBucketArn:
+    Type: String
+    Description: S3 bucket ARN from v4-persistent-resources stack
+  FrontendBucketDomainName:
+    Type: String
+    Description: S3 bucket regional domain from v4-persistent-resources stack
+  DynamoDBTableName:
+    Type: String
+    Default: calledit-v4
+  DynamoDBTableArn:
+    Type: String
+    Description: DynamoDB table ARN from v4-persistent-resources stack
+
+Resources:
+  # --- CloudFront OAC ---
+  CloudFrontOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub '${AWS::StackName}-oac'
+        Description: OAC for V4 frontend S3 bucket
+        SigningProtocol: sigv4
+        SigningBehavior: always
+        OriginAccessControlOriginType: s3
+
+  # --- CloudFront Distribution ---
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultRootObject: index.html
+        Origins:
+          - Id: S3Origin
+            DomainName: !Ref FrontendBucketDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+            OriginAccessControlId: !GetAtt CloudFrontOAC.Id
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+          CachedMethods:
+            - GET
+            - HEAD
+          ForwardedValues:
+            QueryString: false
+          Compress: true
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 10
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 10
+        HttpVersion: http2
+
+  # --- S3 Bucket Policy (CloudFront OAC only) ---
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucketName
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudFrontOAC
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub '${FrontendBucketArn}/*'
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}'
+
+  # --- API Gateway HTTP API ---
+  V4HttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub '${AWS::StackName}-api'
+      ProtocolType: HTTP
+      CorsConfiguration:
+        AllowOrigins:
+          - !Sub 'https://${CloudFrontDistribution.DomainName}'
+          - 'http://localhost:5173'
+        AllowHeaders:
+          - Authorization
+          - Content-Type
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+
+  V4HttpApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref V4HttpApi
+      StageName: '$default'
+      AutoDeploy: true
+
+  # --- Cognito JWT Authorizer ---
+  CognitoAuthorizer:
+    Type: AWS::ApiGatewayV2::Authorizer
+    Properties:
+      ApiId: !Ref V4HttpApi
+      AuthorizerType: JWT
+      Name: CognitoJWT
+      IdentitySource:
+        - $request.header.Authorization
+      JwtConfiguration:
+        Issuer: !Sub 'https://cognito-idp.${AWS::Region}.amazonaws.com/${CognitoUserPoolId}'
+        Audience:
+          - !Ref CognitoUserPoolClientId
+
+  # --- Presigned URL Lambda ---
+  PresignedUrlFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.12
+      Handler: handler.lambda_handler
+      CodeUri: presigned_url/
+      Timeout: 30
+      MemorySize: 256
+      Environment:
+        Variables:
+          CREATION_AGENT_RUNTIME_ARN: !Ref CreationAgentRuntimeArn
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock-agentcore:InvokeAgentRuntime
+              Resource: '*'
+
+  PresignedUrlRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref V4HttpApi
+      RouteKey: 'POST /presigned-url'
+      AuthorizationType: JWT
+      AuthorizerId: !Ref CognitoAuthorizer
+      Target: !Sub 'integrations/${PresignedUrlIntegration}'
+
+  PresignedUrlIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref V4HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt PresignedUrlFunction.Arn
+      PayloadFormatVersion: '2.0'
+
+  PresignedUrlPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref PresignedUrlFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${V4HttpApi}/*/*/presigned-url'
+
+  # --- ListPredictions Lambda ---
+  ListPredictionsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.12
+      Handler: handler.lambda_handler
+      CodeUri: list_predictions/
+      Timeout: 30
+      MemorySize: 256
+      Environment:
+        Variables:
+          DYNAMODB_TABLE_NAME: !Ref DynamoDBTableName
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Query
+              Resource:
+                - !Ref DynamoDBTableArn
+                - !Sub '${DynamoDBTableArn}/index/*'
+
+  ListPredictionsRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref V4HttpApi
+      RouteKey: 'GET /predictions'
+      AuthorizationType: JWT
+      AuthorizerId: !Ref CognitoAuthorizer
+      Target: !Sub 'integrations/${ListPredictionsIntegration}'
+
+  ListPredictionsIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref V4HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt ListPredictionsFunction.Arn
+      PayloadFormatVersion: '2.0'
+
+  ListPredictionsPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ListPredictionsFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${V4HttpApi}/*/*/predictions'
+
+Outputs:
+  CloudFrontDomainName:
+    Description: CloudFront distribution domain
+    Value: !GetAtt CloudFrontDistribution.DomainName
+
+  CloudFrontDistributionId:
+    Description: CloudFront distribution ID for cache invalidation
+    Value: !Ref CloudFrontDistribution
+
+  HttpApiUrl:
+    Description: HTTP API invoke URL
+    Value: !Sub 'https://${V4HttpApi}.execute-api.${AWS::Region}.amazonaws.com'
