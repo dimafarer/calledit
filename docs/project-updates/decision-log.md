@@ -1041,3 +1041,51 @@ The correct IAM permission for WebSocket connections is `bedrock-agentcore:Invok
 **Date:** March 24, 2026
 
 The presigned URL (SigV4) approach for browser-to-agent WebSocket connectivity doesn't work because browsers send an `Origin` header that AgentCore rejects on SigV4-signed WebSocket connections. AgentCore natively supports JWT bearer token auth for WebSocket — the browser passes the Cognito JWT via the `Sec-WebSocket-Protocol` header (base64url-encoded). This eliminates the Presigned URL Lambda for the WebSocket path. The agent must be configured with `--authorizer-config` pointing to the Cognito user pool's OIDC discovery URL. Replaces Decision 110 for the browser WebSocket path.
+
+---
+
+## Decision 122: Tiered Evaluator Strategy for v4
+**Source:** [Project Update 30](30-project-update-v4-7a-eval-framework-redesign.md)
+**Date:** March 25, 2026
+
+Replace the v3 "measure everything" approach (17 evaluators, 12 LLM judges, 60+ min per run) with a tiered strategy. Tier 1: 6 deterministic checks (schema validity, field completeness, score range, date resolution, dimension count, tier consistency) — every run, instant, free. Tier 2: 2 LLM judges (intent preservation, plan quality) — on-demand, targeted. Tier 3: cross-agent calibration (creation agent score vs verification agent outcome) — milestone only. Start simple, expand with intention based on data.
+
+---
+
+## Decision 123: Separate Eval Experiments per Agent
+**Source:** [Project Update 30](30-project-update-v4-7a-eval-framework-redesign.md)
+**Date:** March 25, 2026
+
+Creation agent and verification agent get separate eval experiments with separate test cases, evaluators, and scoring. Both accessible from the same HTML dashboard. A cross-agent calibration tab bridges them by comparing the creation agent's verifiability score prediction against the verification agent's actual outcome. The two agents have fundamentally different jobs, input/output shapes, and failure modes — mixing them in one experiment would conflate creation quality with verification quality.
+
+---
+
+## Decision 124: Golden Dataset Reshape for v4
+**Source:** [Project Update 30](30-project-update-v4-7a-eval-framework-redesign.md)
+**Date:** March 25, 2026
+
+Reshape the golden dataset to be v4-native. Remove: `expected_per_agent_outputs.categorizer.expected_category` (3-category system dead), `tool_manifest_config` (v4 uses AgentCore built-in tools). Add: `expected_verifiability_score_range`, `expected_verification_outcome`, `smoke_test` flag. Keep: ground truth verification fields, difficulty, dimension tags, evaluation rubric. No technical debt — clean break from v3 dataset shape, same principle as Decision 113.
+
+---
+
+## Decision 125: Smoke Test Subset Strategy
+**Source:** [Project Update 30](30-project-update-v4-7a-eval-framework-redesign.md)
+**Date:** March 25, 2026
+
+Create a smoke test subset of ~12 cases (4 easy + 5 medium + 3 hard) covering all domains. Run tiers: smoke + deterministic only (<5 min, every iteration), smoke + judges (<10 min, prompt changes), full suite + judges (<15 min, milestones), cross-agent calibration (milestone-only, runs both agents). V3 took 60+ min because 12 LLM judges × 68 cases. With 2 judges, even full suite should be under 15 minutes.
+
+---
+
+## Decision 126: Creation Agent Priority Metrics
+**Source:** [Project Update 30](30-project-update-v4-7a-eval-framework-redesign.md)
+**Date:** March 25, 2026
+
+Creation agent evaluation priorities in order: (1) intent preservation — does the bundle faithfully represent what the user meant? (2) plan quality — are criteria specific, sources real, steps executable? (3) score accuracy — does the verifiability score predict verification agent success? Each layer depends on the one before it. This ordering reflects the user's actual experience and guides which evaluators to invest in first.
+
+---
+
+## Decision 127: Structured Eval Run Metadata for Dashboard Context
+**Source:** [Project Update 30](30-project-update-v4-7a-eval-framework-redesign.md)
+**Date:** March 25, 2026
+
+Each eval run carries structured metadata so the dashboard can display meaningful context instead of just filenames. Fields: `description` (one-line human-readable goal, CLI flag `--description`, auto-generated default), `prompt_versions` (manifest of prompt versions used), `run_tier` ("smoke", "smoke+judges", "full", "calibration" per Decision 125), `dataset_version` ("4.0"), `agent` ("creation" or "verification"). Dashboard dropdown shows: `timestamp | agent | tier | description` instead of raw filenames. The eval runner accepts `--description` as a CLI flag; if omitted, it generates a default from the run config.

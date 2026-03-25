@@ -32,29 +32,11 @@ The full eval report (including per-agent judge averages, evaluator groups, and 
 ## 2. Review and Expand Golden Dataset
 
 **Source:** Ongoing eval iteration (March 14-17, 2026)
-
-**Problem:** The golden dataset (v3.1) has ~25 test cases. As the eval framework matures with 6 LLM judges and architecture comparison, the dataset needs review:
-- Are there enough predictions per category to draw meaningful conclusions?
-- Are the ground truth metadata fields (`verifiability_reasoning`, `date_derivation`, `verification_sources`, etc.) still accurate after the Verification Builder v2 operationalization changes?
-- Do we have enough fuzziness level 0 (control) cases where the ReviewAgent should find nothing to clarify?
-- Are the 5 "coherence anchor" predictions (complete expected outputs for all 4 agents) still representative?
-
-**What to do:**
-- Audit existing predictions against the current prompt versions (parser v1, categorizer v2, Verification Builder v2, review v2)
-- Add predictions targeting known weak spots (CriteriaMethodAlignment at 0.73 — what types of predictions score lowest?)
-- Add more fuzziness level 0 controls
-- Expand to ~50 predictions (Decision 38 threshold before moving to S3)
-- Re-derive expected categories from ground truth metadata if the 4-category system (Decision 33) is adopted
-- Create a curated "fast eval" subset (~15-20 predictions) that covers all 3 categories, multiple fuzziness levels, and the coherence anchors — enough to catch regressions without running the full 68-prediction suite with 6 LLM judges (~470 model calls). The eval runner already supports `--name` filtering; a named subset list or `--subset fast` flag would make this a one-liner
+**Status:** SUPERSEDED by Decision 124 (March 25, 2026) — golden dataset will be reshaped for v4 as part of the eval framework redesign. Remove v3 fields (3-category system, tool_manifest_config), add v4 fields (expected_verifiability_score_range, expected_verification_outcome, smoke_test flag). Smoke test subset of ~12 cases per Decision 125. See Project Update 30.
 
 **References:**
-- Decision 31: Ground truth metadata per prediction
-- Decision 32: Clean break from v1 dataset
-- Decision 33: Future 4-category system
-- Decision 35: Lightweight expected outputs
-- Decision 36: Fuzziness level 0 (control cases)
-- Decision 37: Cross-agent coherence as first-class concern
-- Decision 38: Storage — git now, S3 later
+- Decision 124: Golden Dataset Reshape for v4
+- Decision 125: Smoke Test Subset Strategy
 
 
 ---
@@ -185,40 +167,11 @@ The full eval report (including per-agent judge averages, evaluator groups, and 
 ## 8. Evaluator Pipeline Review — Replace Deterministic with LLM Judges Where It Makes Sense
 
 **Source:** Architecture comparison analysis (March 18, 2026)
-**Priority:** High — consistency of measurement matters more than cost savings
-
-**Problem:** The evaluator pipeline has a mix of deterministic evaluators and LLM judges. The deterministic evaluators (CategoryMatch, JSONValidity, ClarificationQuality, Convergence) are cheap and fast but shallow — they check surface-level properties (label match, JSON parse, keyword presence, category match) without understanding whether the output is actually good. This creates inconsistent measurement: some dimensions are evaluated by reasoning, others by string matching.
-
-The data from Runs 13-14 shows that deterministic evaluators often pass test cases that LLM judges fail. The gap between deterministic and judge scores is where the real quality issues hide. Running fewer, more expensive runs with consistent LLM judge coverage across the board would produce more trustworthy data than many cheap runs with mixed measurement quality.
-
-**Current evaluators and proposed changes:**
-
-| Evaluator | Current Type | Proposed | Rationale |
-|---|---|---|---|
-| CategoryMatch | Deterministic | Keep as cheap regression check, add LLM judge version | CategorizationJustification already covers this better — CategoryMatch stays as a fast sanity check |
-| JSONValidity | Deterministic | Keep deterministic | This is genuinely a structural check — either it parses or it doesn't. LLM judge adds no value here. |
-| ClarificationQuality | Deterministic (keyword) | Replace with LLM judge | Keyword matching is too brittle. ClarificationRelevance (LLM judge) already exists and is better — retire ClarificationQuality entirely |
-| Convergence | Deterministic (category match) | Replace with LLM judge or embedding similarity | Current check is too shallow (category label match). Should measure whether round 2's verification plan actually converged toward the base prediction's intent. Embedding similarity for continuous score, LLM judge for rich assessment |
-| ReasoningQuality | LLM judge (generic) | Retire or refocus | Superseded by the targeted per-agent judges (IntentExtraction, CategorizationJustification, ClarificationRelevance). The generic "is the reasoning good?" question is less useful than "did this specific agent do its specific job?" |
-
-**What to do:**
-- Keep all deterministic evaluators running alongside LLM judges for now — don't retire anything yet
-- Use the Coherence View dashboard page to measure per-evaluator agreement rates between deterministic and LLM judges across multiple runs
-- When the data shows a deterministic evaluator agrees with its LLM judge counterpart 90%+ of the time, that deterministic evaluator is a trustworthy cheap proxy — use it for quick iteration runs, save the judge for milestone runs
-- When agreement is low (e.g., ClarificationQuality vs ClarificationRelevance), the deterministic evaluator is misleading and should be retired or replaced
-- Build a Convergence LLM judge that assesses whether clarification moved the verification plan toward the correct one (embedding similarity as fast score, LLM judge for rich assessment)
-- Keep JSONValidity as deterministic (it's genuinely structural)
-- The goal: a tiered run strategy based on data
-  - Quick runs: fast subset (~15 predictions) + deterministic only (5 min, near-free)
-  - Standard runs: full dataset + deterministic + only judges without a high-agreement proxy (30 min)
-  - Full runs: full dataset + all judges (60+ min, milestone comparisons only)
-- This connects to backlog item 3 (golden dataset fast eval subset) — both reduce run cost
+**Status:** SUPERSEDED by Decision 122 (March 25, 2026) — the v4 eval framework redesign takes the opposite approach. Instead of replacing deterministic with LLM judges, v4 starts with 6 deterministic evaluators and only 2 targeted LLM judges (intent preservation + plan quality). Expand with intention based on data, not speculation. See Project Update 30.
 
 **References:**
-- Decision 30: Two-tier evaluator strategy validated
-- Decision 44: Verification criteria is the primary eval target
-- Decision 48: Per-agent evaluators
-- `docs/project-updates/architecture-insights.md` — shared failure profile showing deterministic/judge disagreements
+- Decision 122: Tiered Evaluator Strategy for v4
+- Decision 126: Creation Agent Priority Metrics
 
 ---
 

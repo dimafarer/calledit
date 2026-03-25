@@ -157,7 +157,10 @@ Evolved the V4-3a synchronous entrypoint into an async streaming generator with 
 ### Update 26 (March 23): V4-4 Verifiability Scorer Complete
 Extended PlanReview structured output with score tier metadata, per-dimension assessments, and LLM-generated guidance text. First design was over-engineered (separate scorer.py module with regex parsing) — simplified to let the LLM produce everything via structured output. New `DimensionAssessment` Pydantic model, 4 new PlanReview fields (`score_tier`, `score_label`, `score_guidance`, `dimension_assessments`), deterministic `score_to_tier()` function for color/icon mapping. No legacy category — clean break from v3 (Decision 103). Updated plan-reviewer prompt in CloudFormation. Strands structured_output_model populated new fields correctly even before prompt deploy. 148 tests passing.
 
-## Current State (March 24, 2026)
+### Update 30 (March 25): V4-7a Eval Framework Redesign (Research & Strategy)
+Research session to redesign the eval framework from first principles for v4. Audited the v3 eval framework (17 evaluators, 12 LLM judges, 60+ min per run) and the Strands Evals SDK best practices. Established a tiered evaluator strategy: 6 deterministic checks (every run, instant), 2 LLM judges (intent preservation + plan quality, on-demand), cross-agent calibration (milestone-only). Separate eval experiments per agent with shared dashboard. Golden dataset to be reshaped for v4 (remove 3-category system, add verifiability score ranges). Smoke test subset (~12 cases) for fast iteration. Five new decisions (122-126).
+
+## Current State (March 25, 2026)
 
 - v4 production cutover COMPLETE — full MVP working end-to-end
 - Creation Agent: deployed to AgentCore Runtime, WebSocket + HTTP handlers, JWT auth, token-by-token streaming
@@ -166,8 +169,8 @@ Extended PlanReview structured output with score tier metadata, per-dimension as
 - Full flow: login → make prediction → streaming reasoning → structured result → clarification → predictions list
 - Infrastructure: 3 CloudFormation stacks (`v4-persistent-resources`, `v4-frontend`, `v4-scanner`)
 - DynamoDB: `calledit-v4` table with 2 GSIs, predictions tied to Cognito `sub`
-- Eval framework: 15 evaluators, 8-page Streamlit dashboard, `--verify` mode, 17+ eval runs
+- Eval framework: v4 redesign planned — tiered evaluators (6 deterministic + 2 LLM judges), separate experiments per agent, golden dataset reshape pending
 - 170 automated tests passing (148 creation + 22 verification)
-- 121 architectural decisions documented across 29 project updates
+- 126 architectural decisions documented across 30 project updates
 - v3 infrastructure running in parallel (untouched) until teardown
-- Next: v3 teardown, Memory integration (V4-6), eval baseline on deployed agents (V4-7a)
+- Next: Create eval framework specs (dataset reshape, creation agent eval, verification agent eval, cross-agent calibration, dashboard)

@@ -1,0 +1,239 @@
+# Implementation Plan: Creation Agent Eval
+
+## Overview
+
+Build the v4 creation agent eval framework: AgentCore backend → 6 Tier 1 deterministic evaluators → 2 Tier 2 LLM judge evaluators → CLI runner → JSON report generation. All code lives under `eval/` and invokes the deployed agent via HTTP streaming (no local agent, no mocks). Depends on V4-7a-1 (golden dataset reshape) for `smoke_test` flags in the dataset.
+
+## Tasks
+
+- [ ] 1. Set up project structure and shared test fixtures
+  - [ ] 1.1 Create `eval/backends/__init__.py`, `eval/evaluators/__init__.py`, and `eval/tests/__init__.py` package init files
+    - Create empty `__init__.py` files for each package directory
+    - _Requirements: N/A (project structure)_
+  - [ ] 1.2 Create shared Hypothesis generators in `eval/tests/conftest.py`
+    - Implement `valid_parsed_claim()`, `valid_verification_plan()`, `valid_plan_review()`, `valid_bundle()` strategies
+    - Implement `invalid_bundle()` strategy that produces bundles with at least one invalid field
+    - Implement `stream_events(bundle)` helper that wraps a bundle dict in a realistic `flow_complete` event stream
+    - All generators must produce dicts matching the Pydantic model shapes from `calleditv4/src/models.py`
+    - _Requirements: 3.1, 3.2, 3.3, 4.1, 4.2, 4.3, 5.1, 6.1, 7.1, 8.1_
+
+- [ ] 2. Implement AgentCore Backend
+  - [ ] 2.1 Implement `eval/backends/agentcore_backend.py`
+    - Create `AgentCoreBackend` class with `RUNTIME_ARN` constant
+    - Implement `invoke(prediction_text: str) -> dict` that sends `{prediction_text, user_id: "eval-runner", timezone: "UTC"}` via `invoke_agent_runtime()`
+    - Implement `_parse_stream(response) -> dict` that extracts the `flow_complete` event's data payload
+    - Return dict with keys `parsed_claim`, `verification_plan`, `plan_review`, `prompt_versions`, `prediction_id`
+    - Raise `RuntimeError` with case id when `flow_complete` is missing or invocation fails
+    - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
+  - [ ]* 2.2 Write property test: backend payload construction (Property 1)
+    - **Property 1: Backend payload construction**
+    - For any prediction text, the payload must be `{"prediction_text": <text>, "user_id": "eval-runner", "timezone": "UTC"}`
+    - Add to `eval/tests/test_agentcore_backend.py`
+    - **Validates: Requirements 1.1**
+  - [ ]* 2.3 Write property test: stream parsing round trip (Property 2)
+    - **Property 2: Stream parsing round trip**
+    - For any valid bundle dict, wrapping in `flow_complete` event and parsing must return the original `parsed_claim`, `verification_plan`, and `plan_review`
+    - Use `stream_events()` generator from conftest
+    - Add to `eval/tests/test_agentcore_backend.py`
+    - **Validates: Requirements 1.2, 1.3**
+  - [ ]* 2.4 Write unit tests for backend error handling
+    - Test missing `flow_complete` event raises `RuntimeError`
+    - Test empty stream raises `RuntimeError`
+    - Test malformed JSON in stream events raises `RuntimeError`
+    - Add to `eval/tests/test_agentcore_backend.py`
+    - _Requirements: 1.4, 1.5_
+
+- [ ] 3. Implement Tier 1 Evaluators
+  - [ ] 3.1 Implement Schema Validity evaluator in `eval/evaluators/schema_validity.py`
+    - Create `SchemaValidityEvaluator` extending `strands_evals.evaluators.Evaluator`
+    - Validate `parsed_claim` against `ParsedClaim`, `verification_plan` against `VerificationPlan`, `plan_review` against `PlanReview`
+    - Return score 1.0 when all pass, 0.0 with Pydantic error details when any fail
+    - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
+  - [ ]* 3.2 Write property test: schema validity biconditional (Property 4)
+    - **Property 4: Schema validity is biconditional on Pydantic validation**
+    - For any bundle dict, score is 1.0 iff all three models validate; 0.0 with error details otherwise
+    - Add to `eval/tests/test_schema_validity.py`
+    - **Validates: Requirements 3.1, 3.2, 3.3, 3.4, 3.5**
+  - [ ] 3.3 Implement Field Completeness evaluator in `eval/evaluators/field_completeness.py`
+    - Create `FieldCompletenessEvaluator` extending `Evaluator`
+    - Check `sources`, `criteria`, `steps` are non-empty lists
+    - Return score 1.0 when all non-empty, 0.0 identifying empty fields otherwise
+    - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
+  - [ ]* 3.4 Write property test: field completeness biconditional (Property 5)
+    - **Property 5: Field completeness is biconditional on non-empty lists**
+    - For any bundle dict, score is 1.0 iff `sources`, `criteria`, `steps` are all non-empty lists
+    - Add to `eval/tests/test_field_completeness.py`
+    - **Validates: Requirements 4.1, 4.2, 4.3, 4.4, 4.5**
+  - [ ] 3.5 Implement Score Range evaluator in `eval/evaluators/score_range.py`
+    - Create `ScoreRangeEvaluator` extending `Evaluator`
+    - Check `verifiability_score` is a float in [0.0, 1.0]
+    - Return score 1.0 when valid, 0.0 with actual value otherwise
+    - _Requirements: 5.1, 5.2, 5.3_
+  - [ ]* 3.6 Write property test: score range validates float in [0.0, 1.0] (Property 6)
+    - **Property 6: Score range validates float in [0.0, 1.0]**
+    - For any bundle dict, score is 1.0 iff `verifiability_score` is a float between 0.0 and 1.0 inclusive
+    - Add to `eval/tests/test_score_range.py`
+    - **Validates: Requirements 5.1, 5.2, 5.3**
+  - [ ] 3.7 Implement Date Resolution evaluator in `eval/evaluators/date_resolution.py`
+    - Create `DateResolutionEvaluator` extending `Evaluator`
+    - Check `verification_date` is a valid ISO 8601 datetime string
+    - Return score 1.0 when valid, 0.0 with actual value otherwise
+    - _Requirements: 6.1, 6.2, 6.3_
+  - [ ]* 3.8 Write property test: date resolution validates ISO 8601 (Property 7)
+    - **Property 7: Date resolution validates ISO 8601**
+    - For any bundle dict, score is 1.0 iff `verification_date` is a valid ISO 8601 datetime string
+    - Add to `eval/tests/test_date_resolution.py`
+    - **Validates: Requirements 6.1, 6.2, 6.3**
+  - [ ] 3.9 Implement Dimension Count evaluator in `eval/evaluators/dimension_count.py`
+    - Create `DimensionCountEvaluator` extending `Evaluator`
+    - Count entries in `dimension_assessments` list
+    - Return score 1.0 when exactly 5, 0.0 with actual count otherwise
+    - _Requirements: 7.1, 7.2, 7.3_
+  - [ ]* 3.10 Write property test: dimension count validates exactly 5 (Property 8)
+    - **Property 8: Dimension count validates exactly 5**
+    - For any bundle dict, score is 1.0 iff `dimension_assessments` has exactly 5 entries
+    - Add to `eval/tests/test_dimension_count.py`
+    - **Validates: Requirements 7.1, 7.2, 7.3**
+  - [ ] 3.11 Implement Tier Consistency evaluator in `eval/evaluators/tier_consistency.py`
+    - Create `TierConsistencyEvaluator` extending `Evaluator`
+    - Check `score_tier` matches deterministic mapping: ≥0.7 → "high", ≥0.4 → "moderate", <0.4 → "low"
+    - Return score 1.0 when consistent, 0.0 with actual score/tier/expected tier otherwise
+    - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
+  - [ ]* 3.12 Write property test: tier consistency matches score_to_tier mapping (Property 9)
+    - **Property 9: Tier consistency matches score_to_tier deterministic mapping**
+    - For any bundle with `verifiability_score` and `score_tier`, score is 1.0 iff tier matches the deterministic mapping
+    - Add to `eval/tests/test_tier_consistency.py`
+    - **Validates: Requirements 8.1, 8.2, 8.3, 8.4, 8.5**
+
+- [ ] 4. Checkpoint — Ensure all Tier 1 evaluator tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 5. Implement Tier 2 Evaluators
+  - [ ] 5.1 Implement Intent Preservation evaluator in `eval/evaluators/intent_preservation.py`
+    - Create `OutputEvaluator` instance with `INTENT_PRESERVATION_RUBRIC`
+    - Rubric must focus on: fidelity of parsed statement, preservation of temporal intent, preservation of scope/specificity, absence of added assumptions
+    - Use `model="us.anthropic.claude-opus-4-6-v1"` with `include_inputs=True`
+    - Return score 0.0–1.0 with LLM judge reasoning in output
+    - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
+  - [ ] 5.2 Implement Plan Quality evaluator in `eval/evaluators/plan_quality.py`
+    - Create `OutputEvaluator` instance with `PLAN_QUALITY_RUBRIC`
+    - Rubric must focus on: specificity/measurability of criteria, existence/accessibility of sources, logical ordering/executability of steps, absence of vague language
+    - Use `model="us.anthropic.claude-opus-4-6-v1"` with `include_inputs=True`
+    - Return score 0.0–1.0 with LLM judge reasoning in output
+    - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6_
+  - [ ]* 5.3 Write unit tests for Tier 2 rubric content
+    - Verify intent preservation rubric contains required focus areas (fidelity, temporal intent, scope, assumptions)
+    - Verify plan quality rubric contains required focus areas (measurability, source accessibility, step ordering, vague language)
+    - Add to `eval/tests/test_intent_preservation.py` and `eval/tests/test_plan_quality.py`
+    - _Requirements: 9.3, 10.4_
+
+- [ ] 6. Implement Case Loader and Run Tier Filtering
+  - [ ] 6.1 Implement case loading in `eval/creation_eval.py`
+    - Create `EvalCase` dataclass with `id`, `input`, `expected_output`, `metadata`
+    - Implement `load_dataset(path)` that reads and validates golden dataset JSON
+    - Map each base prediction to an EvalCase: `input` = `prediction_text`, `expected_output` = `ground_truth`, `metadata` = `{dimension_tags, difficulty, smoke_test, id, evaluation_rubric}`
+    - Exit with non-zero status on invalid JSON or missing `base_predictions`
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
+  - [ ]* 6.2 Write property test: case loading preserves all fields (Property 3)
+    - **Property 3: Case loading preserves all fields**
+    - For any base prediction, the EvalCase has correct `input`, `expected_output`, and `metadata` fields
+    - Add to `eval/tests/test_case_loader.py`
+    - **Validates: Requirements 2.1, 2.2, 2.3, 2.4**
+  - [ ] 6.3 Implement `filter_cases(dataset, tier, case_id)` in `eval/creation_eval.py`
+    - `smoke` and `smoke+judges`: filter to cases with `smoke_test=true`
+    - `full`: return all cases
+    - `--case <id>`: return exactly that case, exit if not found
+    - _Requirements: 11.1, 11.2, 11.3, 12.6, 12.7_
+  - [ ] 6.4 Implement `build_evaluator_list(tier)` in `eval/creation_eval.py`
+    - `smoke`: Tier 1 evaluators only
+    - `smoke+judges` and `full`: Tier 1 + Tier 2 evaluators
+    - Default tier is `smoke` when `--tier` is omitted
+    - _Requirements: 11.1, 11.2, 11.3, 11.4_
+  - [ ]* 6.5 Write property test: run tier filtering selects correct cases and evaluators (Property 10)
+    - **Property 10: Run tier filtering selects correct cases and evaluators**
+    - For any dataset and tier, verify correct case selection and evaluator list
+    - Add to `eval/tests/test_run_tier_filtering.py`
+    - **Validates: Requirements 11.1, 11.2, 11.3**
+  - [ ]* 6.6 Write property test: single case override ignores tier filtering (Property 12)
+    - **Property 12: Single case override ignores tier filtering**
+    - For any dataset and valid case id, `--case <id>` returns exactly that case regardless of tier
+    - Add to `eval/tests/test_run_tier_filtering.py`
+    - **Validates: Requirements 12.6**
+  - [ ]* 6.7 Write unit tests for case loader error handling
+    - Test invalid JSON file exits with non-zero status
+    - Test missing `base_predictions` exits with non-zero status
+    - Test unknown `--case` id exits with non-zero status
+    - Add to `eval/tests/test_case_loader.py`
+    - _Requirements: 2.5, 2.6, 12.7_
+
+- [ ] 7. Implement CLI Runner and Eval Orchestration
+  - [ ] 7.1 Implement CLI argument parsing in `eval/creation_eval.py`
+    - Add `--dataset` (default: `eval/golden_dataset.json`), `--tier` (default: `smoke`), `--description`, `--output-dir` (default: `eval/reports/`), `--dry-run`, `--case` flags via `argparse`
+    - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6_
+  - [ ] 7.2 Implement `run_eval(cases, backend, evaluators)` orchestration loop
+    - For each case: invoke backend, run evaluators, collect per-case results
+    - Catch backend errors per-case and record in result with `error` field (don't abort entire run)
+    - _Requirements: 1.1, 1.2, 1.3, 3.1–8.5, 9.1–10.6_
+  - [ ] 7.3 Implement `--dry-run` mode
+    - List all cases that would be executed with ids and metadata, without invoking backend or evaluators
+    - _Requirements: 12.5_
+  - [ ]* 7.4 Write property test: dry run lists cases without side effects (Property 11)
+    - **Property 11: Dry run lists cases without side effects**
+    - For any dataset and tier, `--dry-run` produces case ids matching tier filtering and does not invoke backend
+    - Add to `eval/tests/test_run_tier_filtering.py`
+    - **Validates: Requirements 12.5**
+
+- [ ] 8. Implement Report Generation
+  - [ ] 8.1 Implement `build_run_metadata(args, dataset, results)` in `eval/creation_eval.py`
+    - Record `description`, `prompt_versions`, `run_tier`, `dataset_version`, `agent` (always "creation"), `timestamp` (ISO 8601), `duration_seconds`, `case_count`
+    - Auto-generate description from tier and timestamp when `--description` is omitted
+    - _Requirements: 13.1, 13.2, 13.3, 13.4, 13.5, 13.6, 13.7, 13.8_
+  - [ ] 8.2 Implement `build_report(metadata, results, cases)` and `save_report(report, output_dir)`
+    - Build report with `run_metadata`, `aggregate_scores` (per-evaluator averages + overall pass rate), `case_results`, `smoke_test_summary`
+    - Save as `creation-eval-{YYYYMMDD-HHMMSS}.json` with 2-space indentation
+    - Create output directory if it doesn't exist
+    - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5, 14.6, 14.7_
+  - [ ]* 8.3 Write property test: run metadata contains all required fields (Property 13)
+    - **Property 13: Run metadata contains all required fields**
+    - For any completed run, metadata has all 8 required fields with correct types
+    - Add to `eval/tests/test_report.py`
+    - **Validates: Requirements 13.1–13.8, 14.2**
+  - [ ]* 8.4 Write property test: aggregate scores are correct averages (Property 14)
+    - **Property 14: Aggregate scores are correct averages**
+    - For any set of per-case results, averages equal arithmetic mean and pass rate equals fraction where all T1 = 1.0
+    - Add to `eval/tests/test_report.py`
+    - **Validates: Requirements 14.3**
+  - [ ]* 8.5 Write property test: smoke test summary filters correctly (Property 15)
+    - **Property 15: Smoke test summary filters correctly**
+    - For any full run report, smoke summary aggregates only from cases with `smoke_test=true`
+    - Add to `eval/tests/test_report.py`
+    - **Validates: Requirements 14.5**
+  - [ ]* 8.6 Write property test: report filename follows convention (Property 16)
+    - **Property 16: Report filename follows convention**
+    - For any timestamp, filename is `creation-eval-{YYYYMMDD-HHMMSS}.json`
+    - Add to `eval/tests/test_report.py`
+    - **Validates: Requirements 14.1**
+  - [ ]* 8.7 Write property test: report output is valid JSON (Property 17)
+    - **Property 17: Report output is valid JSON**
+    - For any report dict, serialized output is parseable by `json.loads()` with 2-space indentation
+    - Add to `eval/tests/test_report.py`
+    - **Validates: Requirements 14.6**
+
+- [ ] 9. Wire everything together in `eval/creation_eval.py` main()
+  - [ ] 9.1 Implement `main()` function connecting CLI → loader → backend → evaluators → report
+    - Wire `parse_args()`, `load_dataset()`, `filter_cases()`, `build_evaluator_list()`, `run_eval()`, `build_run_metadata()`, `build_report()`, `save_report()`
+    - Add `if __name__ == "__main__": main()` entry point
+    - _Requirements: 1.1–1.5, 2.1–2.6, 11.1–11.4, 12.1–12.7, 13.1–13.8, 14.1–14.7_
+
+- [ ] 10. Final checkpoint — Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+## Notes
+
+- Tasks marked with `*` are optional and can be skipped for faster MVP
+- Each task references specific requirements for traceability
+- Property tests use `hypothesis` with `@settings(max_examples=100)` minimum
+- Tier 2 evaluators (LLM judges) have no property tests — they hit real Bedrock per Decision 96 (no mocks)
+- Integration tests are manual: run `eval/creation_eval.py` against the deployed agent
+- The golden dataset must have `smoke_test` flags (V4-7a-1 dependency) before run tier filtering works end-to-end
+- All Python commands use `/home/wsluser/projects/calledit/venv/bin/python`
