@@ -108,21 +108,22 @@ Planned the v4 clean rebuild on Amazon Bedrock AgentCore. Three architectural in
 
 The eval framework demonstrates production-grade AI quality assurance across three layers:
 
-**Layer 1 — Strands Evals SDK (Inner Loop):** Local development, prompt iteration, architecture comparison. Golden dataset with 68 test cases, 15 evaluators (6 LLM judges + 9 deterministic), pluggable backend system. Fast feedback in minutes.
+**Layer 1 — Strands Evals SDK (Inner Loop):** Local eval runner invoking deployed AgentCore agents via HTTPS + JWT auth. Tiered evaluator strategy: 6 fast deterministic checks (every run, instant) + 2 targeted LLM judges (intent preservation, plan quality — on-demand). Smoke test subset (12 cases) for fast iteration, full suite (45 cases) for milestones. Structured run metadata enables multi-dimensional comparison: model, prompt versions, git commit, feature flags (LTM/STM/tools).
 
-**Layer 2 — AgentCore Evaluations (Bridge):** Deployed agent evaluation with span-level trace analysis. Online eval (every Nth request) + on-demand eval (triggered runs). Production-like traffic patterns on real AgentCore Runtime.
+**Layer 2 — AgentCore Evaluations (Bridge):** Deployed agent evaluation with span-level trace analysis. Online eval (every Nth request) + on-demand eval (triggered runs). Production-like traffic patterns on real AgentCore Runtime. (Planned — V4-7a-4)
 
-**Layer 3 — Bedrock Evaluations (Outer Loop):** Production quality monitoring at scale. LLM-as-judge on production samples, human evaluation for edge cases, trend monitoring over days/weeks.
+**Layer 3 — Bedrock Evaluations (Outer Loop):** Production quality monitoring at scale. LLM-as-judge on production samples, human evaluation for edge cases, trend monitoring over days/weeks. (Planned — future)
 
-The dashboard hero page shows the complete eval lifecycle for any prompt version or configuration change — from local experiment → deployed agent validation → production confidence.
+The dashboard enables multi-dimensional comparison: filter and overlay runs by model, prompt versions, git commit, and feature flags. Designed to support future experiments (LTM integration, STM between clarification rounds, model swaps).
 
-Key artifacts:
-- Golden dataset with ground truth metadata (45 base + 23 fuzzy predictions)
-- 15 evaluators including 6 LLM judges (IntentPreservation, CriteriaMethodAlignment, IntentExtraction, CategorizationJustification, ClarificationRelevance, PipelineCoherence)
-- 8-page Streamlit dashboard (Trends, Heatmap, Prompt Correlation, Reasoning Explorer, Coherence View, Fuzzy Convergence, Architecture Comparison, Verification Alignment)
-- DynamoDB reasoning store for full model traces
-- Bedrock Prompt Management with immutable versions
-- 17+ eval runs with isolated single-variable testing methodology
+Key artifacts (v4):
+- Golden dataset v4.0 (45 base + 23 fuzzy predictions, schema 4.0, 12 smoke test cases)
+- 6 Tier 1 deterministic evaluators (schema validity, field completeness, score range, date resolution, dimension count, tier consistency)
+- 2 Tier 2 LLM judges (intent preservation — priority #1, plan quality — priority #2)
+- Structured run metadata: model_id, prompt_versions, git_commit, agent_runtime_arn, features dict
+- First baseline: 12/12 smoke cases, 100% Tier 1 pass rate (March 25, 2026)
+- CLI eval runner with tiered execution: smoke / smoke+judges / full
+- Separate eval experiments per agent (creation + verification) with shared dashboard
 
 ### Update 22 (March 22): V4-1 AgentCore Foundation Complete
 First v4 spec executed. Installed AgentCore toolkit, scaffolded `calleditv4/` project, wrote entrypoint with Claude Sonnet 4 and error handling, validated via `agentcore dev` + `agentcore invoke --dev`. Tightened no-mocks policy — mocks now require proven value + explicit user approval (Decision 96).
@@ -157,8 +158,8 @@ Evolved the V4-3a synchronous entrypoint into an async streaming generator with 
 ### Update 26 (March 23): V4-4 Verifiability Scorer Complete
 Extended PlanReview structured output with score tier metadata, per-dimension assessments, and LLM-generated guidance text. First design was over-engineered (separate scorer.py module with regex parsing) — simplified to let the LLM produce everything via structured output. New `DimensionAssessment` Pydantic model, 4 new PlanReview fields (`score_tier`, `score_label`, `score_guidance`, `dimension_assessments`), deterministic `score_to_tier()` function for color/icon mapping. No legacy category — clean break from v3 (Decision 103). Updated plan-reviewer prompt in CloudFormation. Strands structured_output_model populated new fields correctly even before prompt deploy. 148 tests passing.
 
-### Update 30 (March 25): V4-7a Eval Framework Redesign (Research & Strategy)
-Research session to redesign the eval framework from first principles for v4. Audited the v3 eval framework (17 evaluators, 12 LLM judges, 60+ min per run) and the Strands Evals SDK best practices. Established a tiered evaluator strategy: 6 deterministic checks (every run, instant), 2 LLM judges (intent preservation + plan quality, on-demand), cross-agent calibration (milestone-only). Separate eval experiments per agent with shared dashboard. Golden dataset to be reshaped for v4 (remove 3-category system, add verifiability score ranges). Smoke test subset (~12 cases) for fast iteration. Five new decisions (122-126).
+### Update 30 (March 25): V4-7a Eval Framework Redesign + Execution
+Research session redesigned the eval framework from first principles for v4. Audited v3 (17 evaluators, 12 LLM judges, 60+ min per run) and Strands Evals SDK best practices. Established tiered evaluator strategy: 6 deterministic + 2 LLM judges (down from 17). Golden dataset reshaped to v4-native (schema 4.0, removed 3-category system, added verifiability score ranges, 12 smoke test cases). Built creation agent eval runner with AgentCore HTTPS + JWT auth backend. First baseline: 12/12 smoke cases pass all Tier 1 evaluators (100% structural correctness). Structured run metadata captures model_id, prompt_versions, git_commit, features dict for future experiment comparison. Seven new decisions (122-127).
 
 ## Current State (March 25, 2026)
 
@@ -169,8 +170,9 @@ Research session to redesign the eval framework from first principles for v4. Au
 - Full flow: login → make prediction → streaming reasoning → structured result → clarification → predictions list
 - Infrastructure: 3 CloudFormation stacks (`v4-persistent-resources`, `v4-frontend`, `v4-scanner`)
 - DynamoDB: `calledit-v4` table with 2 GSIs, predictions tied to Cognito `sub`
-- Eval framework: v4 redesign planned — tiered evaluators (6 deterministic + 2 LLM judges), separate experiments per agent, golden dataset reshape pending
+- Eval framework: v4 eval runner built and tested — 6 Tier 1 deterministic evaluators (100% pass), 2 Tier 2 LLM judges (not yet baselined), golden dataset reshaped to v4 (schema 4.0, 45 base + 23 fuzzy, 12 smoke test cases)
+- First eval baseline: 12/12 smoke cases, 100% Tier 1 pass rate, ~45s per prediction
 - 170 automated tests passing (148 creation + 22 verification)
-- 126 architectural decisions documented across 30 project updates
+- 127 architectural decisions documented across 30 project updates
 - v3 infrastructure running in parallel (untouched) until teardown
-- Next: Create eval framework specs (dataset reshape, creation agent eval, verification agent eval, cross-agent calibration, dashboard)
+- Next: Run smoke+judges baseline, spec V4-7a-3 (verification agent eval), spec V4-7a-4 (cross-agent calibration + dashboard)
