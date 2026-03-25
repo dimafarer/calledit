@@ -238,3 +238,14 @@ After V4-7a-2 is executed and lessons learned are documented, create specs for:
 ### Decision 127: Structured Eval Run Metadata for Dashboard Context
 
 Each eval run carries structured metadata so the dashboard dropdown shows meaningful context instead of raw filenames. Fields: `description` (one-line goal, `--description` CLI flag), `prompt_versions`, `run_tier` (smoke/smoke+judges/full/calibration), `dataset_version`, `agent` (creation/verification). Dashboard shows `timestamp | agent | tier | description`. Auto-generated default if `--description` omitted. This will be implemented in Spec V4-7a-2 (Creation Agent Eval).
+
+
+### Dashboard Comparison UX (Note for V4-7a-4)
+
+The structured run metadata (Decision 127) enables multi-dimensional comparison in the dashboard. Users should be able to filter and superimpose runs across any metadata dimension:
+- Same prompts, different models → model comparison
+- Same model, different prompt versions → prompt iteration tracking
+- Same config, different git commits → code change impact
+- Any combination of the above
+
+The metadata fields that serve as filter/group-by dimensions: `model_id`, `prompt_versions`, `git_commit`, `agent_runtime_arn`, `run_tier`, `dataset_version`. The dashboard loads all reports from `eval/reports/`, parses metadata, and provides filter controls for overlay comparison.

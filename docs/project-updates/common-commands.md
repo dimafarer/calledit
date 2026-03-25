@@ -369,3 +369,42 @@ cd /home/wsluser/projects/calledit/calleditv4-verification && agentcore status
 # V4 frontend URL
 # https://d2fngmclz6psil.cloudfront.net
 ```
+
+
+## V4 Eval Framework (V4-7a)
+
+```bash
+# Set Cognito credentials (required for agent invocation)
+export COGNITO_USERNAME="<your-cognito-username>"
+export COGNITO_PASSWORD="<your-cognito-password>"
+
+# --- Golden Dataset ---
+
+# Reshape v3 dataset to v4 format (idempotent)
+/home/wsluser/projects/calledit/venv/bin/python eval/reshape_v4.py
+
+# Validate v4 dataset structure
+/home/wsluser/projects/calledit/venv/bin/python eval/validate_v4.py
+
+# --- Creation Agent Eval ---
+
+# Dry run — list cases without invoking agent
+/home/wsluser/projects/calledit/venv/bin/python eval/creation_eval.py --dry-run
+
+# Dry run — full tier (all 45 cases)
+/home/wsluser/projects/calledit/venv/bin/python eval/creation_eval.py --dry-run --tier full
+
+# Smoke test — 12 cases, Tier 1 deterministic only (~2-5 min)
+/home/wsluser/projects/calledit/venv/bin/python eval/creation_eval.py --tier smoke --description "description here"
+
+# Smoke + judges — 12 cases, Tier 1 + Tier 2 LLM judges (~10 min)
+/home/wsluser/projects/calledit/venv/bin/python eval/creation_eval.py --tier smoke+judges --description "description here"
+
+# Full run — all 45 cases, Tier 1 + Tier 2 (~15 min)
+/home/wsluser/projects/calledit/venv/bin/python eval/creation_eval.py --tier full --description "description here"
+
+# Single case
+/home/wsluser/projects/calledit/venv/bin/python eval/creation_eval.py --case base-001 --description "single case test"
+
+# Reports saved to eval/reports/creation-eval-{timestamp}.json
+```
