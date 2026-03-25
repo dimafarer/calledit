@@ -28,6 +28,7 @@ import logging
 import os
 import sys
 from datetime import datetime, timezone
+from decimal import Decimal
 
 # Ensure AWS region is set for all boto3 calls in AgentCore Runtime
 if not os.environ.get("AWS_DEFAULT_REGION"):
@@ -96,6 +97,17 @@ def _make_event(event_type: str, prediction_id: str, data: dict) -> str:
         "prediction_id": prediction_id,
         "data": data,
     }, default=str)
+
+
+def _sanitize_for_json(obj):
+    """Recursively convert Decimal to float for JSON serialization."""
+    if isinstance(obj, Decimal):
+        return float(obj) if obj % 1 else int(obj)
+    if isinstance(obj, dict):
+        return {k: _sanitize_for_json(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_sanitize_for_json(i) for i in obj]
+    return obj
 
 
 def _get_tool_manifest() -> str:
@@ -539,10 +551,26 @@ async def websocket_handler(websocket, context):
         logger.info(f"WebSocket received payload: {list(payload.keys())}")
         user_timezone = payload.get("timezone")
 
+        # Extract user_id from JWT (AgentCore already validated the token)
+        user_id = "anonymous"
+        try:
+            headers = getattr(context, "request_headers", None) or {}
+            auth_header = headers.get("authorization", headers.get("Authorization", ""))
+            if auth_header.startswith("Bearer "):
+                import base64
+                token_parts = auth_header[7:].split(".")
+                if len(token_parts) >= 2:
+                    # Decode JWT payload (no signature verification needed — AgentCore validated)
+                    padded = token_parts[1] + "=" * (4 - len(token_parts[1]) % 4)
+                    claims = json.loads(base64.urlsafe_b64decode(padded))
+                    user_id = claims.get("sub", "anonymous")
+                    logger.info(f"Extracted user_id from JWT: {user_id}")
+        except Exception as e:
+            logger.warning(f"Could not extract user_id from JWT: {e}")
+
         # --- Creation route (most common from browser) ---
         if "prediction_text" in payload:
             prediction_id = generate_prediction_id()
-            user_id = payload.get("user_id", "anonymous")
 
             await websocket.send_json({
                 "type": "flow_started",
@@ -621,6 +649,96 @@ async def websocket_handler(websocket, context):
                     "type": "error", "prediction_id": prediction_id,
                     "data": {"message": str(e)},
                 })
+
+        # --- Clarification route ---
+        elif "prediction_id" in payload and "clarification_answers" in payload:
+            prediction_id = payload["prediction_id"]
+            answers_raw = payload["clarification_answers"]
+
+            # Load existing bundle
+            ddb = boto3.resource("dynamodb")
+            table = ddb.Table(DYNAMODB_TABLE_NAME)
+            existing_bundle = load_bundle_from_ddb(table, prediction_id)
+            if existing_bundle is None:
+                await websocket.send_json({"type": "error", "prediction_id": prediction_id, "data": {"message": f"Prediction {prediction_id} not found"}})
+                return
+            existing_bundle = _sanitize_for_json(existing_bundle)
+
+            current_rounds = existing_bundle.get("clarification_rounds", 0)
+            if current_rounds >= MAX_CLARIFICATION_ROUNDS:
+                await websocket.send_json({"type": "error", "prediction_id": prediction_id, "data": {"message": f"Maximum clarification rounds ({MAX_CLARIFICATION_ROUNDS}) reached"}})
+                return
+
+            clarification_context = build_clarification_context(existing_bundle, answers_raw)
+
+            await websocket.send_json({
+                "type": "flow_started", "prediction_id": prediction_id,
+                "data": {"flow_type": "clarification", "clarification_round": current_rounds + 1},
+            })
+
+            try:
+                current_date = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                tool_manifest = _get_tool_manifest()
+                model = BedrockModel(model_id=MODEL_ID)
+                agent = Agent(model=model, tools=TOOLS)
+
+                parse_variables = {"current_date": current_date}
+                if user_timezone:
+                    parse_variables["user_timezone"] = user_timezone
+                parse_prompt = fetch_prompt("prediction_parser", variables=parse_variables)
+                parse_input = f"{parse_prompt}\n\nPrediction (with clarification):\n{clarification_context}"
+                parsed_claim = await _run_streaming_turn_ws(agent, parse_input, ParsedClaim, 1, "parse", prediction_id, websocket)
+
+                plan_prompt = fetch_prompt("verification_planner", variables={"tool_manifest": tool_manifest})
+                verification_plan = await _run_streaming_turn_ws(agent, plan_prompt, VerificationPlan, 2, "plan", prediction_id, websocket)
+
+                review_prompt = fetch_prompt("plan_reviewer")
+                plan_review = await _run_streaming_turn_ws(agent, review_prompt, PlanReview, 3, "review", prediction_id, websocket)
+
+                review_dump = plan_review.model_dump()
+                update_params = format_ddb_update(
+                    prediction_id=prediction_id,
+                    parsed_claim=parsed_claim.model_dump(),
+                    verification_plan=verification_plan.model_dump(),
+                    verifiability_score=plan_review.verifiability_score,
+                    verifiability_reasoning=plan_review.verifiability_reasoning,
+                    reviewable_sections=[s.model_dump() for s in plan_review.reviewable_sections],
+                    prompt_versions=get_prompt_version_manifest(),
+                    clarification_answers=answers_raw,
+                    user_timezone=user_timezone,
+                    score_tier=review_dump["score_tier"],
+                    score_label=review_dump["score_label"],
+                    score_guidance=review_dump["score_guidance"],
+                    dimension_assessments=review_dump["dimension_assessments"],
+                    tier_display=score_to_tier(plan_review.verifiability_score),
+                )
+
+                updated_bundle = {
+                    **existing_bundle,
+                    "parsed_claim": parsed_claim.model_dump(),
+                    "verification_plan": verification_plan.model_dump(),
+                    "verifiability_score": plan_review.verifiability_score,
+                    "verifiability_reasoning": plan_review.verifiability_reasoning,
+                    "reviewable_sections": [s.model_dump() for s in plan_review.reviewable_sections],
+                    "clarification_rounds": current_rounds + 1,
+                    "score_tier": review_dump["score_tier"],
+                    "score_label": review_dump["score_label"],
+                    "score_guidance": review_dump["score_guidance"],
+                    "dimension_assessments": review_dump["dimension_assessments"],
+                    "tier_display": score_to_tier(plan_review.verifiability_score),
+                }
+
+                try:
+                    table.update_item(**update_params)
+                except Exception as save_err:
+                    logger.error(f"DDB update failed for {prediction_id}: {save_err}", exc_info=True)
+                    updated_bundle["save_error"] = str(save_err)
+
+                await websocket.send_json({"type": "flow_complete", "prediction_id": prediction_id, "data": _sanitize_for_json(updated_bundle)})
+
+            except Exception as e:
+                logger.error(f"Clarification flow failed for {prediction_id}: {e}", exc_info=True)
+                await websocket.send_json({"type": "error", "prediction_id": prediction_id, "data": {"message": str(e)}})
 
         # --- Simple prompt mode ---
         elif "prompt" in payload:

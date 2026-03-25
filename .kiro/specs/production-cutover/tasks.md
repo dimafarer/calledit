@@ -146,18 +146,18 @@ Deploy both v4 AgentCore agents, build new v4 frontend infrastructure (S3 + DDB 
     - Run `aws cloudfront create-invalidation --distribution-id {dist-id} --paths "/*"`
     - _Requirements: 9.5_
 
-- [-] 11. Update scanner Lambda for v4
+- [x] 11. Update scanner Lambda for v4
   - [x] 11.1 Update `infrastructure/verification-scanner/template.yaml` for v4 table
     - Change `DynamoDBTableName` default from `calledit-db` to `calledit-v4`
     - Verify `VerificationAgentId` parameter is passed during deployment
     - _Requirements: 1.5, 10.1_
-  - [ ] 11.2 Redeploy scanner Lambda with v4 configuration
+  - [x] 11.2 Redeploy scanner Lambda with v4 configuration
     - Deploy with `VERIFICATION_AGENT_ID` set to the Verification Agent runtime ID from step 2.3
     - Deploy with `DYNAMODB_TABLE_NAME=calledit-v4`
     - Enable the EventBridge schedule (`Enabled: true`)
     - _Requirements: 1.5, 1.6, 10.1, 10.2_
 
-- [ ] 12. Final checkpoint — End-to-end validation
+- [x] 12. Final checkpoint — End-to-end validation
   - Validate the full flow: CloudFront serves React PWA, login via Cognito, make a prediction via presigned WebSocket, check prediction list via GET /predictions, verify scanner runs on schedule. Ensure all tests pass, ask the user if questions arise.
   - _Requirements: 1.3, 1.4, 8.1, 8.2, 8.3, 8.4, 9.2, 9.4, 9.5, 10.2, 11.3, 11.4_
 

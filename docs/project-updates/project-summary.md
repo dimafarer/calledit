@@ -159,15 +159,15 @@ Extended PlanReview structured output with score tier metadata, per-dimension as
 
 ## Current State (March 24, 2026)
 
-- v4 production cutover in progress — both agents deployed to AgentCore Runtime, frontend infrastructure live
-- Creation Agent: deployed, WebSocket handler + HTTP entrypoint, JWT auth configured with Cognito
-- Verification Agent: deployed, sync handler, invoked by scanner Lambda via EventBridge
+- v4 production cutover COMPLETE — full MVP working end-to-end
+- Creation Agent: deployed to AgentCore Runtime, WebSocket + HTTP handlers, JWT auth, token-by-token streaming
+- Verification Agent: deployed to AgentCore Runtime, sync handler, invoked by scanner Lambda
 - Frontend: React PWA at `frontend-v4/`, served via CloudFront + private S3 (OAC), Cognito auth
+- Full flow: login → make prediction → streaming reasoning → structured result → clarification → predictions list
 - Infrastructure: 3 CloudFormation stacks (`v4-persistent-resources`, `v4-frontend`, `v4-scanner`)
-- DynamoDB: `calledit-v4` table with 2 GSIs (user listing + scanner queries), clean v4 key format
+- DynamoDB: `calledit-v4` table with 2 GSIs, predictions tied to Cognito `sub`
 - Eval framework: 15 evaluators, 8-page Streamlit dashboard, `--verify` mode, 17+ eval runs
-- Golden dataset: 45 base + 23 fuzzy predictions with ground truth metadata
 - 170 automated tests passing (148 creation + 22 verification)
 - 121 architectural decisions documented across 29 project updates
-- v3 infrastructure running in parallel (untouched) until v4 is validated
-- Next: complete browser WebSocket connectivity, end-to-end validation, eval baseline on deployed agents
+- v3 infrastructure running in parallel (untouched) until teardown
+- Next: v3 teardown, Memory integration (V4-6), eval baseline on deployed agents (V4-7a)

@@ -123,19 +123,26 @@ Resources defined:
 
 9. **Agent execution role missing permissions:** AgentCore auto-created execution role lacks `bedrock:GetPrompt`, `bedrock:InvokeModel`, and `dynamodb:*` permissions. Fixed by adding inline policy via CLI. This is a manual step — AgentCore doesn't auto-configure these.
 
-### End-to-End Flow Validated
+### End-to-End Flow Validated ✅
 
-Browser → Cognito login → JWT in `Sec-WebSocket-Protocol` → AgentCore WebSocket → creation agent → 3-turn streaming (parse → plan → review) → events streamed to browser in real-time. Prediction ID generated, agent reasoning visible in UI. DDB save pending verification of permissions.
+Full MVP working:
+1. Browser → `https://d2fngmclz6psil.cloudfront.net` → React PWA loads via CloudFront + OAC
+2. Login → Cognito hosted UI → JWT tokens stored in localStorage
+3. Make prediction → Cognito access token via `Sec-WebSocket-Protocol` → AgentCore WebSocket
+4. Agent streams token-by-token reasoning (turn 1: parse) → structured output (turns 2-3: plan, review)
+5. Structured result displayed: prediction statement, verification date, verifiability score (0.82 for Knicks prediction), verification plan with sources/criteria/steps, dimension assessments
+6. Clarification questions displayed → user answers → agent re-analyzes with enriched context → updated result
+7. Prediction saved to DDB with Cognito `sub` as `user_id`
+8. "My Predictions" tab queries `user_id-created_at-index` GSI → shows user's predictions
+9. Scanner Lambda deployed with EventBridge schedule (every 15 min) targeting verification agent
 
-Known issue: streaming comes in large chunks (per-turn batches) instead of token-by-token. Root cause: WebSocket handler proxies through HTTP handler's generator which batches text events. Fix: refactor WebSocket handler to call `stream_async()` directly.
+### What's Next (Future Polish)
 
-### What's Next (Remaining Polish)
-
-- **Streaming granularity:** Refactor WebSocket handler to call `stream_async()` directly instead of proxying through HTTP handler — enables token-by-token streaming like v3 Lambda had
-- **Frontend display:** Render structured output (parsed claim, verification plan, score indicator) from `turn_complete` and `flow_complete` events, not just raw text
-- **Verification agent role:** Add same IAM inline policy to verification agent execution role
-- **Presigned URL Lambda cleanup:** Can be removed from the frontend stack (JWT auth replaced it for WebSocket)
-- **IAM permission scoping:** Scope wildcard `bedrock-agentcore:InvokeAgentRuntimeWithWebSocketStream` back to specific resource ARN
+- Remove unused Presigned URL Lambda from frontend stack (JWT auth replaced it)
+- Scope wildcard IAM permission on Presigned URL Lambda (unused, low priority)
+- Verification agent execution role: add same inline policy (GetPrompt + InvokeModel + DDB)
+- Frontend polish: animated text component, better mobile responsiveness
+- v3 teardown: extract Cognito to own stack, delete v3 backend + frontend
 
 ### Decision 119: Add @app.websocket handler to creation agent
 
