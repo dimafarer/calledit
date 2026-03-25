@@ -1,0 +1,251 @@
+# Implementation Plan: Verification Agent Eval
+
+## Overview
+
+Build the v4 verification agent eval framework: one-line agent handler change → verification backend (sync JSON, no SSE) → eval table manager (DynamoDB lifecycle) → 5 Tier 1 deterministic evaluators → 2 Tier 2 evaluators → case loading → CLI runner → report generation → wiring.
+
+**Scope: `immediate` verification mode only.** All evaluators assume `verification_mode: "immediate"`. Every bundle written to the eval table includes `verification_mode: "immediate"`. Support for `at_date`, `before_date`, and `recurring` modes is tracked in backlog item 0 and will be added as mode-aware evaluator variants without changing what's built here.
+
+All code lives under `eval/` (plus one line in `calleditv4-verification/src/main.py`). Invokes the deployed agent via HTTPS with JWT — no mocks (Decision 96). Reuses `get_cognito_token()` from `eval/backends/agentcore_backend.py`.
+
+## Tasks
+
+- [ ] 1. Modify verification agent handler to accept optional table_name override
+  - In `calleditv4-verification/src/main.py`, read `table_name = payload.get("table_name", DYNAMODB_TABLE_NAME)` after the `prediction_id` extraction
+  - Replace `ddb.Table(DYNAMODB_TABLE_NAME)` with `ddb.Table(table_name)` in the handler
+  - This is a one-line functional change; existing behavior is preserved when `table_name` is absent
+  - Agent redeploy required after this change
+  - [ ]* 1.1 Write property test for handler table_name override (Property 1)
+    - **Property 1: Handler table_name override**
+    - For any payload dict, handler uses `payload["table_name"]` when present, falls back to `DYNAMODB_TABLE_NAME` env var when absent
+    - Add to `eval/tests/test_verification_handler.py`
+    - **Validates: Requirements 1.1, 1.2, 1.3**
+  - _Requirements: 1.1, 1.2, 1.3_
+
+- [ ] 2. Implement Verification Backend
+  - [ ] 2.1 Implement `eval/backends/verification_backend.py`
+    - Define `VERIFICATION_AGENT_ARN = "arn:aws:bedrock-agentcore:us-west-2:894249332178:runtime/calleditv4_verification_Agent-77DiT7GHdH"`
+    - Create `VerificationBackend` class mirroring `AgentCoreBackend` structure
+    - Implement `invoke(prediction_id, table_name=None, case_id="") -> dict` — sends `{prediction_id}` plus `table_name: "calledit-v4-eval"` in golden mode, omits `table_name` in ddb mode
+    - Parse synchronous double-encoded JSON response: `outer = response.json(); result = json.loads(outer) if isinstance(outer, str) else outer`
+    - Return dict with keys `verdict`, `confidence`, `status`, `prediction_id`
+    - Raise `RuntimeError` with HTTP status code and prediction_id on any failure
+    - Reuse `get_cognito_token()` from `agentcore_backend.py` — do not duplicate
+    - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
+  - [ ]* 2.2 Write property test: backend payload construction (Property 2)
+    - **Property 2: Verification backend payload construction**
+    - For any prediction_id and source mode, payload contains `prediction_id` + `table_name: "calledit-v4-eval"` in golden mode; only `prediction_id` in ddb mode
+    - Add to `eval/tests/test_verification_backend.py`
+    - **Validates: Requirements 3.1, 3.6**
+  - [ ]* 2.3 Write property test: backend response parsing round trip (Property 3)
+    - **Property 3: Verification backend response parsing round trip**
+    - For any valid verdict dict, double-encoding as JSON response and parsing returns the same four keys and values
+    - Add to `eval/tests/test_verification_backend.py`
+    - **Validates: Requirements 3.2, 3.3**
+  - [ ]* 2.4 Write property test: backend error propagation (Property 4)
+    - **Property 4: Backend error propagation**
+    - For any HTTP error status (4xx or 5xx), backend raises RuntimeError whose message contains both the status code and prediction_id
+    - Add to `eval/tests/test_verification_backend.py`
+    - **Validates: Requirements 3.4**
+
+- [ ] 3. Implement Eval Table Manager
+  - [ ] 3.1 Implement eval table lifecycle functions inline in `eval/verification_eval.py`
+    - Define `EVAL_TABLE_NAME = "calledit-v4-eval"` and `PROD_TABLE_NAME = "calledit-v4"`
+    - Implement `_ensure_table_exists(ddb)` — creates table with PK=`PRED#{prediction_id}`, SK=`BUNDLE` if not present; uses existing table if it already exists
+    - Implement `_shape_bundle(case) -> dict` — shapes golden case into DDB item with `PK`, `SK`, `prediction_id`, `status: "pending"`, `verification_mode: "immediate"`, `parsed_claim`, `verification_plan`, `prompt_versions: {}`
+    - Implement `setup_eval_table(cases)` — calls `_ensure_table_exists`, writes all bundles; `sys.exit(1)` if any write fails before any invocations
+    - Implement `cleanup_eval_table(cases)` — deletes all written items; logs warning and continues on individual delete failures (best-effort)
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
+  - [ ]* 3.2 Write property test: bundle shaping preserves required fields (Property 7)
+    - **Property 7: Bundle shaping preserves required fields**
+    - For any qualifying case, shaped bundle contains `PK=PRED#{prediction_id}`, `SK=BUNDLE`, `status="pending"`, `verification_mode="immediate"`, and non-empty `parsed_claim`/`verification_plan` dicts
+    - Add to `eval/tests/test_verification_table_manager.py`
+    - **Validates: Requirements 2.4**
+  - [ ]* 3.3 Write property test: bundle write precedes invocation (Property 5)
+    - **Property 5: Bundle write precedes invocation**
+    - For any set of qualifying cases in golden mode, all bundles are written to Eval_Table before any backend invocation
+    - Add to `eval/tests/test_verification_table_manager.py`
+    - **Validates: Requirements 2.2**
+  - [ ]* 3.4 Write property test: eval table cleanup is complete (Property 6)
+    - **Property 6: Eval table cleanup is complete**
+    - For any set of cases written during a golden mode run, after run completion every written item is deleted from Eval_Table
+    - Add to `eval/tests/test_verification_table_manager.py`
+    - **Validates: Requirements 2.3**
+
+- [ ] 4. Implement Tier 1 Evaluators
+  - [ ] 4.1 Implement Schema Validity evaluator in `eval/evaluators/verification_schema_validity.py`
+    - Implement `evaluate(result: dict) -> dict` returning `{"score": float, "pass": bool, "reason": str}`
+    - Check `verdict` is present and is a str, `confidence` is present and is a float, `evidence` is present and is a list, `reasoning` is present and is a str
+    - Return score 1.0 when all four pass; 0.0 identifying which fields failed otherwise
+    - Never raise — malformed input returns score 0.0
+    - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6_
+  - [ ]* 4.2 Write property test: schema validity biconditional (Property 11)
+    - **Property 11: Schema validity is biconditional on field presence and types**
+    - For any verdict response dict, score is 1.0 iff all four fields are present with correct types; 0.0 with failing fields identified otherwise
+    - Add to `eval/tests/test_verification_schema_validity.py`
+    - **Validates: Requirements 6.1, 6.2, 6.3, 6.4, 6.5, 6.6**
+  - [ ] 4.3 Implement Verdict Validity evaluator in `eval/evaluators/verification_verdict_validity.py`
+    - Implement `evaluate(result: dict) -> dict`
+    - Check `verdict` is one of `{"confirmed", "refuted", "inconclusive"}`
+    - Return score 1.0 when valid; 0.0 with actual value in reason otherwise
+    - _Requirements: 7.1, 7.2_
+  - [ ]* 4.4 Write property test: verdict validity biconditional (Property 12)
+    - **Property 12: Verdict validity is biconditional on allowed values**
+    - For any verdict response dict, score is 1.0 iff `verdict` is one of the three allowed strings; 0.0 with actual value otherwise
+    - Add to `eval/tests/test_verification_verdict_validity.py`
+    - **Validates: Requirements 7.1, 7.2**
+  - [ ] 4.5 Implement Confidence Range evaluator in `eval/evaluators/verification_confidence_range.py`
+    - Implement `evaluate(result: dict) -> dict`
+    - Check `confidence` is a float in [0.0, 1.0] inclusive
+    - Return score 1.0 when valid; 0.0 with actual value in reason otherwise
+    - _Requirements: 8.1, 8.2_
+  - [ ]* 4.6 Write property test: confidence range biconditional (Property 13)
+    - **Property 13: Confidence range is biconditional on [0.0, 1.0]**
+    - For any verdict response dict, score is 1.0 iff `confidence` is a float in [0.0, 1.0]; 0.0 with actual value otherwise
+    - Add to `eval/tests/test_verification_confidence_range.py`
+    - **Validates: Requirements 8.1, 8.2**
+  - [ ] 4.7 Implement Evidence Completeness evaluator in `eval/evaluators/verification_evidence_completeness.py`
+    - Implement `evaluate(result: dict) -> dict`
+    - Check `evidence` is a non-empty list
+    - Return score 1.0 when non-empty; 0.0 otherwise
+    - _Requirements: 9.1, 9.2_
+  - [ ]* 4.8 Write property test: evidence completeness biconditional (Property 14)
+    - **Property 14: Evidence completeness is biconditional on non-empty list**
+    - For any verdict response dict, score is 1.0 iff `evidence` is a non-empty list
+    - Add to `eval/tests/test_verification_evidence_completeness.py`
+    - **Validates: Requirements 9.1, 9.2**
+  - [ ] 4.9 Implement Evidence Structure evaluator in `eval/evaluators/verification_evidence_structure.py`
+    - Implement `evaluate(result: dict) -> dict`
+    - Check each item in `evidence` contains `source`, `finding`, and `relevant_to_criteria` fields
+    - Return score 1.0 when all items pass (vacuously true for empty list); 0.0 identifying which items and fields failed otherwise
+    - _Requirements: 10.1, 10.2, 10.3, 10.4_
+  - [ ]* 4.10 Write property test: evidence structure validates all items (Property 15)
+    - **Property 15: Evidence structure validates all items**
+    - For any verdict response dict, score is 1.0 iff every evidence item has all three required fields (vacuously true for empty list); 0.0 with failing items/fields identified otherwise
+    - Add to `eval/tests/test_verification_evidence_structure.py`
+    - **Validates: Requirements 10.1, 10.2, 10.3, 10.4**
+
+- [ ] 5. Checkpoint — Ensure all Tier 1 evaluator tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 6. Implement Tier 2 Evaluators
+  - [ ] 6.1 Implement Verdict Accuracy evaluator in `eval/evaluators/verification_verdict_accuracy.py`
+    - Implement `evaluate(result: dict, expected_verdict: str | None) -> dict | None`
+    - When `expected_verdict` is None, return `None` (evaluator is skipped entirely)
+    - When `expected_verdict` is non-null, return score 1.0 if `result["verdict"] == expected_verdict`; 0.0 with both actual and expected values in reason otherwise
+    - This is a deterministic Tier 2 evaluator — no LLM call
+    - _Requirements: 11.1, 11.2, 11.3_
+  - [ ]* 6.2 Write property test: verdict accuracy biconditional (Property 16)
+    - **Property 16: Verdict accuracy is biconditional on exact match**
+    - For any (verdict, expected_verdict) pair where expected_verdict is non-null, score is 1.0 iff exact match; 0.0 with both values in reason otherwise. When expected_verdict is None, evaluator returns None
+    - Add to `eval/tests/test_verification_verdict_accuracy.py`
+    - **Validates: Requirements 11.1, 11.2, 11.3**
+  - [ ] 6.3 Implement Evidence Quality evaluator in `eval/evaluators/verification_evidence_quality.py`
+    - Create LLM judge using `strands_evals` `OutputEvaluator` with `EVIDENCE_QUALITY_RUBRIC`
+    - Rubric must focus on: source authenticity (real, accessible URLs or named data sources), finding specificity (concrete observations not vague summaries), criteria linkage clarity (clear link to a specific verification criterion)
+    - Use `model="us.anthropic.claude-opus-4-6-v1"` with `include_inputs=True`
+    - Return score 0.0–1.0 with LLM judge reasoning in output
+    - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6_
+  - [ ]* 6.4 Write unit tests for Tier 2 evaluator structure
+    - Verify evidence quality rubric contains required focus areas (source authenticity, finding specificity, criteria linkage)
+    - Verify verdict accuracy returns None when expected_verdict is None
+    - Add to `eval/tests/test_verification_verdict_accuracy.py` and `eval/tests/test_verification_evidence_quality.py`
+    - _Requirements: 11.3, 12.4_
+
+- [ ] 7. Implement Case Loading
+  - [ ] 7.1 Implement golden mode case loading in `eval/verification_eval.py`
+    - Define `EvalCase` dataclass with `prediction_id`, `prediction_text`, `expected_verdict: str | None`, `ground_truth: dict`, `metadata: dict`
+    - Implement `load_dataset(path) -> dict` — reads golden dataset JSON; `sys.exit(1)` on file not found, invalid JSON, or missing `base_predictions`
+    - Implement `load_golden_cases(dataset, tier, case_id=None) -> list[EvalCase]` — filters to `verification_readiness == "immediate"` and non-null `expected_verification_outcome`; applies smoke/full tier filtering; handles `--case` override; `sys.exit(1)` if no qualifying cases
+    - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
+  - [ ] 7.2 Implement DDB mode case loading in `eval/verification_eval.py`
+    - Implement `load_ddb_cases() -> list[EvalCase]` — queries `calledit-v4` table for `verification_readiness: immediate` items
+    - Set `expected_verdict = None` for all DDB cases
+    - `sys.exit(1)` if no matching items found
+    - _Requirements: 5.1, 5.2, 5.3, 5.4_
+  - [ ]* 7.3 Write property test: golden case loading filters correctly (Property 8)
+    - **Property 8: Golden case loading filters correctly**
+    - For any golden dataset, loader returns only cases where `verification_readiness == "immediate"` and `expected_verification_outcome` is non-null, with correctly mapped `prediction_id`, `expected_verdict`, and `metadata`
+    - Add to `eval/tests/test_verification_case_loader.py`
+    - **Validates: Requirements 4.1, 4.2, 4.3, 4.4**
+  - [ ]* 7.4 Write property test: smoke tier further filters to smoke_test cases (Property 9)
+    - **Property 9: Smoke tier further filters to smoke_test cases**
+    - For any golden dataset and tier in `{"smoke", "smoke+judges"}`, all returned cases have `smoke_test == true`
+    - Add to `eval/tests/test_verification_case_loader.py`
+    - **Validates: Requirements 4.5, 13.1, 13.2**
+  - [ ]* 7.5 Write property test: DDB mode sets expected_verdict to null (Property 10)
+    - **Property 10: DDB mode sets expected_verdict to null**
+    - For any case loaded in ddb mode, `expected_verdict` is `None`
+    - Add to `eval/tests/test_verification_case_loader.py`
+    - **Validates: Requirements 5.3**
+
+- [ ] 8. Implement CLI Runner and Eval Orchestration
+  - [ ] 8.1 Implement CLI argument parsing in `eval/verification_eval.py`
+    - Add `--source` (default: `golden`, choices: `golden`/`ddb`), `--dataset` (default: `eval/golden_dataset.json`), `--tier` (default: `smoke`, choices: `smoke`/`smoke+judges`/`full`), `--description`, `--output-dir` (default: `eval/reports`), `--dry-run`, `--case` flags via `argparse`
+    - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5, 14.6, 14.7, 14.8_
+  - [ ] 8.2 Implement `build_evaluator_list(args) -> dict` in `eval/verification_eval.py`
+    - `smoke`: Tier 1 evaluators only (5 evaluators)
+    - `smoke+judges` and `full` in golden mode: Tier 1 + both Tier 2 evaluators
+    - `ddb` source mode: Tier 1 + Evidence Quality only (Verdict Accuracy skipped — no ground truth)
+    - _Requirements: 13.1, 13.2, 13.3, 13.4, 13.5_
+  - [ ] 8.3 Implement `run_eval(cases, backend, evaluators) -> list[dict]` in `eval/verification_eval.py`
+    - For each case: invoke backend with `prediction_id` and `table_name` (golden mode) or without (ddb mode), run evaluators, collect per-case results
+    - Pass `expected_verdict` to Verdict Accuracy evaluator; omit from result when evaluator returns None
+    - Catch backend errors per-case and record with `error` field — do not abort entire run
+    - _Requirements: 3.1, 3.2, 3.3, 6.1–10.4, 11.1–12.6_
+  - [ ] 8.4 Implement `--dry-run` mode
+    - List all cases that would be executed with ids and metadata, without writing to Eval_Table, invoking backend, or running evaluators
+    - _Requirements: 14.6_
+
+- [ ] 9. Implement Report Generation
+  - [ ] 9.1 Implement `build_run_metadata(args, dataset, results, duration) -> dict` in `eval/verification_eval.py`
+    - Record `description`, `agent: "verification"`, `source`, `run_tier`, `dataset_version`, `timestamp` (ISO 8601), `duration_seconds`, `case_count`
+    - Record `ground_truth_limitation` noting all 7 qualifying cases have `confirmed` expected outcomes
+    - Auto-generate description from source mode, tier, and timestamp when `--description` is omitted
+    - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.5, 15.6, 15.7, 15.8, 15.9_
+  - [ ] 9.2 Implement `build_report` and `save_report` in `eval/verification_eval.py`
+    - Build report with `run_metadata`, `aggregate_scores` (per-evaluator averages + `overall_pass_rate` as fraction where all T1 = 1.0; `None` for unevaluated Tier 2), `case_results`
+    - Save as `verification-eval-{YYYYMMDD-HHMMSS}.json` with 2-space indentation
+    - Create output directory with `os.makedirs(output_dir, exist_ok=True)` if needed
+    - _Requirements: 16.1, 16.2, 16.3, 16.4, 16.5, 16.6_
+  - [ ]* 9.3 Write property test: run metadata contains all required fields (Property 18)
+    - **Property 18: Run metadata contains all required fields**
+    - For any completed eval run, metadata has all 9 required fields with correct types including non-empty `ground_truth_limitation`
+    - Add to `eval/tests/test_verification_report.py`
+    - **Validates: Requirements 15.1–15.9**
+  - [ ]* 9.4 Write property test: aggregate scores are correct averages (Property 19)
+    - **Property 19: Aggregate scores are correct averages**
+    - For any set of per-case results, per-evaluator averages equal arithmetic mean and `overall_pass_rate` equals fraction where all T1 = 1.0
+    - Add to `eval/tests/test_verification_report.py`
+    - **Validates: Requirements 16.3**
+  - [ ]* 9.5 Write property test: report filename follows convention (Property 20)
+    - **Property 20: Report filename follows convention**
+    - For any run timestamp, filename is `verification-eval-{YYYYMMDD-HHMMSS}.json`
+    - Add to `eval/tests/test_verification_report.py`
+    - **Validates: Requirements 16.1**
+  - [ ]* 9.6 Write property test: report output is valid JSON (Property 21)
+    - **Property 21: Report output is valid JSON**
+    - For any report dict, serialized output is parseable by `json.loads()` with 2-space indentation
+    - Add to `eval/tests/test_verification_report.py`
+    - **Validates: Requirements 16.5**
+
+- [ ] 10. Wire everything together in `eval/verification_eval.py` main()
+  - [ ] 10.1 Implement `main()` connecting CLI → loader → table setup → backend → evaluators → report → cleanup
+    - Wire `parse_args()`, `load_dataset()`, `load_golden_cases()` or `load_ddb_cases()`, `setup_eval_table()` (golden only), `build_evaluator_list()`, `run_eval()`, `cleanup_eval_table()` (golden only, runs after errors too), `build_run_metadata()`, `build_report()`, `save_report()`
+    - Add `if __name__ == "__main__": main()` entry point
+    - Print summary to stdout matching creation_eval.py pattern
+    - _Requirements: 2.1–2.5, 4.1–4.6, 5.1–5.4, 13.1–13.5, 14.1–14.8, 15.1–15.9, 16.1–16.6_
+
+- [ ] 11. Final checkpoint — Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+## Notes
+
+- Tasks marked with `*` are optional and can be skipped for faster MVP
+- Scope is intentionally `immediate` verification mode only — other modes tracked in backlog item 0
+- Property tests use `hypothesis` with `@settings(max_examples=100)` minimum
+- Tier 2 Evidence Quality evaluator hits real Bedrock — no property tests (Decision 96)
+- Verdict Accuracy is deterministic Tier 2 — property tests are appropriate
+- All Python commands use `/home/wsluser/projects/calledit/venv/bin/python`
+- Agent redeploy required after Task 1 before any integration testing
+- Shared Hypothesis generators go in `eval/tests/conftest.py` (extend existing): `valid_verdict_response()`, `invalid_verdict_response()`, `valid_evidence_item()`, `invalid_evidence_item()`, `qualifying_case()`, `golden_dataset(cases)`

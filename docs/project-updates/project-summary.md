@@ -161,6 +161,9 @@ Extended PlanReview structured output with score tier metadata, per-dimension as
 ### Update 30 (March 25): V4-7a Eval Framework Redesign + Execution
 Research session redesigned the eval framework from first principles for v4. Audited v3 (17 evaluators, 12 LLM judges, 60+ min per run) and Strands Evals SDK best practices. Established tiered evaluator strategy: 6 deterministic + 2 LLM judges (down from 17). Golden dataset reshaped to v4-native (schema 4.0, removed 3-category system, added verifiability score ranges, 12 smoke test cases). Built creation agent eval runner with AgentCore HTTPS + JWT auth backend. First baseline: 12/12 smoke cases pass all Tier 1 evaluators (100% structural correctness). Structured run metadata captures model_id, prompt_versions, git_commit, features dict for future experiment comparison. Seven new decisions (122-127).
 
+### Update 30 (continued — judge baseline, March 25, 2026)
+Ran the first smoke+judges baseline (12 cases, Tier 1 + Tier 2 LLM judges). Tier 1: 100% pass rate (unchanged). Tier 2: intent_preservation=0.88 (strong), plan_quality=0.57 (moderate). Plan quality splits cleanly by prediction type — objective predictions score 0.80–0.95, personal/subjective predictions score 0.20–0.30. Root cause: verification planner doesn't recognize when self-report is the only valid verification path. Primary improvement target identified. Also pinned prediction_parser v2 (explicit current_time-first timezone priority ladder) before the run. Two new decisions (128–129).
+
 ## Current State (March 25, 2026)
 
 - v4 production cutover COMPLETE — full MVP working end-to-end
@@ -175,4 +178,7 @@ Research session redesigned the eval framework from first principles for v4. Aud
 - 170 automated tests passing (148 creation + 22 verification)
 - 127 architectural decisions documented across 30 project updates
 - v3 infrastructure running in parallel (untouched) until teardown
-- Next: Run smoke+judges baseline, spec V4-7a-3 (verification agent eval), spec V4-7a-4 (cross-agent calibration + dashboard)
+- First judge baseline: intent_preservation=0.88, plan_quality=0.57 — plan quality splits by prediction type (objective 0.80–0.95, personal/subjective 0.20–0.30)
+- Prediction parser v2 pinned (current_time-first timezone priority ladder)
+- 129 architectural decisions documented across 30 project updates
+- Next: spec V4-7a-3 (verification agent eval), spec V4-7a-4 (cross-agent calibration + dashboard), iterate on verification planner prompt to improve plan quality on personal predictions

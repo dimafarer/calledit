@@ -465,6 +465,13 @@ Resources:
       PromptArn: !GetAtt PredictionParserPrompt.Arn
       Description: "v1 — initial creation parser prompt"
 
+  PredictionParserPromptVersionV2:
+    Type: AWS::Bedrock::PromptVersion
+    DependsOn: PredictionParserPromptVersion
+    Properties:
+      PromptArn: !GetAtt PredictionParserPrompt.Arn
+      Description: "v2 — explicit current_time-first timezone priority ladder (call current_time first, then location, then UTC fallback)"
+
   VerificationPlannerPrompt:
     Type: AWS::Bedrock::Prompt
     Properties:

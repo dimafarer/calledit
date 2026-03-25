@@ -4,6 +4,46 @@ Items identified during development that aren't urgent but should be addressed.
 
 ---
 
+## 0. Extend Verification Eval Framework to Support All verification_mode Types
+
+**Source:** V4-7a-3 design discussion (March 25, 2026)
+**Priority:** High — the current eval framework is intentionally scoped to `immediate` mode only
+
+**Context:** During V4-7a-3 spec design, we identified that prediction verification has fundamentally different timing semantics depending on the prediction type. The current eval framework (V4-7a-3) is explicitly scoped to `verification_mode: "immediate"` predictions — those that can be verified right now with a single agent invocation. This is the right starting point (cleanest test cases, unambiguous ground truth), but the full system needs to handle three additional modes.
+
+**The four verification modes:**
+- `immediate` — verifiable right now, single check, final answer. Examples: "Christmas 2026 falls on a Friday", "Python 3.13 has been released". ✅ Supported in V4-7a-3.
+- `at_date` — only meaningful to check at the exact `verification_date`. Checking early gives the wrong answer. Examples: "The S&P 500 will close higher today than yesterday" (only check at market close), "Lakers win tonight" (only check after the game ends). ❌ Not yet supported.
+- `before_date` — check periodically, confirm as soon as the event occurs, refute only after the deadline passes. Examples: "Python 3.14 will be released before December 2026", "The Fed will cut rates before Q3". ❌ Not yet supported.
+- `recurring` — check on a schedule, verdict is a snapshot not a final answer. Examples: "The US national debt exceeds $35 trillion" (true today, could change). ❌ Not yet supported.
+
+**Impact on evaluators:** The current evaluators assume `immediate` mode. For other modes:
+- `verdict_accuracy` is only valid for `immediate` (and `at_date` after the date has passed). For `before_date` before the deadline, `inconclusive` is the *correct* answer — penalizing it is wrong.
+- `evidence_completeness` — empty evidence with `inconclusive` is correct behavior for `at_date` before the date.
+- `evidence_quality` rubric needs mode context — "correctly determined it's too early to check" is a valid quality signal for `at_date`.
+
+**What to do:**
+1. Add `verification_mode` field to the prediction bundle schema in `calleditv4/src/models.py` and the DDB item format
+2. Update the creation agent to set `verification_mode` based on the prediction type (the plan reviewer is the right place — it already scores verifiability dimensions)
+3. Update the verification agent to receive and use `verification_mode` in its reasoning context
+4. Add `verification_mode` to the golden dataset for all qualifying cases
+5. Build mode-aware evaluator variants:
+   - `at_date_verdict_accuracy` — only run after `verification_date` has passed
+   - `before_date_verdict_appropriateness` — `inconclusive` before deadline is correct, `confirmed` before deadline is also correct
+   - `recurring_evidence_freshness` — evidence should be from the current check, not stale
+6. Update the eval runner to route to the correct evaluator set based on `verification_mode`
+7. Add golden dataset cases for `at_date`, `before_date`, and `recurring` modes
+8. Update the dashboard to show mode breakdowns
+
+**Key principle:** The `immediate` evaluators don't change — they just get company. New mode evaluators are additive, not replacements. The framework routes to the right evaluator set based on `verification_mode`.
+
+**References:**
+- V4-7a-3 spec design discussion (March 25, 2026)
+- Decision 130 (to be added): verification_mode field and mode-aware evaluator strategy
+- Backlog item 15: Verification planner self-report plans (related — self-report predictions are a special case of `recurring` mode)
+
+---
+
 ## 1. Migrate All Eval Data Storage to DynamoDB
 
 **Source:** Spec 11 design review (March 17, 2026)
@@ -301,3 +341,29 @@ The full eval report (including per-agent judge averages, evaluator groups, and 
 - V4-3a: DDB save with PK `PRED#{prediction_id}`, SK `BUNDLE`
 - V4-5: Verification Agent (will need efficient pending prediction queries)
 - Backlog item 13: AgentCore migration (GSIs should be added before V4-8 production cutover)
+
+---
+
+## 15. Verification Planner Prompt — Self-Report Plans for Personal/Private-Data Predictions
+
+**Source:** V4-7a judge baseline (March 25, 2026) — Decision 129
+**Priority:** High — primary improvement target from first judge baseline
+
+**Problem:** The first judge baseline (smoke+judges, 12 cases) revealed plan_quality=0.57 with a clear split by prediction type. Objective/factual predictions score 0.80–0.95. Personal/private-data predictions score 0.20–0.30. The verification planner tries to build automated verification plans for predictions like "I will enjoy the movie tonight", "the dinner I'm cooking will taste good", "I'll get the promotion this quarter", "my Fitbit will show 10,000 steps" — and assumes it can contact the predictor directly or access their private devices/accounts. An automated agent cannot do either.
+
+**What to do:**
+- Update the `calledit-verification-planner` prompt to recognize personal/private-data predictions
+- When the prediction requires self-report (subjective experience, private device data, personal outcomes), build a structured self-report plan instead:
+  - Schedule a verification prompt at the right time (after the event)
+  - Ask the user a specific yes/no question referencing the exact prediction
+  - Record the self-assessment as the verification outcome
+- The v3 VB prompt already had a "Track 2 — Self-report" pattern (see `infrastructure/prompt-management/template.yaml` VBPrompt) — port this pattern to the v4 verification planner
+- Deploy as `calledit-verification-planner` v2 in Prompt Management
+- Run smoke+judges baseline to measure improvement (target: plan_quality ≥ 0.75)
+
+**Expected impact:** The 5 personal/subjective cases in the smoke set (base-023 DMV, base-027 movie, base-033 promotion, base-034 dinner, base-044 Fitbit) currently average ~0.26 plan quality. With proper self-report plans, these should reach 0.65–0.80.
+
+**References:**
+- Decision 129: Plan Quality 0.57 Baseline — Verification Planner Fails on Personal/Subjective Predictions
+- Decision 126: Creation Agent Priority Metrics (plan quality is priority #2)
+- V3 VBPrompt "Track 2 — Self-report" pattern in `infrastructure/prompt-management/template.yaml`

@@ -400,6 +400,12 @@ export COGNITO_PASSWORD="<your-cognito-password>"
 # Smoke + judges — 12 cases, Tier 1 + Tier 2 LLM judges (~10 min)
 /home/wsluser/projects/calledit/venv/bin/python eval/creation_eval.py --tier smoke+judges --description "description here"
 
+# Smoke + judges with pinned prompt versions (recommended — use numbered versions, not DRAFT)
+PROMPT_VERSION_PREDICTION_PARSER=2 \
+PROMPT_VERSION_VERIFICATION_PLANNER=1 \
+PROMPT_VERSION_PLAN_REVIEWER=2 \
+/home/wsluser/projects/calledit/venv/bin/python eval/creation_eval.py --tier smoke+judges --description "description here"
+
 # Full run — all 45 cases, Tier 1 + Tier 2 (~15 min)
 /home/wsluser/projects/calledit/venv/bin/python eval/creation_eval.py --tier full --description "description here"
 

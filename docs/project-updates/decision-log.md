@@ -1089,3 +1089,40 @@ Creation agent evaluation priorities in order: (1) intent preservation — does 
 **Date:** March 25, 2026
 
 Each eval run carries structured metadata so the dashboard can display meaningful context instead of just filenames. Fields: `description` (one-line human-readable goal, CLI flag `--description`, auto-generated default), `prompt_versions` (manifest of prompt versions used), `run_tier` ("smoke", "smoke+judges", "full", "calibration" per Decision 125), `dataset_version` ("4.0"), `agent` ("creation" or "verification"). Dashboard dropdown shows: `timestamp | agent | tier | description` instead of raw filenames. The eval runner accepts `--description` as a CLI flag; if omitted, it generates a default from the run config.
+
+---
+
+## Decision 128: Eval Report prompt_versions Reflects Agent-Reported Versions, Not Runner Env Vars
+**Source:** [Project Update 30](30-project-update-v4-7a-eval-framework-redesign.md) — judge baseline run
+**Date:** March 25, 2026
+
+The `prompt_versions` field in eval reports comes from `get_prompt_version_manifest()` inside the deployed agent (populated when the agent calls `fetch_prompt()` at runtime), not from the `PROMPT_VERSION_*` env vars set in the eval runner. This means: if the agent was deployed before a new prompt version was pinned, the report will show "DRAFT" even if the runner was invoked with `PROMPT_VERSION_PREDICTION_PARSER=2`. The env vars only affect which version the agent fetches — but the agent must be re-deployed (or re-launched via `agentcore launch`) for the new version to take effect. For the first judge baseline, the agent was still running with DRAFT prompts despite the runner using pinned versions. Future eval runs should verify the deployed agent's prompt versions match the intended pinned versions before running.
+
+---
+
+## Decision 129: Plan Quality 0.57 Baseline — Verification Planner Fails on Personal/Subjective Predictions
+**Source:** [Project Update 30](30-project-update-v4-7a-eval-framework-redesign.md) — judge baseline run
+**Date:** March 25, 2026
+
+The first judge baseline revealed a clear split in plan quality by prediction type. Objective/factual predictions (calendar facts, stock prices, weather, tech releases) score 0.80–0.95 — the planner builds specific, executable plans with real sources. Personal/subjective predictions (movie enjoyment, dinner taste, work promotion, Fitbit steps) score 0.20–0.30 — the planner tries to build automated verification plans that assume agent-to-user contact or access to private devices/accounts, which is impossible for an automated agent. The fix: the verification planner needs to recognize personal/private-data predictions and build structured self-report plans (schedule a prompt, ask the user a specific yes/no question at the right time) instead of assuming automated access. This is the primary improvement target for the next prompt iteration. Intent preservation (0.88) is strong and not the bottleneck.
+
+---
+
+## Decision 130: Verification Eval Framework Scoped to `immediate` Mode — Other Modes Additive
+
+**Source:** V4-7a-3 spec design discussion (March 25, 2026)
+**Date:** March 25, 2026
+
+The V4-7a-3 verification agent eval framework is intentionally scoped to `verification_mode: "immediate"` predictions only. This is the right starting point for three reasons: (1) `immediate` predictions have unambiguous ground truth — the agent should return `confirmed` or `refuted`, never `inconclusive` due to timing; (2) the evaluator assumptions are explicit and correct for this mode; (3) it establishes a clean baseline before adding complexity.
+
+The four verification modes identified:
+- `immediate` — verifiable right now, single check, definitive answer. ✅ V4-7a-3 scope.
+- `at_date` — only meaningful to check at the exact `verification_date`. Checking early gives the wrong answer.
+- `before_date` — check periodically, confirm as soon as the event occurs, refute only after deadline passes.
+- `recurring` — check on a schedule, verdict is a snapshot not a final answer.
+
+The `immediate` evaluators are not wrong — they are correctly scoped. When other modes are added (backlog item 0), new mode-aware evaluator variants are added alongside the existing ones. The eval runner routes to the correct evaluator set based on `verification_mode`. No rework of what's built in V4-7a-3.
+
+Every bundle written to `calledit-v4-eval` in V4-7a-3 includes `verification_mode: "immediate"` explicitly, so the field is in the schema from day one even though only one value is used.
+
+**Interview justification:** "We started with `immediate` predictions — the simplest verification case — to establish the evaluator framework and baseline. Then we added mode-aware evaluation as the prediction types grew more complex. Each mode addition was additive, not a rewrite. Same pattern as the tiered evaluator strategy (Decision 122) — start simple, expand with intention based on data."
