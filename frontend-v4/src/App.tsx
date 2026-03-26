@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
+import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom'
 import './App.css'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import LoginButton from './components/LoginButton'
 import PredictionInput from './components/PredictionInput'
 import ListPredictions from './components/ListPredictions'
+import EvalDashboard from './pages/EvalDashboard'
 
 function AppContent() {
   const [currentView, setCurrentView] = useState<'predict' | 'list'>('predict');
@@ -34,6 +36,9 @@ function AppContent() {
               </button>
             </>
           )}
+          <Link to="/eval" className="navigation-button secondary" style={{ textDecoration: 'none' }}>
+            📊 Eval Dashboard
+          </Link>
           <LoginButton />
         </div>
       </div>
@@ -49,9 +54,14 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<AppContent />} />
+          <Route path="/eval" element={<EvalDashboard />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 

@@ -542,6 +542,13 @@ def main():
     report = build_report(metadata, results, evaluators)
     path = save_report(report, args.output_dir)
 
+    # Fire-and-forget DDB write
+    try:
+        from eval.report_store import write_report
+        write_report("verification", report)
+    except Exception as e:
+        logger.warning(f"DDB report write failed (non-fatal): {e}")
+
     print_summary(report)
     print(f"\nReport saved: {path}")
     print(f"Description: {metadata['description']}")

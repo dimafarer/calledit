@@ -125,16 +125,42 @@ Requirements (12), design (17 correctness properties), and tasks (11 top-level, 
 2. Calibration Runner — `eval/calibration_eval.py`, chains creation→verification
 3. React Dashboard — `/eval` route in `frontend-v4`, Recharts, DDB reads via Cognito
 
+## V4-7a-4 Execution Results
+
+### First Calibration Baseline (smoke, 2 cases, 236.7s)
+- Report: `eval/reports/calibration-eval-20260326-134743.json`
+- calibration_accuracy: 0.50 (1/2 correct)
+- mean_absolute_error: 0.45
+- high_score_confirmation_rate: 0.50
+- base-002 (Christmas Friday): score=0.95 → confirmed (conf=0.95) ✓
+- base-011 (Python 3.13): score=0.85 → inconclusive (conf=0.2) ✗
+- Key finding: creation agent's verifiability score doesn't account for tool limitations — scores based on theoretical verifiability, not current tool capability
+
+### Dashboard
+- React dashboard at `/eval` route in `frontend-v4`, reading from DDB via Vite dev server proxy
+- Three tabs (Creation Agent, Verification Agent, Cross-Agent Calibration) all loading data
+- Data-driven rendering — new evaluators/metadata appear automatically
+- Vite proxy uses `~/.aws/credentials` for dev mode DDB access (no credentials in files)
+
 ## Files Created/Modified
 
 ### Created
 - `.kiro/specs/cross-agent-calibration-dashboard/` — V4-7a-4 spec (requirements, design, tasks)
+- `eval/report_store.py` — DDB report store (write, list, get, backfill)
+- `eval/calibration_eval.py` — Cross-agent calibration runner
+- `frontend-v4/src/pages/EvalDashboard/` — React dashboard (index, types, utils, hooks, 7 components)
+- `frontend-v4/server/eval-api.ts` — Vite dev server proxy for DDB access
 - `docs/project-updates/31-project-update-v4-7a-eval-completion-and-dashboard-spec.md` — this update
 
 ### Modified
+- `eval/creation_eval.py` — added fire-and-forget DDB write after save_report()
+- `eval/verification_eval.py` — added fire-and-forget DDB write after save_report()
+- `frontend-v4/src/App.tsx` — added react-router-dom, /eval route, dashboard nav link
+- `frontend-v4/vite.config.ts` — added eval-api proxy plugin
+- `frontend-v4/package.json` — added react-router-dom, recharts, @aws-sdk/client-dynamodb, @aws-sdk/lib-dynamodb
 - `docs/project-updates/backlog.md` — added item 16 (tool action tracking)
-- `docs/project-updates/decision-log.md` — decisions 131-134 (to be added)
-- `docs/project-updates/project-summary.md` — update 31 entry (to be added)
+- `docs/project-updates/decision-log.md` — decisions 131-134
+- `docs/project-updates/project-summary.md` — update 31 entry
 
 ## Spec Plan Status
 

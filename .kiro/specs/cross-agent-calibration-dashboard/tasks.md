@@ -6,21 +6,21 @@ Three components delivered incrementally: (1) DDB Report Store as the shared fou
 
 ## Tasks
 
-- [ ] 1. Implement DDB Report Store (`eval/report_store.py`)
-  - [ ] 1.1 Create `eval/report_store.py` with `_ensure_table_exists()`, `_float_to_decimal()`, `_decimal_to_float()`, and `write_report()`
+- [x] 1. Implement DDB Report Store (`eval/report_store.py`)
+  - [x] 1.1 Create `eval/report_store.py` with `_ensure_table_exists()`, `_float_to_decimal()`, `_decimal_to_float()`, and `write_report()`
     - Auto-create `calledit-v4-eval-reports` table (PAY_PER_REQUEST, PK=S, SK=S)
     - `write_report(agent_type, report)` writes with PK=`AGENT#{agent_type}`, SK=ISO timestamp from `run_metadata.timestamp`
     - Float→Decimal conversion on write, handle NaN/Inf by replacing with None
     - Handle >400KB items by splitting `case_results` to separate item with SK=`{timestamp}#CASES`
     - _Requirements: 11.1, 11.4, 11.5_
 
-  - [ ] 1.2 Implement `list_reports()` and `get_report()`
+  - [x] 1.2 Implement `list_reports()` and `get_report()`
     - `list_reports(agent_type)` queries PK, returns `run_metadata` + `aggregate_scores` only (ProjectionExpression excludes `case_results`), sorted by timestamp descending
     - `get_report(agent_type, timestamp)` fetches full report including `case_results`, reassembles split items if `#CASES` item exists
     - Decimal→float conversion on read
     - _Requirements: 11.2, 11.3, 11.5_
 
-  - [ ] 1.3 Implement `backfill_from_files(directory)`
+  - [x] 1.3 Implement `backfill_from_files(directory)`
     - Read all `eval/reports/*.json` files, detect agent_type from filename pattern (`creation-eval-*`, `verification-eval-*`, `calibration-eval-*`) or `run_metadata.agent`
     - Idempotent: skip items that already exist via conditional put
     - Return `{"imported": N, "skipped": M, "errors": [...]}`
@@ -51,21 +51,21 @@ Three components delivered incrementally: (1) DDB Report Store as the shared fou
     - Test file: `eval/tests/test_report_store.py`
     - **Validates: Requirements 11.1, 11.3, 11.5**
 
-- [ ] 2. Backfill existing eval runners to write to DDB
-  - [ ] 2.1 Update `eval/creation_eval.py` to call `report_store.write_report("creation", report)` after `save_report()`
+- [x] 2. Backfill existing eval runners to write to DDB
+  - [x] 2.1 Update `eval/creation_eval.py` to call `report_store.write_report("creation", report)` after `save_report()`
     - Fire-and-forget: catch all exceptions, log warning, never abort the eval run
     - Import `report_store` inside try/except to handle ImportError gracefully
     - _Requirements: 12.1, 12.3_
 
-  - [ ] 2.2 Update `eval/verification_eval.py` to call `report_store.write_report("verification", report)` after `save_report()`
+  - [x] 2.2 Update `eval/verification_eval.py` to call `report_store.write_report("verification", report)` after `save_report()`
     - Same fire-and-forget pattern as creation runner
     - _Requirements: 12.2, 12.3_
 
-- [ ] 3. Checkpoint — Verify report store and backfill
+- [x] 3. Checkpoint — Verify report store and backfill
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 4. Implement Calibration Runner (`eval/calibration_eval.py`)
-  - [ ] 4.1 Create `eval/calibration_eval.py` with CLI, dataset loading, and dry-run
+- [x] 4. Implement Calibration Runner (`eval/calibration_eval.py`)
+  - [x] 4.1 Create `eval/calibration_eval.py` with CLI, dataset loading, and dry-run
     - CLI: `--tier` (smoke/full), `--description`, `--dry-run`, `--case`
     - Load golden dataset, filter qualifying cases (expected_verification_outcome + verification_mode=immediate)
     - Smoke tier uses smoke_test subset, full uses all qualifying
@@ -73,20 +73,20 @@ Three components delivered incrementally: (1) DDB Report Store as the shared fou
     - Fail with clear error if Cognito or AWS credentials missing
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.6_
 
-  - [ ] 4.2 Implement `classify_score_tier()`, `is_calibration_correct()`, and `compute_calibration_metrics()`
+  - [x] 4.2 Implement `classify_score_tier()`, `is_calibration_correct()`, and `compute_calibration_metrics()`
     - Score tier: high (≥0.7), moderate (≥0.4), low (<0.4)
     - Calibration correct: high→confirmed, low→refuted/inconclusive, moderate→always correct
     - Metrics: calibration_accuracy, mean_absolute_error, high_score_confirmation_rate, low_score_failure_rate, verdict_distribution
     - _Requirements: 2.3, 2.4_
 
-  - [ ] 4.3 Implement `run_calibration()` — creation→verification pipeline per case
+  - [x] 4.3 Implement `run_calibration()` — creation→verification pipeline per case
     - Reuse AgentCoreBackend (JWT) and VerificationBackend (SigV4)
     - Per case: invoke creation backend → extract verifiability_score → write temp bundle to eval table → invoke verification backend → collect verdict + confidence
     - Record `creation_error` or `verification_error` per case on failure, continue to next case
     - Track creation_duration_seconds and verification_duration_seconds per case
     - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
-  - [ ] 4.4 Implement eval table lifecycle and report generation
+  - [x] 4.4 Implement eval table lifecycle and report generation
     - Setup: write shaped bundles to `calledit-v4-eval` table (reuse pattern from verification_eval.py)
     - Cleanup: delete all temp items after run completes, regardless of individual case success/failure
     - Build calibration report with run_metadata (all 12 fields), aggregate_scores, case_results, bias_warning
@@ -118,27 +118,27 @@ Three components delivered incrementally: (1) DDB Report Store as the shared fou
     - Test file: `eval/tests/test_calibration_eval.py`
     - **Validates: Requirements 3.1**
 
-- [ ] 5. Checkpoint — Verify calibration runner
+- [x] 5. Checkpoint — Verify calibration runner
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Set up React Dashboard infrastructure
-  - [ ] 6.1 Add dependencies and configure routing in `frontend-v4`
+- [x] 6. Set up React Dashboard infrastructure
+  - [x] 6.1 Add dependencies and configure routing in `frontend-v4`
     - Add `react-router-dom`, `recharts`, `@aws-sdk/client-dynamodb`, `@aws-sdk/lib-dynamodb` to `frontend-v4/package.json`
     - Update `frontend-v4/src/App.tsx` to use BrowserRouter with Routes: `/` for existing AppContent, `/eval` for EvalDashboard
     - _Requirements: 4.1_
 
-  - [ ] 6.2 Create DDB service module and TypeScript types
+  - [x] 6.2 Create DDB service module and TypeScript types
     - Create `frontend-v4/src/services/dynamodb.ts` — DDB DocumentClient singleton using Cognito credentials from existing AuthContext
     - Create `frontend-v4/src/pages/EvalDashboard/types.ts` — RunMetadata, ReportSummary, FullReport, CaseResult interfaces
     - _Requirements: 4.6_
 
-  - [ ] 6.3 Create `useReportStore` hook
+  - [x] 6.3 Create `useReportStore` hook
     - Create `frontend-v4/src/pages/EvalDashboard/hooks/useReportStore.ts`
     - `listReports(agentType)` — Query PK=`AGENT#{agentType}`, ProjectionExpression excludes case_results, sort descending
     - `getReport(agentType, timestamp)` — GetItem with PK+SK, reassemble split case_results if #CASES item exists
     - _Requirements: 4.3, 4.4, 4.5_
 
-  - [ ] 6.4 Create utility functions
+  - [x] 6.4 Create utility functions
     - Create `frontend-v4/src/pages/EvalDashboard/utils.ts`
     - `getScoreColor(score)`: green ≥0.8, yellow ≥0.5, red <0.5
     - `truncateText(text, maxLen=60)`: truncate with "..." suffix
@@ -147,33 +147,33 @@ Three components delivered incrementally: (1) DDB Report Store as the shared fou
     - `diffPromptVersions(a, b)`: returns set of changed keys
     - _Requirements: 5.1, 6.1, 6.2, 8.2_
 
-- [ ] 7. Implement Dashboard shared components
-  - [ ] 7.1 Create `EvalDashboard/index.tsx` with three tabs
+- [x] 7. Implement Dashboard shared components
+  - [x] 7.1 Create `EvalDashboard/index.tsx` with three tabs
     - Main page component with tab navigation: "Creation Agent", "Verification Agent", "Cross-Agent Calibration"
     - Each tab queries the correct PK via `useReportStore`
     - Display run metadata panel (description, prompt_versions, model_id, git_commit, run_tier, dataset_version, duration_seconds, case_count) when a run is selected
     - Data-driven: tabs render based on available agent types
     - _Requirements: 4.1, 4.2, 5.2_
 
-  - [ ] 7.2 Create `RunSelector` component
+  - [x] 7.2 Create `RunSelector` component
     - Dropdown showing available runs formatted as `timestamp | agent | tier | description`
     - Sorted by timestamp descending (newest first)
     - Supports multi-select mode for comparison
     - Filter by `run_tier`
     - _Requirements: 5.1, 5.4, 9.1, 9.3_
 
-  - [ ] 7.3 Create `AggregateScores` component
+  - [x] 7.3 Create `AggregateScores` component
     - Renders all keys from `aggregate_scores` dynamically as color-coded bars
     - Green ≥0.8, yellow ≥0.5, red <0.5
     - Handles nested objects (e.g., verdict_distribution) gracefully
     - _Requirements: 6.1, 7.1, 8.1_
 
-  - [ ] 7.4 Create `WarningBanner` component
+  - [x] 7.4 Create `WarningBanner` component
     - Displays `ground_truth_limitation` and/or `bias_warning` from run metadata
     - Only renders when fields are non-empty strings
     - _Requirements: 5.3, 7.3, 8.4_
 
-  - [ ] 7.5 Create `CaseTable` and `CaseDetail` components
+  - [x] 7.5 Create `CaseTable` and `CaseDetail` components
     - `CaseTable`: data-driven columns derived from first case result's `scores` keys
     - Columns: case ID, input/prediction text (truncated to 60 chars), per-evaluator score with pass/fail indicator
     - Click row to expand inline `CaseDetail` panel; click again to collapse
@@ -181,25 +181,25 @@ Three components delivered incrementally: (1) DDB Report Store as the shared fou
     - Error cases shown with distinct visual indicator
     - _Requirements: 6.2, 6.3, 7.2, 8.3, 8.5, 10.1, 10.2, 10.3_
 
-- [ ] 8. Implement Dashboard tab-specific components
-  - [ ] 8.1 Create `CalibrationScatter` component
+- [x] 8. Implement Dashboard tab-specific components
+  - [x] 8.1 Create `CalibrationScatter` component
     - Recharts scatter plot: verifiability_score (x-axis) vs verification outcome numeric (y-axis: 1.0/0.5/0.0)
     - Each case as a labeled point with hover tooltip
     - Exclude error cases from plot
     - _Requirements: 8.2_
 
-  - [ ] 8.2 Create `TrendChart` component
+  - [x] 8.2 Create `TrendChart` component
     - Recharts line chart for multi-run comparison
     - Overlay aggregate scores across selected runs ordered by timestamp
     - User selects which metrics to plot from available keys
     - _Requirements: 9.2_
 
-  - [ ] 8.3 Create `PromptVersionDiff` component
+  - [x] 8.3 Create `PromptVersionDiff` component
     - Highlights changed prompt versions between compared runs
     - Shows keys where values differ, including keys present in one but not the other
     - _Requirements: 9.4_
 
-- [ ] 9. Checkpoint — Verify dashboard components
+- [x] 9. Checkpoint — Verify dashboard components
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 10. Dashboard tests
@@ -221,7 +221,7 @@ Three components delivered incrementally: (1) DDB Report Store as the shared fou
     - Test file: `frontend-v4/src/pages/EvalDashboard/__tests__/index.test.tsx`
     - **Validates: Requirements 4.3, 4.4, 4.5**
 
-- [ ] 11. Final checkpoint — Ensure all tests pass
+- [x] 11. Final checkpoint — Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

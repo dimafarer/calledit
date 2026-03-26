@@ -12,10 +12,14 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1017.0",
+    "@aws-sdk/lib-dynamodb": "^3.1017.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^7.13.2",
+    "recharts": "^3.8.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",

@@ -442,6 +442,13 @@ def main():
     report = build_report(metadata, results, cases, evaluators)
     report_path = save_report(report, args.output_dir)
 
+    # Fire-and-forget DDB write
+    try:
+        from eval.report_store import write_report
+        write_report("creation", report)
+    except Exception as e:
+        logger.warning(f"DDB report write failed (non-fatal): {e}")
+
     # Print summary
     agg = report["aggregate_scores"]
     print(f"\n=== Creation Agent Eval Report ===")

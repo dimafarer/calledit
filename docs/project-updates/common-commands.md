@@ -445,3 +445,50 @@ PROMPT_VERSION_PLAN_REVIEWER=2 \
 # Reports saved to eval/reports/verification-eval-{timestamp}.json
 # Note: verification agent uses SigV4 auth (no Cognito credentials needed)
 ```
+
+
+## Calibration Eval (V4-7a-4)
+
+```bash
+# Requires: COGNITO_USERNAME + COGNITO_PASSWORD env vars (creation agent)
+# Requires: AWS credentials (verification agent SigV4)
+
+# Dry run — list qualifying cases
+/home/wsluser/projects/calledit/venv/bin/python eval/calibration_eval.py --dry-run
+
+# Dry run — full tier
+/home/wsluser/projects/calledit/venv/bin/python eval/calibration_eval.py --dry-run --tier full
+
+# Smoke calibration (2 cases, ~4 min)
+/home/wsluser/projects/calledit/venv/bin/python eval/calibration_eval.py --tier smoke --description "description here"
+
+# Full calibration (7 cases, ~15 min)
+/home/wsluser/projects/calledit/venv/bin/python eval/calibration_eval.py --tier full --description "description here"
+
+# Single case
+/home/wsluser/projects/calledit/venv/bin/python eval/calibration_eval.py --case base-002 --description "single case test"
+
+# Reports saved to eval/reports/calibration-eval-{timestamp}.json + DDB
+```
+
+## DDB Report Store
+
+```bash
+# Backfill historical JSON reports to DDB (idempotent)
+/home/wsluser/projects/calledit/venv/bin/python -c "
+import sys; sys.path.insert(0, '.')
+from eval.report_store import backfill_from_files
+result = backfill_from_files('eval/reports')
+print(result)
+"
+```
+
+## Eval Dashboard (React)
+
+```bash
+# Dev mode — runs at http://localhost:5173/eval
+cd /home/wsluser/projects/calledit/frontend-v4
+npm run dev
+# Navigate to http://localhost:5173/eval
+# Uses ~/.aws/credentials via Vite dev server proxy for DDB access
+```

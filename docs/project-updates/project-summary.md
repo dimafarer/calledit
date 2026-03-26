@@ -179,4 +179,4 @@ Completed V4-7a-3 with smoke+judges and full tier runs. Full baseline (7 cases):
   - Key insight: Browser tool failures cause most verdict inaccuracies, not agent reasoning
 - V4-7a-4 spec: DDB report store + calibration runner + React dashboard (12 requirements, 17 properties, 27 tasks)
 - 134 architectural decisions documented across 31 project updates
-- Next: execute V4-7a-4 tasks (report store → backfill → calibration runner → React dashboard)
+- Next: deploy dashboard to production (API Gateway + Lambda for DDB reads, replace Vite proxy)
