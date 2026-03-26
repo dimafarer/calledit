@@ -1126,3 +1126,36 @@ The `immediate` evaluators are not wrong — they are correctly scoped. When oth
 Every bundle written to `calledit-v4-eval` in V4-7a-3 includes `verification_mode: "immediate"` explicitly, so the field is in the schema from day one even though only one value is used.
 
 **Interview justification:** "We started with `immediate` predictions — the simplest verification case — to establish the evaluator framework and baseline. Then we added mode-aware evaluation as the prediction types grew more complex. Each mode addition was additive, not a rewrite. Same pattern as the tiered evaluator strategy (Decision 122) — start simple, expand with intention based on data."
+
+
+---
+
+## Decision 131: DDB as Source of Truth for Eval Reports (Resolves Decision 29)
+**Source:** [Project Update 31](31-project-update-v4-7a-eval-completion-and-dashboard-spec.md)
+**Date:** March 26, 2026
+
+All eval reports (creation, verification, calibration) are stored in DynamoDB table `calledit-v4-eval-reports` as the source of truth. Local JSON files in `eval/reports/` are retained as backup. This resolves Decision 29 ("local eval results, not DynamoDB — yet") and backlog item 1 ("migrate all eval data storage to DynamoDB"). The trigger was the V4-7a-4 dashboard spec — building a fourth component on local files would have created more technical debt to migrate later. Table schema: PK=`AGENT#{agent_type}`, SK=ISO 8601 timestamp. PAY_PER_REQUEST. Separate from `calledit-v4-eval` (temporary bundles).
+
+---
+
+## Decision 132: React Dashboard Instead of Streamlit
+**Source:** [Project Update 31](31-project-update-v4-7a-eval-completion-and-dashboard-spec.md)
+**Date:** March 26, 2026
+
+The eval dashboard is a `/eval` route in the existing `frontend-v4` React app, not a Streamlit application. React provides genuinely interactive overlays (multi-series line charts with toggle, scatter plots with hover-to-drill, side-by-side comparison panels) that Streamlit's widget model can't match. The existing React app already has Cognito auth, Vite build tooling, and CloudFront deployment — zero infrastructure cost. New dependencies: `react-router-dom`, `recharts`, `@aws-sdk/client-dynamodb`, `@aws-sdk/lib-dynamodb`.
+
+---
+
+## Decision 133: Data-Driven Dashboard Extensibility
+**Source:** [Project Update 31](31-project-update-v4-7a-eval-completion-and-dashboard-spec.md)
+**Date:** March 26, 2026
+
+The dashboard renders data-driven, not hardcoded. Tabs come from distinct `agent` values in the Reports_Table. Aggregate scores render whatever keys exist in `aggregate_scores`. Case table columns are derived from the `scores` keys in the first case result. Adding a new evaluator, metadata field, or agent type requires zero dashboard code changes. Critical for a learning project where the eval framework evolves as we experiment with new ways to measure and improve agent quality.
+
+---
+
+## Decision 134: Tool Action Tracking as Next Priority After Dashboard
+**Source:** [Project Update 31](31-project-update-v4-7a-eval-completion-and-dashboard-spec.md)
+**Date:** March 26, 2026
+
+The V4-7a-3 full baseline revealed 4/7 verdict failures caused by Browser tool failures (permission denied, timeout, network unreachable). Structured tracking of tool actions (what the agent attempted, what succeeded, what failed, failure modes) is needed to answer: (1) which prompt improvements would help the agent use existing tools better, and (2) which new tool would have the biggest impact on verification success. Tracked as backlog item 16. The dashboard's extensibility principle means it renders this data automatically once it appears in reports.

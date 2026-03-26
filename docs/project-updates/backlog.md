@@ -44,6 +44,43 @@ Items identified during development that aren't urgent but should be addressed.
 
 ---
 
+## 16. Tool Action Tracking for Verification Agent
+
+**Source:** V4-7a-3 full baseline analysis (March 26, 2026)
+**Priority:** High — directly answers "what tool should we add or fix next?"
+
+**Problem:** The V4-7a-3 full baseline (7 cases) revealed that 4/7 verdict failures were caused by the Browser tool failing to reach external sites (python.org, treasury.gov, wikipedia.org). The agent correctly returned `inconclusive` when it couldn't gather evidence — the reasoning was sound, the tool just couldn't execute. But we have no structured way to see this pattern. The evidence items contain the information in unstructured text ("Access denied due to permissions — cannot perform bedrock-agentcore:StartBrowserSession action", "HTTPSConnectionPool max retries exceeded"), but it's buried in free-text `finding` fields.
+
+**What this enables:** A structured `tool_action_summary` in verification eval reports that answers:
+1. What tool actions did the agent attempt? (Browser → python.org, Code Interpreter → datetime calculation, etc.)
+2. Which actions succeeded vs failed?
+3. What were the failure modes? (permission denied, timeout, network unreachable, etc.)
+4. Aggregated across runs: which target domains fail most often? Which tool types have the highest failure rate?
+
+**This directly drives two decisions:**
+- **Prompt improvement**: If the agent keeps trying Browser for sites that are blocked, the verification planner prompt should learn to suggest Code Interpreter alternatives (e.g., use `pip show` to check Python version instead of browsing python.org)
+- **Tool prioritization**: If 60% of failures are "couldn't reach financial data sites," that tells you a financial data API tool (Alpha Vantage, etc.) would have the biggest impact on verification success rate
+
+**What to do:**
+1. Add a `tool_actions` field to the verification agent's response (or extract from AgentCore observability traces if available)
+2. Each action: `{tool: "browser"|"code_interpreter", target: "python.org"|"calculation", action: "web_search"|"fetch_url"|"execute_code", status: "success"|"failure", error_type: "permission_denied"|"timeout"|"network_error"|null}`
+3. Add a `tool_action_summary` section to verification eval reports: per-tool success/failure counts, per-target-domain failure counts, top failure modes
+4. The dashboard renders this automatically (extensibility principle) — no dashboard code change needed once the data appears in reports
+
+**Evidence from V4-7a-3 full baseline:**
+- base-009 (US debt): Browser failed to reach Treasury sites (timeout) → inconclusive
+- base-011 (Python 3.13): Browser failed to reach python.org (permission denied) → inconclusive
+- base-013 (Wikipedia refs): Browser failed to reach wikipedia.org (permission denied) → inconclusive
+- base-010 (full moon): Code Interpreter lunar calculation produced wrong answer → refuted (should be confirmed)
+- base-001, base-002, base-040: Code Interpreter calculations succeeded → confirmed
+
+**References:**
+- V4-7a-3 full baseline report: `eval/reports/verification-eval-20260326-022007.json`
+- Backlog item 0: verification_mode expansion (related — different modes may have different tool action patterns)
+- Backlog item 7: Verification pipeline via MCP tools (tool action tracking would measure the impact of new tools)
+
+---
+
 ## 1. Migrate All Eval Data Storage to DynamoDB
 
 **Source:** Spec 11 design review (March 17, 2026)
