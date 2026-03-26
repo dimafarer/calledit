@@ -492,3 +492,34 @@ npm run dev
 # Navigate to http://localhost:5173/eval
 # Uses ~/.aws/credentials via Vite dev server proxy for DDB access
 ```
+
+
+## V4 Frontend Deploy (with eval dashboard)
+
+```bash
+# Build and deploy v4-frontend stack (4 Lambdas with SnapStart)
+cd /home/wsluser/projects/calledit/infrastructure/v4-frontend
+sam build && sam deploy \
+  --stack-name calledit-v4-frontend \
+  --capabilities CAPABILITY_IAM \
+  --resolve-s3 \
+  --parameter-overrides \
+    CognitoUserPoolId=us-west-2_GOEwUjJtv \
+    CognitoUserPoolClientId=753gn25jle081ajqabpd4lbin9 \
+    CreationAgentRuntimeArn=arn:aws:bedrock-agentcore:us-west-2:894249332178:runtime/calleditv4_Agent-AJiwpKBxRW \
+    FrontendBucketName=calledit-v4-persistent-resources-v4frontendbucket-tjqdqan1gbuy \
+    FrontendBucketArn=arn:aws:s3:::calledit-v4-persistent-resources-v4frontendbucket-tjqdqan1gbuy \
+    FrontendBucketDomainName=calledit-v4-persistent-resources-v4frontendbucket-tjqdqan1gbuy.s3.us-west-2.amazonaws.com \
+    DynamoDBTableArn=arn:aws:dynamodb:us-west-2:894249332178:table/calledit-v4 \
+    EvalReportsTableName=calledit-v4-eval-reports \
+    EvalReportsTableArn=arn:aws:dynamodb:us-west-2:894249332178:table/calledit-v4-eval-reports
+
+# Build frontend, sync to S3, invalidate CloudFront
+cd /home/wsluser/projects/calledit/frontend-v4
+npm run build
+aws s3 sync dist/ s3://calledit-v4-persistent-resources-v4frontendbucket-tjqdqan1gbuy --delete
+aws cloudfront create-invalidation --distribution-id E1V0EF85NP9DXQ --paths "/*"
+
+# Production dashboard URL
+# https://d2fngmclz6psil.cloudfront.net/eval
+```

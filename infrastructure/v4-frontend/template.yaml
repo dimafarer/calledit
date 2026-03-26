@@ -1,9 +1,8 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  CalledIt V4 Frontend — CloudFront + OAC + HTTP API + Presigned URL Lambda
-  + ListPredictions Lambda. References persistent resources (S3 bucket + DDB)
-  from the calledit-v4-persistent-resources stack.
+  CalledIt V4 Frontend — CloudFront + OAC + HTTP API + Lambda functions
+  with SnapStart. References persistent resources from calledit-v4-persistent-resources.
 
 Parameters:
   CognitoUserPoolId:
@@ -30,6 +29,13 @@ Parameters:
   DynamoDBTableArn:
     Type: String
     Description: DynamoDB table ARN from v4-persistent-resources stack
+  EvalReportsTableName:
+    Type: String
+    Default: calledit-v4-eval-reports
+    Description: Eval reports DynamoDB table name
+  EvalReportsTableArn:
+    Type: String
+    Description: Eval reports DynamoDB table ARN
 
 Resources:
   # --- CloudFront OAC ---
@@ -136,6 +142,10 @@ Resources:
         Audience:
           - !Ref CognitoUserPoolClientId
 
+  # =========================================================================
+  # Lambda Functions — all use AutoPublishAlias + SnapStart (v3 proven pattern)
+  # =========================================================================
+
   # --- Presigned URL Lambda ---
   PresignedUrlFunction:
     Type: AWS::Serverless::Function
@@ -145,6 +155,9 @@ Resources:
       CodeUri: presigned_url/
       Timeout: 30
       MemorySize: 256
+      AutoPublishAlias: live
+      SnapStart:
+        ApplyOn: PublishedVersions
       Environment:
         Variables:
           CREATION_AGENT_RUNTIME_ARN: !Ref CreationAgentRuntimeArn
@@ -169,14 +182,15 @@ Resources:
     Properties:
       ApiId: !Ref V4HttpApi
       IntegrationType: AWS_PROXY
-      IntegrationUri: !GetAtt PresignedUrlFunction.Arn
+      IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PresignedUrlFunction.Arn}:live/invocations'
       PayloadFormatVersion: '2.0'
 
-  PresignedUrlPermission:
+  PresignedUrlAliasPermission:
     Type: AWS::Lambda::Permission
+    DependsOn: PresignedUrlFunctionAliaslive
     Properties:
       Action: lambda:InvokeFunction
-      FunctionName: !Ref PresignedUrlFunction
+      FunctionName: !Sub '${PresignedUrlFunction}:live'
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${V4HttpApi}/*/*/presigned-url'
 
@@ -189,6 +203,9 @@ Resources:
       CodeUri: list_predictions/
       Timeout: 30
       MemorySize: 256
+      AutoPublishAlias: live
+      SnapStart:
+        ApplyOn: PublishedVersions
       Environment:
         Variables:
           DYNAMODB_TABLE_NAME: !Ref DynamoDBTableName
@@ -215,16 +232,113 @@ Resources:
     Properties:
       ApiId: !Ref V4HttpApi
       IntegrationType: AWS_PROXY
-      IntegrationUri: !GetAtt ListPredictionsFunction.Arn
+      IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListPredictionsFunction.Arn}:live/invocations'
       PayloadFormatVersion: '2.0'
 
-  ListPredictionsPermission:
+  ListPredictionsAliasPermission:
     Type: AWS::Lambda::Permission
+    DependsOn: ListPredictionsFunctionAliaslive
     Properties:
       Action: lambda:InvokeFunction
-      FunctionName: !Ref ListPredictionsFunction
+      FunctionName: !Sub '${ListPredictionsFunction}:live'
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${V4HttpApi}/*/*/predictions'
+
+  # --- ListEvalReports Lambda ---
+  ListEvalReportsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.12
+      Handler: handler.lambda_handler
+      CodeUri: list_eval_reports/
+      Timeout: 30
+      MemorySize: 256
+      AutoPublishAlias: live
+      SnapStart:
+        ApplyOn: PublishedVersions
+      Environment:
+        Variables:
+          EVAL_REPORTS_TABLE: !Ref EvalReportsTableName
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Query
+              Resource: !Ref EvalReportsTableArn
+
+  ListEvalReportsRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref V4HttpApi
+      RouteKey: 'GET /eval/reports'
+      AuthorizationType: JWT
+      AuthorizerId: !Ref CognitoAuthorizer
+      Target: !Sub 'integrations/${ListEvalReportsIntegration}'
+
+  ListEvalReportsIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref V4HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListEvalReportsFunction.Arn}:live/invocations'
+      PayloadFormatVersion: '2.0'
+
+  ListEvalReportsAliasPermission:
+    Type: AWS::Lambda::Permission
+    DependsOn: ListEvalReportsFunctionAliaslive
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Sub '${ListEvalReportsFunction}:live'
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${V4HttpApi}/*/*/eval/reports'
+
+  # --- GetEvalReport Lambda ---
+  GetEvalReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.12
+      Handler: handler.lambda_handler
+      CodeUri: get_eval_report/
+      Timeout: 30
+      MemorySize: 256
+      AutoPublishAlias: live
+      SnapStart:
+        ApplyOn: PublishedVersions
+      Environment:
+        Variables:
+          EVAL_REPORTS_TABLE: !Ref EvalReportsTableName
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+              Resource: !Ref EvalReportsTableArn
+
+  GetEvalReportRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref V4HttpApi
+      RouteKey: 'GET /eval/report'
+      AuthorizationType: JWT
+      AuthorizerId: !Ref CognitoAuthorizer
+      Target: !Sub 'integrations/${GetEvalReportIntegration}'
+
+  GetEvalReportIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref V4HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetEvalReportFunction.Arn}:live/invocations'
+      PayloadFormatVersion: '2.0'
+
+  GetEvalReportAliasPermission:
+    Type: AWS::Lambda::Permission
+    DependsOn: GetEvalReportFunctionAliaslive
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Sub '${GetEvalReportFunction}:live'
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${V4HttpApi}/*/*/eval/report'
 
 Outputs:
   CloudFrontDomainName:

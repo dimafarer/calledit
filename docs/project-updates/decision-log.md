@@ -1159,3 +1159,20 @@ The dashboard renders data-driven, not hardcoded. Tabs come from distinct `agent
 **Date:** March 26, 2026
 
 The V4-7a-3 full baseline revealed 4/7 verdict failures caused by Browser tool failures (permission denied, timeout, network unreachable). Structured tracking of tool actions (what the agent attempted, what succeeded, what failed, failure modes) is needed to answer: (1) which prompt improvements would help the agent use existing tools better, and (2) which new tool would have the biggest impact on verification success. Tracked as backlog item 16. The dashboard's extensibility principle means it renders this data automatically once it appears in reports.
+
+
+---
+
+## Decision 135: AutoPublishAlias for SnapStart (Not Manual Version/Alias)
+**Source:** [Project Update 31](31-project-update-v4-7a-eval-completion-and-dashboard-spec.md)
+**Date:** March 26, 2026
+
+Use SAM's `AutoPublishAlias: live` property instead of manual `AWS::Lambda::Version` + `AWS::Lambda::Alias` resources for SnapStart. SAM handles version publishing and alias creation automatically. The integration URI uses `!Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${Function.Arn}:live/invocations'`. The permission uses `DependsOn: FunctionAliaslive` (SAM auto-generated resource name). Manual Version/Alias resources fail because `AWS::Lambda::Alias` doesn't expose an `Arn` attribute via `GetAtt`. This is the proven v3 pattern across 8 Lambda functions.
+
+---
+
+## Decision 136: Vite Dev Proxy for Local DDB Access
+**Source:** [Project Update 31](31-project-update-v4-7a-eval-completion-and-dashboard-spec.md)
+**Date:** March 26, 2026
+
+The eval dashboard uses a Vite dev server middleware (`server/eval-api.ts`) for local development that proxies `/api/eval/*` requests to DDB using `~/.aws/credentials`. In production, the dashboard calls API Gateway endpoints with Cognito JWT auth. The switch is based on `import.meta.env.DEV`. This avoids needing a Cognito Identity Pool or putting AWS credentials in environment files. The browser can't read `~/.aws/credentials` directly — the Vite dev server (Node.js) can.

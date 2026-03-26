@@ -2,7 +2,7 @@
 
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import type { CaseResult } from '../types';
-import { verdictToNumeric, getScoreColor } from '../utils';
+import { verdictToNumeric } from '../utils';
 
 interface Props {
   cases: CaseResult[];

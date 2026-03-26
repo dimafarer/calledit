@@ -164,19 +164,16 @@ Research session redesigned the eval framework from first principles for v4. Aud
 ### Update 30 (continued — V4-7a-3 verification agent eval, March 25-26, 2026)
 Built and ran the verification agent eval framework (V4-7a-3). Key design discoveries: prediction verification has four timing modes (`immediate`, `at_date`, `before_date`, `recurring`) — evaluators scoped to `immediate` only for V4-7a-3, other modes additive (Decision 130, backlog item 0). Two-source architecture: `--source golden` writes to `calledit-v4-eval` table with `table_name` payload override, `--source ddb` queries live predictions. Verification agent uses SigV4 (not JWT) — it's a batch agent. Handler returns summary only; full verdict (evidence + reasoning) read back from DDB. First smoke baseline: 100% Tier 1 pass rate on 2 cases. base-002 (Christmas Friday) confirmed with confidence 1.0. base-011 (Python 3.13) returned inconclusive — real agent quality signal. Decision 130 added.
 
-### Update 31 (March 26): V4-7a Eval Completion + Dashboard Spec
-Completed V4-7a-3 with smoke+judges and full tier runs. Full baseline (7 cases): verdict_accuracy=0.43, evidence_quality=0.46, all Tier 1=1.00. Key finding: 4/7 failures caused by Browser tool inability to reach external sites — tool capability is the bottleneck, not agent reasoning. Specced V4-7a-4 (cross-agent calibration + dashboard) with three components: DDB report store (resolves backlog item 1), calibration runner, and React dashboard integrated into frontend-v4. Pivoted from Streamlit to React for interactive overlays. Dashboard designed data-driven for extensibility. Four new decisions (131-134). Backlog item 16 added (tool action tracking).
+### Update 31 (March 26): V4-7a Eval Completion + Dashboard + Production Deploy
+Completed V4-7a-3 with smoke+judges and full tier runs. Full baseline (7 cases): verdict_accuracy=0.43, evidence_quality=0.46, all Tier 1=1.00. Key finding: 4/7 failures caused by Browser tool inability. Built V4-7a-4: DDB report store (resolves backlog item 1), calibration runner (first baseline: calibration_accuracy=0.50), React dashboard in frontend-v4. Deployed to production with API Gateway + Cognito JWT auth. SnapStart on all 5 v4 Lambdas using AutoPublishAlias (Decision 135). Vite dev proxy for local DDB access (Decision 136). Six new decisions (131-136). Backlog item 16 added (tool action tracking).
 
 ## Current State (March 26, 2026)
 
-- v4 production cutover COMPLETE — full MVP working end-to-end
-- Creation Agent: deployed to AgentCore Runtime, WebSocket + HTTP handlers, JWT auth, token-by-token streaming
-- Verification Agent: deployed to AgentCore Runtime, sync handler, invoked by scanner Lambda
-- Frontend: React PWA at `frontend-v4/`, served via CloudFront + private S3 (OAC), Cognito auth
-- Eval framework V4-7a: 3 of 4 specs complete, V4-7a-4 specced and ready for execution
-  - Creation agent baseline: IP=0.88, PQ=0.57, all T1=1.00 (12 smoke cases)
-  - Verification agent baseline: VA=0.43, EQ=0.46, all T1=1.00 (7 full cases)
-  - Key insight: Browser tool failures cause most verdict inaccuracies, not agent reasoning
-- V4-7a-4 spec: DDB report store + calibration runner + React dashboard (12 requirements, 17 properties, 27 tasks)
-- 134 architectural decisions documented across 31 project updates
-- Next: deploy dashboard to production (API Gateway + Lambda for DDB reads, replace Vite proxy)
+- v4 production COMPLETE — full MVP + eval dashboard deployed
+- Eval dashboard live at `https://d2fngmclz6psil.cloudfront.net/eval`
+- Three eval frameworks: creation (IP=0.88, PQ=0.57), verification (VA=0.43, EQ=0.46), calibration (CA=0.50)
+- DDB report store: `calledit-v4-eval-reports` table, 14 reports, managed by CloudFormation
+- All 5 v4 Lambdas have SnapStart (AutoPublishAlias pattern)
+- React dashboard: 3 tabs, data-driven rendering, dual-mode auth (Vite proxy dev / API Gateway prod)
+- 136 architectural decisions documented across 31 project updates
+- Next: dashboard UX iteration, tool action tracking (backlog 16), verification planner self-report (backlog 15)

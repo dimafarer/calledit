@@ -1,13 +1,14 @@
-# Project Update 31 — V4-7a Eval Completion + Dashboard Spec
+# Project Update 31 — V4-7a Eval Completion + Dashboard + Production Deploy
 
 **Date:** March 26, 2026
-**Context:** Completed V4-7a-3 verification agent eval (all tiers), specced V4-7a-4 (cross-agent calibration + React dashboard with DDB-backed report storage). Resolved backlog item 1 by design.
+**Context:** Completed V4-7a-3 verification agent eval, built V4-7a-4 (calibration runner + React dashboard + DDB report store), deployed dashboard to production with API Gateway + SnapStart on all v4 Lambdas.
 **Audience:** Future self for project narrative; next agent for context pickup
 **Git Commit:** Pending
 
 ### Referenced Kiro Specs
 - `.kiro/specs/verification-agent-eval/` — V4-7a-3 spec (COMPLETE — all tiers run)
-- `.kiro/specs/cross-agent-calibration-dashboard/` — V4-7a-4 spec (requirements + design + tasks COMPLETE, ready for execution)
+- `.kiro/specs/cross-agent-calibration-dashboard/` — V4-7a-4 spec (COMPLETE — built and deployed)
+- `.kiro/specs/eval-dashboard-api/` — Eval Dashboard API spec (COMPLETE — deployed to production)
 
 ### Prerequisite Reading
 - `docs/project-updates/30-project-update-v4-7a-eval-framework-redesign.md` — V4-7a-1 through V4-7a-3 narrative, decisions 122-130
@@ -169,11 +170,87 @@ Requirements (12), design (17 correctness properties), and tasks (11 top-level, 
 | V4-7a-1 | Golden Dataset Reshape | ✅ COMPLETE |
 | V4-7a-2 | Creation Agent Eval | ✅ COMPLETE (IP=0.88, PQ=0.57) |
 | V4-7a-3 | Verification Agent Eval | ✅ COMPLETE (VA=0.43, EQ=0.46, T1=1.00) |
-| V4-7a-4 | Cross-Agent Calibration + Dashboard | 📋 SPECCED (ready for execution) |
+| V4-7a-4 | Cross-Agent Calibration + Dashboard | ✅ COMPLETE (calibration_accuracy=0.50, dashboard deployed) |
+
+## Phase 3: Production Deploy — The SnapStart Lesson
+
+With V4-7a-4 built and working locally, the next step was deploying the dashboard to production. This meant adding API Gateway endpoints for the eval report DDB reads, so the React dashboard could call them with Cognito JWT auth instead of the Vite dev proxy.
+
+The spec (eval-dashboard-api) was straightforward: two new Lambda functions (ListEvalReports, GetEvalReport) following the exact same pattern as the existing ListPredictions Lambda, plus SnapStart on all 5 v4 Lambdas.
+
+### The SnapStart Deployment Saga
+
+The first attempt used manual `AWS::Lambda::Version` + `AWS::Lambda::Alias` resources with `!GetAtt Alias.Arn` for the integration URI. CloudFormation rejected it: "Requested attribute Arn does not exist in schema for AWS::Lambda::Alias." The `AWS::Lambda::Alias` resource doesn't expose an `Arn` attribute via `GetAtt`.
+
+The fix was right there in the v3 template all along: `AutoPublishAlias: live`. SAM handles the version and alias creation automatically. The integration URI uses the `apigateway:lambda:path` format with `:live` appended: `!Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${Function.Arn}:live/invocations'`. The permission uses `!Sub '${Function}:live'` for the function name and `DependsOn: FunctionAliaslive` (SAM auto-generates this resource name).
+
+The lesson: don't reinvent patterns that are already proven in the codebase. The v3 template had the exact SnapStart + alias + integration pattern working across 8 Lambda functions. Should have copied it from the start instead of writing manual Version/Alias resources.
+
+### The DDB Table Import
+
+The `calledit-v4-eval-reports` table already existed (created by `report_store.py` auto-create during the backfill). CloudFormation can't create a table that already exists outside its management. The fix was a two-step import: (1) create a changeset with `--change-set-type IMPORT` using a temporary template without new outputs (CloudFormation import can't add outputs in the same operation), (2) deploy the real template to add the outputs. This is a known CloudFormation limitation — import operations can only add the resource, not modify other parts of the template simultaneously.
+
+### The Browser Auth Question
+
+The React dashboard needed to read DDB from the browser. The Cognito User Pool tokens (ID/access) can't be used directly for AWS SDK calls — they're for API authentication, not AWS credential exchange. Three options: (1) Cognito Identity Pool (exchanges User Pool token for temporary AWS credentials), (2) API Gateway + Lambda (the frontend calls an API, Lambda uses its IAM role), (3) Vite dev proxy (Node.js server reads `~/.aws/credentials`).
+
+We went with option 3 for dev mode (zero infrastructure, works immediately) and option 2 for production (API Gateway endpoints with Cognito JWT auth). The frontend switches between them based on `import.meta.env.DEV`.
+
+## Decisions Made
+
+### Decision 135: AutoPublishAlias for SnapStart (Not Manual Version/Alias)
+
+**Source:** This update — deployment failure
+**Date:** March 26, 2026
+
+Use SAM's `AutoPublishAlias: live` property instead of manual `AWS::Lambda::Version` + `AWS::Lambda::Alias` resources for SnapStart. SAM handles version publishing and alias creation automatically. The integration URI uses `!Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${Function.Arn}:live/invocations'`. The permission uses `DependsOn: FunctionAliaslive` (SAM auto-generated resource name). This is the proven v3 pattern — should have been used from the start.
+
+### Decision 136: Vite Dev Proxy for Local DDB Access
+
+**Source:** This update — dashboard auth discussion
+**Date:** March 26, 2026
+
+The eval dashboard uses a Vite dev server middleware (`server/eval-api.ts`) for local development that proxies `/api/eval/*` requests to DDB using `~/.aws/credentials`. In production, the dashboard calls API Gateway endpoints with Cognito JWT auth. The switch is based on `import.meta.env.DEV`. This avoids needing a Cognito Identity Pool or putting AWS credentials in environment files.
+
+## Files Created/Modified
+
+### Created (this phase)
+- `.kiro/specs/eval-dashboard-api/` — Eval Dashboard API spec (requirements, design, tasks)
+- `infrastructure/v4-frontend/list_eval_reports/handler.py` — ListEvalReports Lambda
+- `infrastructure/v4-frontend/get_eval_report/handler.py` — GetEvalReport Lambda
+
+### Modified (this phase)
+- `infrastructure/v4-frontend/template.yaml` — added 2 new Lambdas, SnapStart + AutoPublishAlias on all 4 functions, eval reports table parameters
+- `infrastructure/v4-persistent-resources/template.yaml` — added V4EvalReportsTable (imported from existing)
+- `infrastructure/verification-scanner/template.yaml` — added AutoPublishAlias + SnapStart
+- `frontend-v4/src/pages/EvalDashboard/hooks/useReportStore.ts` — dual-mode API client (dev proxy / prod API Gateway + JWT)
+- `frontend-v4/src/pages/EvalDashboard/components/AgentTab.tsx` — pass auth token to getFullReport
+- `frontend-v4/src/App.tsx` — removed unused import
+- `frontend-v4/src/pages/EvalDashboard/components/CalibrationScatter.tsx` — removed unused import
+- `frontend-v4/tsconfig.node.json` — added server/ to include
+- `frontend-v4/index.html` — added apple-touch-icon, manifest link
+- `frontend-v4/public/` — favicon and PWA icon files from v3
 
 ## What the Next Agent Should Do
 
-### Priority 1: Execute V4-7a-4 Tasks
+### Priority 1: Iterate on Dashboard UX
+The dashboard is functional but minimal. Next improvements: multi-run comparison overlay (TrendChart component exists but isn't wired into the tab UI yet), prompt version diff display, and better styling.
+
+### Priority 2: Investigate base-010 (Full Moon) Verdict
+The agent returned `refuted` with 0.9 confidence for "next full moon before April 1, 2026" — expected `confirmed`. Either the agent's lunar calculation is wrong or the golden dataset expected outcome needs review.
+
+### Priority 3: Tool Action Tracking (Backlog Item 16)
+The V4-7a-3 full baseline showed 4/7 failures from Browser tool inability. Structured tracking of tool actions would identify which tool to add or prompt to fix next.
+
+### Priority 4: Verification Planner Self-Report Plans (Backlog Item 15)
+Plan quality baseline is 0.57. The fix is targeted — teach the planner to build structured self-report plans for personal/private-data predictions.
+
+### Key Files
+- `https://d2fngmclz6psil.cloudfront.net/eval` — production dashboard URL
+- `infrastructure/v4-frontend/template.yaml` — all 4 v4-frontend Lambdas with SnapStart
+- `infrastructure/verification-scanner/template.yaml` — scanner Lambda with SnapStart
+- `frontend-v4/src/pages/EvalDashboard/` — React dashboard components
+- `frontend-v4/server/eval-api.ts` — Vite dev proxy for local DDB access
 The spec is ready. Build order: report store → backfill runners → calibration runner → React dashboard. Start with task 1.1 (report_store.py).
 
 ### Priority 2: Investigate base-010 (Full Moon) Verdict

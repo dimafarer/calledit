@@ -33,6 +33,9 @@ Resources:
       CodeUri: .
       Timeout: 900
       MemorySize: 256
+      AutoPublishAlias: live
+      SnapStart:
+        ApplyOn: PublishedVersions
       Environment:
         Variables:
           DYNAMODB_TABLE_NAME: !Ref DynamoDBTableName
@@ -59,12 +62,12 @@ Resources:
           Properties:
             Schedule: rate(15 minutes)
             Description: Scan for predictions due for verification
-            Enabled: true  # V4-8a: enabled after agentcore launch
+            Enabled: true
 
 Outputs:
   VerificationScannerFunctionArn:
-    Value: !GetAtt VerificationScannerFunction.Arn
-    Description: Scanner Lambda ARN
+    Value: !Sub '${VerificationScannerFunction.Arn}:live'
+    Description: Scanner Lambda alias ARN (SnapStart)
   VerificationScannerFunctionName:
     Value: !Ref VerificationScannerFunction
     Description: Scanner Lambda function name

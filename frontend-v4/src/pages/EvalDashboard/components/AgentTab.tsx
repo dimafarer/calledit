@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useAuth } from '../../../contexts/AuthContext';
 import { useReportList, getFullReport } from '../hooks/useReportStore';
 import type { AgentType, FullReport, ReportSummary } from '../types';
 import { formatRunLabel, sortByTimestampDesc } from '../utils';
@@ -18,6 +19,7 @@ interface Props {
 
 export default function AgentTab({ agentType }: Props) {
   const { reports, loading, error } = useReportList(agentType);
+  const { getToken } = useAuth();
   const [selectedTimestamp, setSelectedTimestamp] = useState<string | null>(null);
   const [fullReport, setFullReport] = useState<FullReport | null>(null);
   const [loadingReport, setLoadingReport] = useState(false);
@@ -42,7 +44,7 @@ export default function AgentTab({ agentType }: Props) {
     if (!selectedTimestamp) return;
     let cancelled = false;
     setLoadingReport(true);
-    getFullReport(agentType, selectedTimestamp).then(report => {
+    getFullReport(agentType, selectedTimestamp, getToken()).then(report => {
       if (!cancelled) {
         setFullReport(report);
         setLoadingReport(false);
