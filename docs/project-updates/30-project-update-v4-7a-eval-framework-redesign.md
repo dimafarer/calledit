@@ -1,13 +1,14 @@
 # Project Update 30 — V4-7a Eval Framework Redesign + Execution
 
-**Date:** March 25, 2026
-**Context:** Research session to redesign the eval framework from first principles for v4 AgentCore agents, followed by execution of V4-7a-1 (golden dataset reshape), V4-7a-2 (creation agent eval), and the first judge baseline run.
+**Date:** March 25-26, 2026
+**Context:** Research session to redesign the eval framework from first principles for v4 AgentCore agents, followed by execution of V4-7a-1 (golden dataset reshape), V4-7a-2 (creation agent eval with judge baseline), and V4-7a-3 (verification agent eval with first smoke baseline).
 **Audience:** Future self for project narrative; next agent for context pickup
-**Git Commit:** 15d2cfb
+**Git Commit:** Pending
 
 ### Referenced Kiro Specs
 - `.kiro/specs/golden-dataset-v4-reshape/` — V4-7a-1 spec (COMPLETE)
 - `.kiro/specs/creation-agent-eval/` — V4-7a-2 spec (COMPLETE — judge baseline run done)
+- `.kiro/specs/verification-agent-eval/` — V4-7a-3 spec (IN PROGRESS — smoke baseline done, judges pending)
 
 ### Prerequisite Reading
 - `docs/project-updates/29-project-update-v4-8a-production-cutover.md` — V4-8a execution results, decisions 115-121
@@ -265,6 +266,67 @@ Before running the judge baseline, we discovered the prediction_parser DRAFT had
 - Added `PredictionParserPromptVersionV2` to `infrastructure/prompt-management/template.yaml` and deployed
 - verification_planner v1 = DRAFT (match), plan_reviewer v2 = DRAFT (match) — no changes needed
 
+## V4-7a-3 Spec + Execution (Verification Agent Eval)
+
+### The verification_mode Discovery
+
+The V4-7a-3 spec started with a straightforward question: how do we eval the verification agent? But during the design discussion, we stumbled into something much more fundamental — the realization that prediction verification has fundamentally different timing semantics depending on the prediction type.
+
+"Christmas 2026 falls on a Friday" can be verified right now — it's a calendar fact. But "The S&P 500 will close higher today than yesterday" can only be verified at market close. And "Python 3.14 will be released before December 2026" should be checked periodically and confirmed the moment it happens. These aren't just different predictions — they require different verification strategies, different evaluator logic, and different definitions of "correct."
+
+This led to the `verification_mode` concept: `immediate` (verifiable now, single check), `at_date` (only meaningful at the exact verification date), `before_date` (check periodically, confirm on first success), and `recurring` (snapshot, not final answer). The key insight was that our evaluators were implicitly assuming `immediate` mode — and that's fine, as long as we make it explicit.
+
+We almost abandoned the spec at this point. If the evaluator architecture is wrong, what's the point? But the reframe saved it: **build the framework on `immediate` predictions first — the cleanest test cases, the most unambiguous ground truth — and add mode-aware evaluator variants later without changing what's already built.** Same pattern as Decision 122 (start simple, expand with intention). The `immediate` evaluators aren't wrong; they're correctly scoped. Decision 130 captures this.
+
+### The Two-Source Architecture
+
+The other major design decision was how to invoke the verification agent without polluting production DDB. The verification agent loads bundles from DDB by `prediction_id` — it doesn't accept bundles in the payload. Three options emerged:
+
+1. Write to production `calledit-v4` with `eval-` prefixed IDs and clean up after
+2. Deploy a second agent instance pointing at a different table
+3. Add a `table_name` payload override to the agent handler
+
+We went with option 3 — one line of code in the handler, no new infrastructure. The eval runner writes golden dataset bundles to `calledit-v4-eval`, passes `table_name: "calledit-v4-eval"` in the payload, and cleans up after. The `--source ddb` mode skips the eval table entirely and queries real predictions from `calledit-v4`.
+
+### The Auth Mismatch
+
+The first real run hit a 403: "Authorization method mismatch." The creation agent uses JWT auth (Decision 121) for browser WebSocket connections, but the verification agent was never configured with JWT — it uses SigV4 (the AgentCore default) because it's a batch agent invoked by the scanner Lambda, not by browsers. The fix was to switch the verification backend to SigV4 signing instead of JWT. This is actually the right auth method for the verification agent — it's a batch agent, not a user-facing one.
+
+### The IAM Permission Chase
+
+After fixing auth, we hit two more IAM issues on the AgentCore execution role:
+1. `dynamodb:GetItem` on `calledit-v4-eval` — the role only had permissions for `calledit-v4`
+2. `bedrock:GetPrompt` — the role didn't have Prompt Management access at all
+
+This is the same issue from Update 29 (issue #9) — the AgentCore auto-created role doesn't include DynamoDB or Prompt Management permissions. We created a tracked script at `infrastructure/agentcore-permissions/setup_eval_table_permissions.sh` to add both policies. The AgentCore docs confirm `iam:PutRolePolicy` is the documented approach for adding custom permissions to the auto-created role.
+
+### The DDB Evidence Readback
+
+The first successful agent invocation returned `confirmed, confidence: 1.0` for base-002 (Christmas 2026 on Friday) — but the evaluators still showed `schema_validity: 0.00`. The handler returns a summary dict (`verdict`, `confidence`, `status`, `prediction_id`) but NOT the full `VerificationResult` fields (`evidence`, `reasoning`). Those are only written to DDB by `update_bundle_with_verdict()`.
+
+The fix: after invoking the agent, read the updated bundle back from the eval table to get the full verdict with evidence and reasoning. This is the right workaround for now — when STM/LTM is integrated (Decision 88), the agents will exchange richer context through Memory and the handler response can be enriched.
+
+### First Smoke Baseline Results
+
+Report: `eval/reports/verification-eval-20260326-013758.json`
+
+| Evaluator | Score |
+|-----------|-------|
+| schema_validity | 1.00 |
+| verdict_validity | 1.00 |
+| confidence_range | 1.00 |
+| evidence_completeness | 1.00 |
+| evidence_structure | 1.00 |
+| **overall_pass_rate** | **1.00** |
+
+Per-case verdicts:
+- base-002 (Christmas 2026 on Friday): **confirmed, confidence 1.0** ✓ — agent used Code Interpreter to calculate day of week
+- base-011 (Python 3.13 released): **inconclusive, confidence 0.3** ✗ — agent struggled to find evidence via Browser. Python 3.13 was released October 2024, so this should be `confirmed`. This is a real agent quality signal, not a framework bug.
+
+Duration: 127.4s for 2 cases (~64s per case average).
+
+The 100% Tier 1 pass rate means the verification agent always produces structurally valid output — valid verdict values, confidence in range, non-empty evidence with correct structure. The base-011 `inconclusive` is a verdict accuracy issue (Tier 2), not a structural issue (Tier 1). The framework correctly separates these concerns.
+
 ## Files Created/Modified
 
 ### Created
@@ -272,22 +334,28 @@ Before running the judge baseline, we discovered the prediction_parser DRAFT had
 - `eval/validate_v4.py` — structural validation script with 4 check categories
 - `.kiro/specs/golden-dataset-v4-reshape/` — V4-7a-1 spec (requirements, design, tasks)
 - `.kiro/specs/creation-agent-eval/` — V4-7a-2 spec (requirements, design, tasks)
-- `eval/backends/agentcore_backend.py` — AgentCore HTTPS + JWT backend for eval runner
-- `eval/evaluators/schema_validity.py`, `field_completeness.py`, `score_range.py`, `date_resolution.py`, `dimension_count.py`, `tier_consistency.py` — 6 Tier 1 deterministic evaluators
-- `eval/evaluators/intent_preservation.py`, `plan_quality.py` — 2 Tier 2 LLM judge evaluators
-- `eval/creation_eval.py` — CLI eval runner with tiered evaluators, report generation, structured metadata
-- `eval/reports/creation-eval-20260325-185638.json` — first smoke run (pre-double-encoding fix)
-- `eval/reports/creation-eval-20260325-192039.json` — second smoke run
-- `eval/reports/creation-eval-20260325-193650.json` — third smoke run (double-encoding fix confirmed, 100% Tier 1)
-- `eval/reports/creation-eval-20260325-205419.json` — first judge baseline (smoke+judges, intent_preservation=0.88, plan_quality=0.57)
-- `docs/project-updates/30-project-update-v4-7a-eval-framework-redesign.md` — this document
+- `.kiro/specs/verification-agent-eval/` — V4-7a-3 spec (requirements, design, tasks)
+- `eval/backends/agentcore_backend.py` — AgentCore HTTPS + JWT backend for creation agent eval
+- `eval/backends/verification_backend.py` — AgentCore HTTPS + SigV4 backend for verification agent eval (with DDB evidence readback)
+- `eval/evaluators/schema_validity.py`, `field_completeness.py`, `score_range.py`, `date_resolution.py`, `dimension_count.py`, `tier_consistency.py` — 6 Tier 1 creation agent evaluators
+- `eval/evaluators/intent_preservation.py`, `plan_quality.py` — 2 Tier 2 creation agent LLM judge evaluators
+- `eval/evaluators/verification_schema_validity.py`, `verification_verdict_validity.py`, `verification_confidence_range.py`, `verification_evidence_completeness.py`, `verification_evidence_structure.py` — 5 Tier 1 verification agent evaluators
+- `eval/evaluators/verification_verdict_accuracy.py` — Tier 2 deterministic verdict accuracy evaluator (golden mode only)
+- `eval/evaluators/verification_evidence_quality.py` — Tier 2 LLM judge evidence quality evaluator
+- `eval/creation_eval.py` — CLI eval runner for creation agent
+- `eval/verification_eval.py` — CLI eval runner for verification agent (golden + ddb modes, eval table lifecycle)
+- `infrastructure/agentcore-permissions/setup_eval_table_permissions.sh` — IAM permissions script for eval table + Prompt Management access
+- `eval/reports/creation-eval-20260325-205419.json` — first creation agent judge baseline
+- `eval/reports/verification-eval-20260326-013758.json` — first verification agent smoke baseline (100% Tier 1)
 
 ### Modified
 - `eval/golden_dataset.json` — reshaped from v3 (schema 3.0) to v4 (schema 4.0)
-- `infrastructure/prompt-management/template.yaml` — added `PredictionParserPromptVersionV2` (explicit current_time-first timezone priority ladder)
-- `docs/project-updates/decision-log.md` — decisions 122-129
+- `infrastructure/prompt-management/template.yaml` — added `PredictionParserPromptVersionV2`
+- `calleditv4-verification/src/main.py` — added `table_name` payload override for eval isolation
+- `docs/project-updates/decision-log.md` — decisions 122-130
 - `docs/project-updates/project-summary.md` — update 30 entry + current state
-- `docs/project-updates/backlog.md` — items 2 and 8 marked SUPERSEDED, item 15 added (verification planner self-report plans)
+- `docs/project-updates/backlog.md` — items 0 (verification_mode eval), 2 and 8 marked SUPERSEDED, 15 (planner self-report)
+- `docs/project-updates/common-commands.md` — v4 eval commands with pinned versions
 
 ## Spec Plan (4 Specs)
 
@@ -296,23 +364,25 @@ The eval framework work is split into 4 specs, each with 90%+ confidence:
 | Spec | Name | Confidence | Depends On | Scope |
 |------|------|-----------|------------|-------|
 | V4-7a-1 | Golden Dataset Reshape | 92% | None | Remove v3 fields, add v4 fields, flag smoke test subset |
-| V4-7a-2 | Creation Agent Eval | 93% | V4-7a-1 | Tier 1 deterministic + Tier 2 LLM judges, Strands Evals SDK patterns, agentcore backend |
-| V4-7a-3 | Verification Agent Eval | 95% | V4-7a-1 | Separate experiment, verdict accuracy evaluators |
+| V4-7a-2 | Creation Agent Eval | 93% | V4-7a-1 | Tier 1 deterministic + Tier 2 LLM judges, agentcore backend |
+| V4-7a-3 | Verification Agent Eval | 95% | V4-7a-1 | Separate experiment, eval table isolation, SigV4 backend, verdict accuracy evaluators |
 | V4-7a-4 | Cross-Agent Calibration + Dashboard | 88% | V4-7a-2, V4-7a-3 | Calibration experiment (predicted vs actual), HTML dashboard with 3 tabs |
 
-Specs 2 and 3 can run in parallel after Spec 1. Spec 4 depends on both.
+| Status | Spec |
+|--------|------|
+| ✅ COMPLETE | V4-7a-1 Golden Dataset Reshape |
+| ✅ COMPLETE | V4-7a-2 Creation Agent Eval (judge baseline: IP=0.88, PQ=0.57) |
+| 🔄 IN PROGRESS | V4-7a-3 Verification Agent Eval (smoke baseline: 100% Tier 1, judges pending) |
+| ⬜ NOT STARTED | V4-7a-4 Cross-Agent Calibration + Dashboard |
 
 ## What the Next Agent Should Do
 
-### Priority 1: Spec V4-7a-3 (Verification Agent Eval)
+### Priority 1: Complete V4-7a-3 (Verification Agent Eval — Remaining Tasks)
 
-Separate eval experiment for the verification agent. Key differences from creation agent eval:
-- Input: prediction bundle (not raw text) — the verification agent receives a bundle from DDB
-- Output: verdict (confirmed/refuted/inconclusive) + confidence + evidence + reasoning
-- The verification agent is sync (not streaming) — simpler backend than creation agent
-- Evaluators: schema validity (verdict fields), verdict accuracy (against ground truth), evidence quality (LLM judge)
-- Agent ARN: `arn:aws:bedrock-agentcore:us-west-2:894249332178:runtime/calleditv4_verification_Agent-77DiT7GHdH`
-- Only cases with `verification_readiness: immediate` and `expected_verification_outcome` not null can be tested
+The smoke baseline is working (100% Tier 1). Remaining work:
+- Run `smoke+judges` to get verdict accuracy + evidence quality scores
+- Run `full` tier (all 7 cases) for the complete baseline
+- The base-011 (Python 3.13) `inconclusive` result is a real agent quality signal worth investigating — the agent couldn't find evidence via Browser for a fact that's been true since October 2024
 
 ### Priority 2: Spec V4-7a-4 (Cross-Agent Calibration + Dashboard)
 
@@ -323,20 +393,22 @@ Separate eval experiment for the verification agent. Key differences from creati
 
 ### Priority 3: Iterate on Verification Planner Prompt (Backlog Item 15)
 
-Plan quality baseline is 0.57. The fix is targeted — teach the planner to build structured self-report plans for personal/private-data predictions instead of assuming automated access. Port the v3 VBPrompt "Track 2 — Self-report" pattern to the v4 verification planner. Deploy as v2, run smoke+judges to measure improvement.
+Plan quality baseline is 0.57. The fix is targeted — teach the planner to build structured self-report plans for personal/private-data predictions instead of assuming automated access.
 
 ### Key Files to Read
-- This update (decisions 122-129)
-- `eval/creation_eval.py` — working eval runner (reference for V4-7a-3 backend)
-- `eval/backends/agentcore_backend.py` — creation agent backend (adapt for verification agent)
-- `eval/evaluators/` — 6 Tier 1 + 2 Tier 2 evaluators (reference for V4-7a-3 evaluators)
-- `eval/reports/creation-eval-20260325-205419.json` — first judge baseline (per-case scores)
-- `calleditv4-verification/src/main.py` — verification agent (what produces the output)
-- `eval/golden_dataset.json` — dataset with `verification_readiness` and `expected_verification_outcome` fields
-- `infrastructure/prompt-management/template.yaml` — verification planner prompt (for backlog item 15)
+- This update (decisions 122-130, full session narrative)
+- `eval/verification_eval.py` — verification agent eval runner (golden + ddb modes, eval table lifecycle)
+- `eval/backends/verification_backend.py` — SigV4 backend with DDB evidence readback
+- `eval/creation_eval.py` — creation agent eval runner (reference)
+- `eval/reports/verification-eval-20260326-013758.json` — first verification smoke baseline
+- `eval/reports/creation-eval-20260325-205419.json` — first creation agent judge baseline
+- `calleditv4-verification/src/main.py` — verification agent (with table_name override)
+- `infrastructure/agentcore-permissions/setup_eval_table_permissions.sh` — IAM permissions for eval table
 
 ### Important Notes
-- Prompt versions show as DRAFT in reports even when runner uses pinned env vars — agent must be re-launched after pinning (Decision 128)
-- Plan quality primary improvement target: verification planner self-report plans (Decision 129, backlog item 15)
+- Verification agent uses SigV4 auth (not JWT) — it's a batch agent, not user-facing
+- The handler returns a summary; full verdict (evidence + reasoning) is read back from DDB after invocation
+- The eval table `calledit-v4-eval` needs IAM permissions on the AgentCore execution role — run the setup script first
+- All evaluators are scoped to `verification_mode: "immediate"` — other modes tracked in backlog item 0
 - All Python commands use `/home/wsluser/projects/calledit/venv/bin/python`
-- Cognito credentials are set as environment variables — no need to export them manually
+- Cognito credentials needed for creation agent eval only (verification agent uses SigV4)

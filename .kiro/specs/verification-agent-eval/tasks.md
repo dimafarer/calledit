@@ -10,7 +10,7 @@ All code lives under `eval/` (plus one line in `calleditv4-verification/src/main
 
 ## Tasks
 
-- [ ] 1. Modify verification agent handler to accept optional table_name override
+- [x] 1. Modify verification agent handler to accept optional table_name override
   - In `calleditv4-verification/src/main.py`, read `table_name = payload.get("table_name", DYNAMODB_TABLE_NAME)` after the `prediction_id` extraction
   - Replace `ddb.Table(DYNAMODB_TABLE_NAME)` with `ddb.Table(table_name)` in the handler
   - This is a one-line functional change; existing behavior is preserved when `table_name` is absent
@@ -22,8 +22,8 @@ All code lives under `eval/` (plus one line in `calleditv4-verification/src/main
     - **Validates: Requirements 1.1, 1.2, 1.3**
   - _Requirements: 1.1, 1.2, 1.3_
 
-- [ ] 2. Implement Verification Backend
-  - [ ] 2.1 Implement `eval/backends/verification_backend.py`
+- [x] 2. Implement Verification Backend
+  - [x] 2.1 Implement `eval/backends/verification_backend.py`
     - Define `VERIFICATION_AGENT_ARN = "arn:aws:bedrock-agentcore:us-west-2:894249332178:runtime/calleditv4_verification_Agent-77DiT7GHdH"`
     - Create `VerificationBackend` class mirroring `AgentCoreBackend` structure
     - Implement `invoke(prediction_id, table_name=None, case_id="") -> dict` — sends `{prediction_id}` plus `table_name: "calledit-v4-eval"` in golden mode, omits `table_name` in ddb mode
@@ -48,8 +48,8 @@ All code lives under `eval/` (plus one line in `calleditv4-verification/src/main
     - Add to `eval/tests/test_verification_backend.py`
     - **Validates: Requirements 3.4**
 
-- [ ] 3. Implement Eval Table Manager
-  - [ ] 3.1 Implement eval table lifecycle functions inline in `eval/verification_eval.py`
+- [x] 3. Implement Eval Table Manager
+  - [x] 3.1 Implement eval table lifecycle functions inline in `eval/verification_eval.py`
     - Define `EVAL_TABLE_NAME = "calledit-v4-eval"` and `PROD_TABLE_NAME = "calledit-v4"`
     - Implement `_ensure_table_exists(ddb)` — creates table with PK=`PRED#{prediction_id}`, SK=`BUNDLE` if not present; uses existing table if it already exists
     - Implement `_shape_bundle(case) -> dict` — shapes golden case into DDB item with `PK`, `SK`, `prediction_id`, `status: "pending"`, `verification_mode: "immediate"`, `parsed_claim`, `verification_plan`, `prompt_versions: {}`
@@ -72,8 +72,8 @@ All code lives under `eval/` (plus one line in `calleditv4-verification/src/main
     - Add to `eval/tests/test_verification_table_manager.py`
     - **Validates: Requirements 2.3**
 
-- [ ] 4. Implement Tier 1 Evaluators
-  - [ ] 4.1 Implement Schema Validity evaluator in `eval/evaluators/verification_schema_validity.py`
+- [x] 4. Implement Tier 1 Evaluators
+  - [x] 4.1 Implement Schema Validity evaluator in `eval/evaluators/verification_schema_validity.py`
     - Implement `evaluate(result: dict) -> dict` returning `{"score": float, "pass": bool, "reason": str}`
     - Check `verdict` is present and is a str, `confidence` is present and is a float, `evidence` is present and is a list, `reasoning` is present and is a str
     - Return score 1.0 when all four pass; 0.0 identifying which fields failed otherwise
@@ -84,7 +84,7 @@ All code lives under `eval/` (plus one line in `calleditv4-verification/src/main
     - For any verdict response dict, score is 1.0 iff all four fields are present with correct types; 0.0 with failing fields identified otherwise
     - Add to `eval/tests/test_verification_schema_validity.py`
     - **Validates: Requirements 6.1, 6.2, 6.3, 6.4, 6.5, 6.6**
-  - [ ] 4.3 Implement Verdict Validity evaluator in `eval/evaluators/verification_verdict_validity.py`
+  - [x] 4.3 Implement Verdict Validity evaluator in `eval/evaluators/verification_verdict_validity.py`
     - Implement `evaluate(result: dict) -> dict`
     - Check `verdict` is one of `{"confirmed", "refuted", "inconclusive"}`
     - Return score 1.0 when valid; 0.0 with actual value in reason otherwise
@@ -94,7 +94,7 @@ All code lives under `eval/` (plus one line in `calleditv4-verification/src/main
     - For any verdict response dict, score is 1.0 iff `verdict` is one of the three allowed strings; 0.0 with actual value otherwise
     - Add to `eval/tests/test_verification_verdict_validity.py`
     - **Validates: Requirements 7.1, 7.2**
-  - [ ] 4.5 Implement Confidence Range evaluator in `eval/evaluators/verification_confidence_range.py`
+  - [x] 4.5 Implement Confidence Range evaluator in `eval/evaluators/verification_confidence_range.py`
     - Implement `evaluate(result: dict) -> dict`
     - Check `confidence` is a float in [0.0, 1.0] inclusive
     - Return score 1.0 when valid; 0.0 with actual value in reason otherwise
@@ -104,7 +104,7 @@ All code lives under `eval/` (plus one line in `calleditv4-verification/src/main
     - For any verdict response dict, score is 1.0 iff `confidence` is a float in [0.0, 1.0]; 0.0 with actual value otherwise
     - Add to `eval/tests/test_verification_confidence_range.py`
     - **Validates: Requirements 8.1, 8.2**
-  - [ ] 4.7 Implement Evidence Completeness evaluator in `eval/evaluators/verification_evidence_completeness.py`
+  - [x] 4.7 Implement Evidence Completeness evaluator in `eval/evaluators/verification_evidence_completeness.py`
     - Implement `evaluate(result: dict) -> dict`
     - Check `evidence` is a non-empty list
     - Return score 1.0 when non-empty; 0.0 otherwise
@@ -114,7 +114,7 @@ All code lives under `eval/` (plus one line in `calleditv4-verification/src/main
     - For any verdict response dict, score is 1.0 iff `evidence` is a non-empty list
     - Add to `eval/tests/test_verification_evidence_completeness.py`
     - **Validates: Requirements 9.1, 9.2**
-  - [ ] 4.9 Implement Evidence Structure evaluator in `eval/evaluators/verification_evidence_structure.py`
+  - [x] 4.9 Implement Evidence Structure evaluator in `eval/evaluators/verification_evidence_structure.py`
     - Implement `evaluate(result: dict) -> dict`
     - Check each item in `evidence` contains `source`, `finding`, and `relevant_to_criteria` fields
     - Return score 1.0 when all items pass (vacuously true for empty list); 0.0 identifying which items and fields failed otherwise
@@ -128,8 +128,8 @@ All code lives under `eval/` (plus one line in `calleditv4-verification/src/main
 - [ ] 5. Checkpoint — Ensure all Tier 1 evaluator tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Implement Tier 2 Evaluators
-  - [ ] 6.1 Implement Verdict Accuracy evaluator in `eval/evaluators/verification_verdict_accuracy.py`
+- [x] 6. Implement Tier 2 Evaluators
+  - [x] 6.1 Implement Verdict Accuracy evaluator in `eval/evaluators/verification_verdict_accuracy.py`
     - Implement `evaluate(result: dict, expected_verdict: str | None) -> dict | None`
     - When `expected_verdict` is None, return `None` (evaluator is skipped entirely)
     - When `expected_verdict` is non-null, return score 1.0 if `result["verdict"] == expected_verdict`; 0.0 with both actual and expected values in reason otherwise
@@ -140,7 +140,7 @@ All code lives under `eval/` (plus one line in `calleditv4-verification/src/main
     - For any (verdict, expected_verdict) pair where expected_verdict is non-null, score is 1.0 iff exact match; 0.0 with both values in reason otherwise. When expected_verdict is None, evaluator returns None
     - Add to `eval/tests/test_verification_verdict_accuracy.py`
     - **Validates: Requirements 11.1, 11.2, 11.3**
-  - [ ] 6.3 Implement Evidence Quality evaluator in `eval/evaluators/verification_evidence_quality.py`
+  - [x] 6.3 Implement Evidence Quality evaluator in `eval/evaluators/verification_evidence_quality.py`
     - Create LLM judge using `strands_evals` `OutputEvaluator` with `EVIDENCE_QUALITY_RUBRIC`
     - Rubric must focus on: source authenticity (real, accessible URLs or named data sources), finding specificity (concrete observations not vague summaries), criteria linkage clarity (clear link to a specific verification criterion)
     - Use `model="us.anthropic.claude-opus-4-6-v1"` with `include_inputs=True`
@@ -152,13 +152,13 @@ All code lives under `eval/` (plus one line in `calleditv4-verification/src/main
     - Add to `eval/tests/test_verification_verdict_accuracy.py` and `eval/tests/test_verification_evidence_quality.py`
     - _Requirements: 11.3, 12.4_
 
-- [ ] 7. Implement Case Loading
-  - [ ] 7.1 Implement golden mode case loading in `eval/verification_eval.py`
+- [x] 7. Implement Case Loading
+  - [x] 7.1 Implement golden mode case loading in `eval/verification_eval.py`
     - Define `EvalCase` dataclass with `prediction_id`, `prediction_text`, `expected_verdict: str | None`, `ground_truth: dict`, `metadata: dict`
     - Implement `load_dataset(path) -> dict` — reads golden dataset JSON; `sys.exit(1)` on file not found, invalid JSON, or missing `base_predictions`
     - Implement `load_golden_cases(dataset, tier, case_id=None) -> list[EvalCase]` — filters to `verification_readiness == "immediate"` and non-null `expected_verification_outcome`; applies smoke/full tier filtering; handles `--case` override; `sys.exit(1)` if no qualifying cases
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
-  - [ ] 7.2 Implement DDB mode case loading in `eval/verification_eval.py`
+  - [x] 7.2 Implement DDB mode case loading in `eval/verification_eval.py`
     - Implement `load_ddb_cases() -> list[EvalCase]` — queries `calledit-v4` table for `verification_readiness: immediate` items
     - Set `expected_verdict = None` for all DDB cases
     - `sys.exit(1)` if no matching items found
@@ -179,31 +179,31 @@ All code lives under `eval/` (plus one line in `calleditv4-verification/src/main
     - Add to `eval/tests/test_verification_case_loader.py`
     - **Validates: Requirements 5.3**
 
-- [ ] 8. Implement CLI Runner and Eval Orchestration
-  - [ ] 8.1 Implement CLI argument parsing in `eval/verification_eval.py`
+- [x] 8. Implement CLI Runner and Eval Orchestration
+  - [x] 8.1 Implement CLI argument parsing in `eval/verification_eval.py`
     - Add `--source` (default: `golden`, choices: `golden`/`ddb`), `--dataset` (default: `eval/golden_dataset.json`), `--tier` (default: `smoke`, choices: `smoke`/`smoke+judges`/`full`), `--description`, `--output-dir` (default: `eval/reports`), `--dry-run`, `--case` flags via `argparse`
     - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5, 14.6, 14.7, 14.8_
-  - [ ] 8.2 Implement `build_evaluator_list(args) -> dict` in `eval/verification_eval.py`
+  - [x] 8.2 Implement `build_evaluator_list(args) -> dict` in `eval/verification_eval.py`
     - `smoke`: Tier 1 evaluators only (5 evaluators)
     - `smoke+judges` and `full` in golden mode: Tier 1 + both Tier 2 evaluators
     - `ddb` source mode: Tier 1 + Evidence Quality only (Verdict Accuracy skipped — no ground truth)
     - _Requirements: 13.1, 13.2, 13.3, 13.4, 13.5_
-  - [ ] 8.3 Implement `run_eval(cases, backend, evaluators) -> list[dict]` in `eval/verification_eval.py`
+  - [x] 8.3 Implement `run_eval(cases, backend, evaluators) -> list[dict]` in `eval/verification_eval.py`
     - For each case: invoke backend with `prediction_id` and `table_name` (golden mode) or without (ddb mode), run evaluators, collect per-case results
     - Pass `expected_verdict` to Verdict Accuracy evaluator; omit from result when evaluator returns None
     - Catch backend errors per-case and record with `error` field — do not abort entire run
     - _Requirements: 3.1, 3.2, 3.3, 6.1–10.4, 11.1–12.6_
-  - [ ] 8.4 Implement `--dry-run` mode
+  - [x] 8.4 Implement `--dry-run` mode
     - List all cases that would be executed with ids and metadata, without writing to Eval_Table, invoking backend, or running evaluators
     - _Requirements: 14.6_
 
-- [ ] 9. Implement Report Generation
-  - [ ] 9.1 Implement `build_run_metadata(args, dataset, results, duration) -> dict` in `eval/verification_eval.py`
+- [x] 9. Implement Report Generation
+  - [x] 9.1 Implement `build_run_metadata(args, dataset, results, duration) -> dict` in `eval/verification_eval.py`
     - Record `description`, `agent: "verification"`, `source`, `run_tier`, `dataset_version`, `timestamp` (ISO 8601), `duration_seconds`, `case_count`
     - Record `ground_truth_limitation` noting all 7 qualifying cases have `confirmed` expected outcomes
     - Auto-generate description from source mode, tier, and timestamp when `--description` is omitted
     - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.5, 15.6, 15.7, 15.8, 15.9_
-  - [ ] 9.2 Implement `build_report` and `save_report` in `eval/verification_eval.py`
+  - [x] 9.2 Implement `build_report` and `save_report` in `eval/verification_eval.py`
     - Build report with `run_metadata`, `aggregate_scores` (per-evaluator averages + `overall_pass_rate` as fraction where all T1 = 1.0; `None` for unevaluated Tier 2), `case_results`
     - Save as `verification-eval-{YYYYMMDD-HHMMSS}.json` with 2-space indentation
     - Create output directory with `os.makedirs(output_dir, exist_ok=True)` if needed
@@ -229,8 +229,8 @@ All code lives under `eval/` (plus one line in `calleditv4-verification/src/main
     - Add to `eval/tests/test_verification_report.py`
     - **Validates: Requirements 16.5**
 
-- [ ] 10. Wire everything together in `eval/verification_eval.py` main()
-  - [ ] 10.1 Implement `main()` connecting CLI → loader → table setup → backend → evaluators → report → cleanup
+- [x] 10. Wire everything together in `eval/verification_eval.py` main()
+  - [x] 10.1 Implement `main()` connecting CLI → loader → table setup → backend → evaluators → report → cleanup
     - Wire `parse_args()`, `load_dataset()`, `load_golden_cases()` or `load_ddb_cases()`, `setup_eval_table()` (golden only), `build_evaluator_list()`, `run_eval()`, `cleanup_eval_table()` (golden only, runs after errors too), `build_run_metadata()`, `build_report()`, `save_report()`
     - Add `if __name__ == "__main__": main()` entry point
     - Print summary to stdout matching creation_eval.py pattern

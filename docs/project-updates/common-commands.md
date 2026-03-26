@@ -414,3 +414,34 @@ PROMPT_VERSION_PLAN_REVIEWER=2 \
 
 # Reports saved to eval/reports/creation-eval-{timestamp}.json
 ```
+
+## Verification Agent Eval (V4-7a-3)
+
+```bash
+# Requires: IAM permissions for eval table (one-time setup)
+# bash infrastructure/agentcore-permissions/setup_eval_table_permissions.sh
+
+# Dry run — list qualifying cases
+/home/wsluser/projects/calledit/venv/bin/python eval/verification_eval.py --dry-run
+
+# Dry run — full tier (all 7 qualifying cases)
+/home/wsluser/projects/calledit/venv/bin/python eval/verification_eval.py --dry-run --tier full
+
+# Smoke test — 2 cases, Tier 1 only (~2-3 min)
+/home/wsluser/projects/calledit/venv/bin/python eval/verification_eval.py --tier smoke --description "description here"
+
+# Smoke + judges — 2 cases, Tier 1 + Tier 2 (~5 min)
+/home/wsluser/projects/calledit/venv/bin/python eval/verification_eval.py --tier smoke+judges --description "description here"
+
+# Full run — all 7 cases, Tier 1 + Tier 2 (~15 min)
+/home/wsluser/projects/calledit/venv/bin/python eval/verification_eval.py --tier full --description "description here"
+
+# Single case
+/home/wsluser/projects/calledit/venv/bin/python eval/verification_eval.py --case base-002 --description "single case test"
+
+# DDB mode — live predictions, no ground truth comparison
+/home/wsluser/projects/calledit/venv/bin/python eval/verification_eval.py --source ddb --description "live data check"
+
+# Reports saved to eval/reports/verification-eval-{timestamp}.json
+# Note: verification agent uses SigV4 auth (no Cognito credentials needed)
+```

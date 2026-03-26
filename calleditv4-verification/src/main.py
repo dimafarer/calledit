@@ -110,10 +110,13 @@ def handler(payload: dict, context: RequestContext) -> str:
             "error": "Missing 'prediction_id' in payload",
         })
 
+    # Optional table_name override for eval isolation (Decision 130)
+    table_name = payload.get("table_name", DYNAMODB_TABLE_NAME)
+
     # Zone 1: Load bundle from DDB
     try:
         ddb = boto3.resource("dynamodb")
-        table = ddb.Table(DYNAMODB_TABLE_NAME)
+        table = ddb.Table(table_name)
         bundle = load_bundle_from_ddb(table, prediction_id)
     except Exception as e:
         logger.error(
