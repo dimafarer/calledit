@@ -87,34 +87,19 @@ echo "strands-agents>=1.7.0" >> backend/calledit-backend/handlers/strands_make_c
 - Other developers can install exact dependencies
 - CI/CD pipelines need requirements.txt
 
-## TTY Error Handling - CRITICAL
+## TTY Error Handling - RESOLVED (March 27, 2026)
 
-**RULE**: When encountering TTY errors (`not a tty`, `TTY=not a tty`), IMMEDIATELY ask the user to run the command manually.
+**STATUS**: The TTY issue has been fixed. Agent commands should now work normally.
 
-**DO NOT**:
-- ❌ Try alternative approaches
-- ❌ Attempt workarounds
-- ❌ Use different tools
-- ❌ Continue with partial results
+**Root Cause**: Amazon Q CLI shell integration (`q init bash pre/post`) injected `PROMPT_COMMAND` hooks (`__bp_precmd_invoke_cmd`, `__fig_post_prompt`) that conflicted with Kiro's own shell integration for capturing command output. This caused `Exit Code: -1` and empty output on the agent side, even though commands executed successfully in the user's terminal.
 
-**DO**:
-- ✅ Stop immediately
-- ✅ Ask user to run the exact command
-- ✅ Wait for user to provide output
-- ✅ Continue with user-provided results
+**Fix Applied** (in `~/.bashrc`):
+1. Both Amazon Q pre/post blocks wrapped with `if [[ "$TERM_PROGRAM" != "kiro" ]]` guards
+2. `unset TTY` at the end of `.bashrc` as a safety net for the `TTY=not a tty` env var pollution
 
-**Example Response**:
-```
-I'm encountering a TTY error. Could you please run this command and paste the output?
+**If TTY errors reappear**: The fix may have been overwritten by an Amazon Q CLI update (it manages those blocks). Re-apply the guards in `~/.bashrc`. Check with `head -5 ~/.bashrc && tail -7 ~/.bashrc`.
 
-[exact command here]
-```
-
-**Why This Matters**:
-- User can run commands successfully in their terminal
-- Avoids wasted time on workarounds
-- Gets accurate results immediately
-- User explicitly offered to run commands
+**For `agentcore` commands**: `agentcore launch` and `agentcore invoke` still require a real TTY — ask the user to run those manually and paste output.
 
 ---
 

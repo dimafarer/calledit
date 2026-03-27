@@ -110,9 +110,13 @@ Plan quality baseline is 0.57. The 5 personal/subjective cases average ~0.26. Te
 ### Priority 4: base-010 Full Moon Investigation
 The agent returned `refuted` with 0.9 confidence when expected `confirmed`. Either a lunar calculation bug or golden dataset issue.
 
+### TTY / Command Execution Fix (Resolved This Session)
+The long-standing `TTY=not a tty` and `Exit Code: -1` issues that plagued every agent session were caused by Amazon Q CLI shell integration (`q init bash pre/post`) conflicting with Kiro's `PROMPT_COMMAND`-based output capture. Fixed by wrapping both Amazon Q blocks in `~/.bashrc` with `if [[ "$TERM_PROGRAM" != "kiro" ]]` guards, plus `unset TTY` as a safety net. Amazon Q still works in regular terminals. Agent commands now return full output with `Exit Code: 0`.
+
 ### Key Files
 - `https://d2fngmclz6psil.cloudfront.net` — production frontend (just deployed with dark theme)
 - `https://d2fngmclz6psil.cloudfront.net/eval` — production eval dashboard
 - `frontend-v4/src/App.css` — the new unified dark theme styles
 - `frontend-v4/src/pages/EvalDashboard/components/CaseTable.tsx` — fixed table alignment
 - `frontend-v4/src/pages/EvalDashboard/components/AgentTab.tsx` — collapsible metadata panel
+- `~/.bashrc` — Amazon Q guard + TTY unset fix

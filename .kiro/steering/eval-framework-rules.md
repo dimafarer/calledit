@@ -4,25 +4,28 @@ Rules for running evaluations and managing prompt versions in the CalledIt eval 
 
 ## Prompt Version Pinning — MANDATORY
 
-**RULE**: Always pin to numbered prompt versions for eval runs. Never use DRAFT.
+**RULE**: Never use DRAFT. Always use numbered prompt versions.
 
-**Why**: Eval reports record the prompt version manifest (e.g., `{"categorizer": "2"}`).
+**Why**: Eval reports record the prompt version manifest (e.g., `{"prediction_parser": "2"}`).
 If you use DRAFT, multiple runs show the same version label even when the prompt
 text changed between runs. This makes before/after comparison impossible.
 
-**Correct Pattern**:
+**Current pinned versions** (in `calleditv4/src/prompt_client.py`):
+- `prediction_parser`: 2
+- `verification_planner`: 1
+- `plan_reviewer`: 2
+
+The agent code defaults to these numbered versions. DRAFT is never used unless
+someone explicitly passes `version="DRAFT"` or sets `PROMPT_VERSION_*=DRAFT` env var.
+
+**For eval runs**, you can override with env vars:
 ```bash
-# Pin all prompts to specific versions
-PROMPT_VERSION_PARSER=1 PROMPT_VERSION_CATEGORIZER=2 \
-PROMPT_VERSION_VB=1 PROMPT_VERSION_REVIEW=1 \
-python eval_runner.py --dataset ../../../../eval/golden_dataset.json --judge
+# Override a specific prompt version for testing
+PROMPT_VERSION_PREDICTION_PARSER=3 python eval_runner.py --dataset ...
 ```
 
-**Wrong Pattern**:
-```bash
-# DRAFT versions — can't distinguish runs
-python eval_runner.py --dataset ../../../../eval/golden_dataset.json
-```
+**After deploying a new prompt version**, update `DEFAULT_PROMPT_VERSIONS` in
+`calleditv4/src/prompt_client.py` and relaunch the agent.
 
 ## Prompt Change Workflow
 
