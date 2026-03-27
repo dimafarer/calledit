@@ -48,10 +48,10 @@ const ListPredictions = () => {
   };
 
   const getScoreColor = (score?: number) => {
-    if (score === undefined || score === null) return '#6c757d';
-    if (score >= 0.8) return '#22c55e';
-    if (score >= 0.5) return '#f59e0b';
-    return '#ef4444';
+    if (score === undefined || score === null) return '#94a3b8';
+    if (score >= 0.8) return '#4ade80';
+    if (score >= 0.5) return '#facc15';
+    return '#f87171';
   };
 
   return (

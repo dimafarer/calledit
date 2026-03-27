@@ -110,20 +110,45 @@ export default function AgentTab({ agentType }: Props) {
 }
 
 function MetadataPanel({ meta }: { meta: ReportSummary['run_metadata'] }) {
-  const fields = Object.entries(meta).filter(
-    ([k, v]) => v != null && k !== 'description' && k !== 'ground_truth_limitation' && k !== 'bias_warning',
+  // Always-visible summary fields
+  const summaryKeys = ['agent', 'run_tier', 'case_count', 'duration_seconds', 'dataset_version'];
+  const summaryFields = summaryKeys
+    .filter(k => meta[k as keyof typeof meta] != null)
+    .map(k => [k, meta[k as keyof typeof meta]] as [string, unknown]);
+
+  // Everything else goes in the accordion
+  const detailFields = Object.entries(meta).filter(
+    ([k, v]) => v != null && !summaryKeys.includes(k) && k !== 'description' && k !== 'ground_truth_limitation' && k !== 'bias_warning',
   );
+
+  const renderValue = (v: unknown) => typeof v === 'object' ? JSON.stringify(v) : String(v);
+
   return (
-    <div style={{
-      display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1.5rem',
-      marginBottom: '1rem', fontSize: '0.8rem', color: '#94a3b8',
-    }}>
-      {fields.map(([k, v]) => (
-        <span key={k}>
-          <span style={{ color: '#64748b' }}>{k}:</span>{' '}
-          {typeof v === 'object' ? JSON.stringify(v) : String(v)}
-        </span>
-      ))}
+    <div style={{ marginBottom: '1rem', fontSize: '0.8rem', color: '#94a3b8' }}>
+      {/* Always visible */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 1.5rem' }}>
+        {summaryFields.map(([k, v]) => (
+          <span key={k}>
+            <span style={{ color: '#64748b' }}>{k}:</span> {renderValue(v)}
+          </span>
+        ))}
+      </div>
+
+      {/* Collapsible detail */}
+      {detailFields.length > 0 && (
+        <details style={{ marginTop: '0.5rem' }}>
+          <summary style={{ cursor: 'pointer', color: '#64748b', fontSize: '0.8rem', userSelect: 'none' }}>
+            + {detailFields.length} more fields
+          </summary>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 1.5rem', marginTop: '0.5rem' }}>
+            {detailFields.map(([k, v]) => (
+              <span key={k}>
+                <span style={{ color: '#64748b' }}>{k}:</span> {renderValue(v)}
+              </span>
+            ))}
+          </div>
+        </details>
+      )}
     </div>
   );
 }

@@ -17,31 +17,40 @@ function AppContent() {
 
   return (
     <div className="app-container">
-      <h1>Called It!!</h1>
-      <div className="login-container">
-        <div className="header-controls">
-          {isAuthenticated && (
-            <>
-              <button
-                onClick={() => setCurrentView('predict')}
-                className={`navigation-button ${currentView === 'predict' ? 'active' : ''}`}
-              >
-                ⚡ Make Prediction
-              </button>
-              <button
-                onClick={() => setCurrentView('list')}
-                className={`navigation-button secondary ${currentView === 'list' ? 'active' : ''}`}
-              >
-                📋 My Predictions
-              </button>
-            </>
-          )}
-          <Link to="/eval" className="navigation-button secondary" style={{ textDecoration: 'none' }}>
-            📊 Eval Dashboard
-          </Link>
+      <div className="app-header">
+        <h1 className="app-title">Called It!!</h1>
+        <div className="header-right">
           <LoginButton />
         </div>
       </div>
+
+      {isAuthenticated && (
+        <nav className="nav-bar">
+          <button
+            onClick={() => setCurrentView('predict')}
+            className={`nav-tab ${currentView === 'predict' ? 'active' : ''}`}
+          >
+            ⚡ Make Prediction
+          </button>
+          <button
+            onClick={() => setCurrentView('list')}
+            className={`nav-tab ${currentView === 'list' ? 'active' : ''}`}
+          >
+            📋 My Predictions
+          </button>
+          <Link to="/eval" className="nav-tab" style={{ textDecoration: 'none' }}>
+            📊 Eval Dashboard
+          </Link>
+        </nav>
+      )}
+
+      {!isAuthenticated && (
+        <nav className="nav-bar">
+          <Link to="/eval" className="nav-tab" style={{ textDecoration: 'none' }}>
+            📊 Eval Dashboard
+          </Link>
+        </nav>
+      )}
 
       {isAuthenticated ? (
         currentView === 'predict' ? <PredictionInput /> : <ListPredictions />

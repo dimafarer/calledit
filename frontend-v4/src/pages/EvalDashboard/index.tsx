@@ -13,13 +13,13 @@ export default function EvalDashboard() {
   const [activeTab, setActiveTab] = useState<AgentType>('creation');
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '1rem' }}>
+    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '1.5rem', background: '#0f172a', color: '#e2e8f0', minHeight: '100vh', borderRadius: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-        <Link to="/" style={{ textDecoration: 'none', fontSize: '1.2rem' }}>← Back</Link>
-        <h1 style={{ margin: 0 }}>Eval Dashboard</h1>
+        <Link to="/" style={{ textDecoration: 'none', fontSize: '1.2rem', color: '#60a5fa' }}>← Back</Link>
+        <h1 style={{ margin: 0, color: '#f1f5f9' }}>Eval Dashboard</h1>
       </div>
 
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '2px solid #333' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '2px solid #334155' }}>
         {AGENT_TABS.map(tab => (
           <button
             key={tab.key}

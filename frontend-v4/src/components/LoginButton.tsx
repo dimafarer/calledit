@@ -6,10 +6,10 @@ const LoginButton = () => {
   return (
     <button
       onClick={isAuthenticated ? logout : login}
-      className="navigation-button secondary"
+      className={isAuthenticated ? 'btn-logout' : 'btn-login'}
       aria-label={isAuthenticated ? 'Log out' : 'Log in'}
     >
-      {isAuthenticated ? '🚪 Logout' : '🔑 Login'}
+      {isAuthenticated ? 'Logout' : '🔑 Login'}
     </button>
   );
 };

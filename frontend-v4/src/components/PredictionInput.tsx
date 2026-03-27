@@ -26,10 +26,10 @@ interface PredictionBundle {
 }
 
 const getScoreStyle = (score?: number) => {
-  if (score === undefined || score === null) return { color: '#6c757d', bg: '#e9ecef', icon: '⚪' };
-  if (score >= 0.8) return { color: '#155724', bg: '#d4edda', icon: '🟢' };
-  if (score >= 0.5) return { color: '#856404', bg: '#fff3cd', icon: '🟡' };
-  return { color: '#721c24', bg: '#f8d7da', icon: '🔴' };
+  if (score === undefined || score === null) return { color: '#94a3b8', bg: '#1e293b', icon: '⚪' };
+  if (score >= 0.8) return { color: '#4ade80', bg: '#052e16', icon: '🟢' };
+  if (score >= 0.5) return { color: '#facc15', bg: '#422006', icon: '🟡' };
+  return { color: '#f87171', bg: '#450a0a', icon: '🔴' };
 };
 
 const PredictionInput = () => {
@@ -200,15 +200,15 @@ const PredictionInput = () => {
       {isStreaming && (
         <div className="streaming-response">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-            <h3 style={{ margin: 0, color: '#667eea' }}>🧠 AI Reasoning</h3>
+            <h3 style={{ margin: 0, color: '#8fa4f3' }}>🧠 AI Reasoning</h3>
             <div className="processing-indicator">
               <span>{currentTurn || 'Processing'}</span>
               <span className="processing-dots"><span></span><span></span><span></span></span>
             </div>
           </div>
           {streamText && (
-            <div style={{ padding: '16px', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.8)', border: '1px solid rgba(102,126,234,0.1)', minHeight: '60px' }}>
-              <p style={{ whiteSpace: 'pre-wrap', margin: 0, lineHeight: 1.6 }}>{streamText}</p>
+            <div style={{ padding: '16px', borderRadius: '8px', backgroundColor: 'rgba(15,23,42,0.8)', border: '1px solid rgba(102,126,234,0.2)', minHeight: '60px' }}>
+              <p style={{ whiteSpace: 'pre-wrap', margin: 0, lineHeight: 1.6, color: '#cbd5e1' }}>{streamText}</p>
             </div>
           )}
         </div>
@@ -230,7 +230,7 @@ const PredictionInput = () => {
               <h3>Verification Date</h3>
               <p>{bundle.parsed_claim?.verification_date ? new Date(bundle.parsed_claim.verification_date).toLocaleString() : 'Not available'}</p>
               {bundle.parsed_claim?.date_reasoning && (
-                <p style={{ fontStyle: 'italic', color: '#6c757d', marginTop: '4px', fontSize: '14px' }}>
+                <p style={{ fontStyle: 'italic', color: '#94a3b8', marginTop: '4px', fontSize: '14px' }}>
                   {bundle.parsed_claim.date_reasoning}
                 </p>
               )}
@@ -253,12 +253,12 @@ const PredictionInput = () => {
                   </span>
                 </div>
                 {bundle.score_guidance && (
-                  <p style={{ color: '#495057', fontSize: '14px', lineHeight: 1.5 }}>{bundle.score_guidance}</p>
+                  <p style={{ color: '#cbd5e1', fontSize: '14px', lineHeight: 1.5 }}>{bundle.score_guidance}</p>
                 )}
                 {bundle.verifiability_reasoning && (
                   <details style={{ marginTop: '8px' }}>
-                    <summary style={{ cursor: 'pointer', color: '#667eea' }}>Detailed reasoning</summary>
-                    <p style={{ marginTop: '8px', fontSize: '14px', color: '#6c757d' }}>{bundle.verifiability_reasoning}</p>
+                    <summary style={{ cursor: 'pointer', color: '#60a5fa' }}>Detailed reasoning</summary>
+                    <p style={{ marginTop: '8px', fontSize: '14px', color: '#94a3b8' }}>{bundle.verifiability_reasoning}</p>
                   </details>
                 )}
               </div>
@@ -271,12 +271,12 @@ const PredictionInput = () => {
                 {bundle.dimension_assessments.map((dim, i) => {
                   const dimStyle = getScoreStyle(dim.score);
                   return (
-                    <div key={i} style={{ marginBottom: '8px', padding: '8px', borderRadius: '6px', backgroundColor: '#f8f9fa' }}>
+                    <div key={i} style={{ marginBottom: '8px', padding: '8px', borderRadius: '6px', backgroundColor: '#0f172a' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <strong style={{ fontSize: '14px' }}>{dim.dimension}</strong>
+                        <strong style={{ fontSize: '14px', color: '#cbd5e1' }}>{dim.dimension}</strong>
                         <span style={{ color: dimStyle.color, fontWeight: '600' }}>{dimStyle.icon} {(dim.score * 100).toFixed(0)}%</span>
                       </div>
-                      <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#6c757d' }}>{dim.reasoning}</p>
+                      <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#94a3b8' }}>{dim.reasoning}</p>
                     </div>
                   );
                 })}
@@ -319,14 +319,14 @@ const PredictionInput = () => {
 
           {/* Clarification Questions */}
           {allQuestions.length > 0 && !isClarifying && (
-            <div style={{ marginTop: '20px', padding: '16px', borderRadius: '12px', backgroundColor: '#f0f4ff', border: '2px solid #667eea' }}>
-              <h3 style={{ margin: '0 0 12px', color: '#667eea' }}>💬 Clarification Questions</h3>
-              <p style={{ fontSize: '14px', color: '#4a5568', marginBottom: '16px' }}>
+            <div style={{ marginTop: '20px', padding: '16px', borderRadius: '12px', backgroundColor: '#1e293b', border: '2px solid #3b82f6' }}>
+              <h3 style={{ margin: '0 0 12px', color: '#60a5fa' }}>💬 Clarification Questions</h3>
+              <p style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '16px' }}>
                 The agent identified assumptions in your prediction. Answering these questions will improve the verification plan.
               </p>
               {allQuestions.map((q, i) => (
                 <div key={i} style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '14px' }}>
+                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '14px', color: '#cbd5e1' }}>
                     {q}
                   </label>
                   <input
@@ -334,7 +334,7 @@ const PredictionInput = () => {
                     value={answers[i] || ''}
                     onChange={(e) => setAnswers(prev => ({ ...prev, [i]: e.target.value }))}
                     placeholder="Your answer..."
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #334155', fontSize: '14px', boxSizing: 'border-box', backgroundColor: '#0f172a', color: '#e2e8f0' }}
                   />
                 </div>
               ))}

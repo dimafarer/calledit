@@ -169,11 +169,17 @@ Completed V4-7a-3 with smoke+judges and full tier runs. Full baseline (7 cases):
 
 ## Current State (March 26, 2026)
 
-- v4 production COMPLETE — full MVP + eval dashboard deployed
+### Update 32 (March 27): Dark Theme Unification + Dashboard UX Fixes
+UX polish session without a formal spec. Fixed eval dashboard table column alignment (nested `<tbody>` bug + inconsistent score key ordering). Unified the entire frontend on a dark slate theme (`#0f172a` background). Replaced gradient navigation buttons with clean underline tabs. Added collapsible metadata accordion to dashboard. Deployed to production. Two new decisions (137-138).
+
+## Current State (March 27, 2026)
+
+- v4 production COMPLETE — full MVP + eval dashboard deployed with unified dark theme
 - Eval dashboard live at `https://d2fngmclz6psil.cloudfront.net/eval`
 - Three eval frameworks: creation (IP=0.88, PQ=0.57), verification (VA=0.43, EQ=0.46), calibration (CA=0.50)
 - DDB report store: `calledit-v4-eval-reports` table, 14 reports, managed by CloudFormation
 - All 5 v4 Lambdas have SnapStart (AutoPublishAlias pattern)
-- React dashboard: 3 tabs, data-driven rendering, dual-mode auth (Vite proxy dev / API Gateway prod)
-- 136 architectural decisions documented across 31 project updates
-- Next: dashboard UX iteration, tool action tracking (backlog 16), verification planner self-report (backlog 15)
+- React dashboard: 3 tabs, data-driven rendering, collapsible metadata, dual-mode auth
+- Frontend: unified dark theme, underline tab navigation, no gradient buttons
+- 138 architectural decisions documented across 32 project updates
+- Next: dashboard data review, verification planner self-report (backlog 15), tool action tracking (backlog 16)

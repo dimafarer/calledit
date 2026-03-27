@@ -1,6 +1,6 @@
 /** Data-driven case results table with expandable detail rows. */
 
-import { useState } from 'react';
+import { useState, useMemo, Fragment } from 'react';
 import type { CaseResult, AgentType } from '../types';
 import { truncateText, getScoreColor } from '../utils';
 
@@ -12,12 +12,24 @@ interface Props {
 export default function CaseTable({ cases, agentType }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Collect all unique score keys across ALL cases, sorted alphabetically for consistency
+  const scoreKeys = useMemo(() => {
+    const keySet = new Set<string>();
+    for (const c of cases) {
+      if (c.scores) Object.keys(c.scores).forEach(k => keySet.add(k));
+    }
+    return Array.from(keySet).sort();
+  }, [cases]);
+
   if (cases.length === 0) return <p style={{ color: '#94a3b8' }}>No cases in this run.</p>;
 
-  // Derive score columns from first case's scores keys (data-driven)
-  const scoreKeys = cases[0]?.scores ? Object.keys(cases[0].scores) : [];
-
   const getText = (c: CaseResult) => c.input ?? c.prediction_text ?? '';
+
+  // Count total columns for colSpan on expanded detail row
+  let colCount = 2; // ID + Text
+  if (agentType === 'verification') colCount += 1;
+  if (agentType === 'calibration') colCount += 4;
+  colCount += scoreKeys.length;
 
   return (
     <div style={{ overflowX: 'auto' }}>
@@ -27,7 +39,7 @@ export default function CaseTable({ cases, agentType }: Props) {
             <th style={thStyle}>ID</th>
             <th style={thStyle}>Text</th>
             {agentType === 'verification' && <th style={thStyle}>Expected</th>}
-            {agentType === 'calibration' && <th style={thStyle}>Score</th>}
+            {agentType === 'calibration' && <th style={thStyle}>V-Score</th>}
             {agentType === 'calibration' && <th style={thStyle}>Tier</th>}
             {agentType === 'calibration' && <th style={thStyle}>Verdict</th>}
             {agentType === 'calibration' && <th style={thStyle}>Cal?</th>}
@@ -39,7 +51,7 @@ export default function CaseTable({ cases, agentType }: Props) {
             const isExpanded = expandedId === c.id;
             const hasError = !!c.error;
             return (
-              <tbody key={c.id}>
+              <Fragment key={c.id}>
                 <tr
                   onClick={() => setExpandedId(isExpanded ? null : c.id)}
                   style={{
@@ -72,12 +84,12 @@ export default function CaseTable({ cases, agentType }: Props) {
                 </tr>
                 {isExpanded && (
                   <tr>
-                    <td colSpan={99} style={{ padding: '0.75rem 1rem', background: '#0f172a' }}>
+                    <td colSpan={colCount} style={{ padding: '0.75rem 1rem', background: '#0f172a' }}>
                       <CaseDetail caseResult={c} />
                     </td>
                   </tr>
                 )}
-              </tbody>
+              </Fragment>
             );
           })}
         </tbody>

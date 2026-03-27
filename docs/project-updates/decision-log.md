@@ -1176,3 +1176,22 @@ Use SAM's `AutoPublishAlias: live` property instead of manual `AWS::Lambda::Vers
 **Date:** March 26, 2026
 
 The eval dashboard uses a Vite dev server middleware (`server/eval-api.ts`) for local development that proxies `/api/eval/*` requests to DDB using `~/.aws/credentials`. In production, the dashboard calls API Gateway endpoints with Cognito JWT auth. The switch is based on `import.meta.env.DEV`. This avoids needing a Cognito Identity Pool or putting AWS credentials in environment files. The browser can't read `~/.aws/credentials` directly — the Vite dev server (Node.js) can.
+
+
+---
+
+## Decision 137: Always-Dark Theme (No Light Mode Toggle)
+
+**Source:** [Project Update 32](32-project-update-dark-theme-and-dashboard-ux.md)
+**Date:** March 27, 2026
+
+The frontend is now always dark (`#0f172a` background). The `prefers-color-scheme` media queries were removed entirely. The app was rendering dark-themed dashboard components on a light page background, creating an inconsistent experience. Rather than maintaining two themes for a single-user project, committed to dark. If light mode is ever needed, it would be a proper theme system, not scattered media queries.
+
+---
+
+## Decision 138: Underline Tab Navigation (Not Gradient Buttons)
+
+**Source:** [Project Update 32](32-project-update-dark-theme-and-dashboard-ux.md)
+**Date:** March 27, 2026
+
+The main app navigation uses underline tabs (matching the dashboard tab pattern) instead of gradient pill buttons. Logout is a ghost button pinned to the top-right corner. This creates visual consistency between the main app and the eval dashboard. The `navigation-button`, `navigation-button.secondary`, and `navigation-button.legacy` CSS classes and all gradient styles were removed entirely.

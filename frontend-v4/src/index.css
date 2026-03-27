@@ -2,9 +2,8 @@
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color: #e2e8f0;
+  background-color: #0f172a;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -28,14 +27,10 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: #1e293b;
+  color: #e2e8f0;
   cursor: pointer;
   transition: border-color 0.25s;
 }
-button:hover { border-color: #646cff; }
+button:hover { border-color: #3b82f6; }
 button:focus, button:focus-visible { outline: 4px auto -webkit-focus-ring-color; }
-
-@media (prefers-color-scheme: light) {
-  :root { color: #213547; background-color: #ffffff; }
-  button { background-color: #f9f9f9; }
-}
