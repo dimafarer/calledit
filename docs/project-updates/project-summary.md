@@ -172,14 +172,19 @@ Completed V4-7a-3 with smoke+judges and full tier runs. Full baseline (7 cases):
 ### Update 32 (March 27): Dark Theme Unification + Dashboard UX Fixes
 UX polish session without a formal spec. Fixed eval dashboard table column alignment (nested `<tbody>` bug + inconsistent score key ordering). Unified the entire frontend on a dark slate theme (`#0f172a` background). Replaced gradient navigation buttons with clean underline tabs. Added collapsible metadata accordion to dashboard. Deployed to production. Two new decisions (137-138).
 
+### Update 33 (March 27): Verification Modes + TTY Fix + Prompt Pinning
+Three wins in one session. (1) Resolved the long-standing TTY/command execution issue — Amazon Q CLI shell integration conflicted with Kiro's PROMPT_COMMAND output capture; fixed with TERM_PROGRAM guards in ~/.bashrc. (2) Pinned all prompt versions to numbered defaults (never DRAFT) for eval traceability. (3) Implemented all four verification modes (immediate, at_date, before_date, recurring) — resolving backlog item 0. Verification planner classifies mode, plan reviewer confirms. Scanner has mode-aware scheduling with recurring interval checks. Golden dataset expanded 45→54 cases. Three new evaluators + per-mode aggregate breakdowns in both eval runners. Two new decisions (139-140).
+
 ## Current State (March 27, 2026)
 
-- v4 production COMPLETE — full MVP + eval dashboard deployed with unified dark theme
+- v4 production COMPLETE — full MVP + eval dashboard + verification modes deployed
 - Eval dashboard live at `https://d2fngmclz6psil.cloudfront.net/eval`
+- Four verification modes supported: immediate, at_date, before_date, recurring
 - Three eval frameworks: creation (IP=0.88, PQ=0.57), verification (VA=0.43, EQ=0.46), calibration (CA=0.50)
-- DDB report store: `calledit-v4-eval-reports` table, 14 reports, managed by CloudFormation
-- All 5 v4 Lambdas have SnapStart (AutoPublishAlias pattern)
-- React dashboard: 3 tabs, data-driven rendering, collapsible metadata, dual-mode auth
-- Frontend: unified dark theme, underline tab navigation, no gradient buttons
-- 138 architectural decisions documented across 32 project updates
-- Next: dashboard data review, verification planner self-report (backlog 15), tool action tracking (backlog 16)
+- Golden dataset: 54 base + 23 fuzzy predictions (schema 4.0, 12 smoke test cases)
+- DDB report store: `calledit-v4-eval-reports` table, reports include per-mode breakdowns
+- All prompts pinned to numbered versions (parser:2, planner:2, reviewer:3, executor:2)
+- Frontend: unified dark theme, underline tab navigation
+- TTY/command execution issue resolved — Amazon Q CLI guard in ~/.bashrc
+- 140 architectural decisions documented across 33 project updates
+- Next: full eval baselines with mode data, prompt iteration on mode classification, verification planner self-report (backlog 15)

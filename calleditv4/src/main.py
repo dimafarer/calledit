@@ -61,6 +61,24 @@ from bundle import (
 
 logger = logging.getLogger(__name__)
 
+
+def resolve_verification_mode(
+    planner_mode: str, reviewer_mode: str, prediction_id: str
+) -> str:
+    """Resolve verification_mode between planner and reviewer.
+
+    Reviewer wins on disagreement (has more context from full plan).
+    """
+    if planner_mode == reviewer_mode:
+        return planner_mode
+    logger.warning(
+        f"Mode disagreement for {prediction_id}: "
+        f"planner={planner_mode}, reviewer={reviewer_mode}. "
+        f"Using reviewer's mode."
+    )
+    return reviewer_mode
+
+
 app = BedrockAgentCoreApp()
 
 MODEL_ID = "us.anthropic.claude-sonnet-4-20250514-v1:0"
@@ -324,6 +342,13 @@ async def handler(payload: dict, context: RequestContext):
                 yield te
             yield turn_event
 
+            # Resolve verification mode (reviewer wins on disagreement)
+            resolved_mode = resolve_verification_mode(
+                verification_plan.verification_mode,
+                plan_review.verification_mode,
+                prediction_id,
+            )
+
             # Update DDB (Req 7.1-7.6)
             review_dump = plan_review.model_dump()
             update_params = format_ddb_update(
@@ -343,6 +368,7 @@ async def handler(payload: dict, context: RequestContext):
                 score_guidance=review_dump["score_guidance"],
                 dimension_assessments=review_dump["dimension_assessments"],
                 tier_display=score_to_tier(plan_review.verifiability_score),
+                verification_mode=resolved_mode,
             )
 
             # Build the updated bundle for the response
@@ -364,6 +390,7 @@ async def handler(payload: dict, context: RequestContext):
                 "score_guidance": review_dump["score_guidance"],
                 "dimension_assessments": review_dump["dimension_assessments"],
                 "tier_display": score_to_tier(plan_review.verifiability_score),
+                "verification_mode": resolved_mode,
             }
             if user_timezone:
                 updated_bundle["user_timezone"] = user_timezone
@@ -384,7 +411,10 @@ async def handler(payload: dict, context: RequestContext):
                 )
                 updated_bundle["save_error"] = str(save_err)
 
-            yield _make_event("flow_complete", prediction_id, updated_bundle)
+            yield _make_event("flow_complete", prediction_id, {
+                **updated_bundle,
+                "verification_mode": resolved_mode,
+            })
 
         except Exception as e:
             logger.error(
@@ -462,6 +492,13 @@ async def handler(payload: dict, context: RequestContext):
                 yield te
             yield turn_event
 
+            # Resolve verification mode (reviewer wins on disagreement)
+            resolved_mode = resolve_verification_mode(
+                verification_plan.verification_mode,
+                plan_review.verification_mode,
+                prediction_id,
+            )
+
             # Assemble bundle (Req 9.4 — user_timezone in bundle)
             bundle = build_bundle(
                 prediction_id=prediction_id,
@@ -476,6 +513,9 @@ async def handler(payload: dict, context: RequestContext):
                 ],
                 prompt_versions=get_prompt_version_manifest(),
                 user_timezone=user_timezone,
+                verification_mode=resolved_mode,
+                recurring_interval=verification_plan.recurring_interval,
+                max_snapshots=30,
             )
 
             # V4-4: Inject score tier fields from PlanReview structured output
@@ -498,7 +538,10 @@ async def handler(payload: dict, context: RequestContext):
                 )
                 bundle["save_error"] = str(save_err)
 
-            yield _make_event("flow_complete", prediction_id, bundle)
+            yield _make_event("flow_complete", prediction_id, {
+                **bundle,
+                "verification_mode": resolved_mode,
+            })
 
         except Exception as e:
             logger.error(
@@ -610,6 +653,13 @@ async def websocket_handler(websocket, context):
                     agent, review_prompt, PlanReview, 3, "review", prediction_id, websocket
                 )
 
+                # Resolve verification mode (reviewer wins on disagreement)
+                resolved_mode = resolve_verification_mode(
+                    verification_plan.verification_mode,
+                    plan_review.verification_mode,
+                    prediction_id,
+                )
+
                 # Assemble and save bundle
                 bundle = build_bundle(
                     prediction_id=prediction_id, user_id=user_id,
@@ -621,6 +671,9 @@ async def websocket_handler(websocket, context):
                     reviewable_sections=[s.model_dump() for s in plan_review.reviewable_sections],
                     prompt_versions=get_prompt_version_manifest(),
                     user_timezone=user_timezone,
+                    verification_mode=resolved_mode,
+                    recurring_interval=verification_plan.recurring_interval,
+                    max_snapshots=30,
                 )
                 review_dump = plan_review.model_dump()
                 bundle["score_tier"] = review_dump["score_tier"]
@@ -640,7 +693,7 @@ async def websocket_handler(websocket, context):
                 await websocket.send_json({
                     "type": "flow_complete",
                     "prediction_id": prediction_id,
-                    "data": bundle,
+                    "data": {**bundle, "verification_mode": resolved_mode},
                 })
 
             except Exception as e:
@@ -695,6 +748,13 @@ async def websocket_handler(websocket, context):
                 review_prompt = fetch_prompt("plan_reviewer")
                 plan_review = await _run_streaming_turn_ws(agent, review_prompt, PlanReview, 3, "review", prediction_id, websocket)
 
+                # Resolve verification mode (reviewer wins on disagreement)
+                resolved_mode = resolve_verification_mode(
+                    verification_plan.verification_mode,
+                    plan_review.verification_mode,
+                    prediction_id,
+                )
+
                 review_dump = plan_review.model_dump()
                 update_params = format_ddb_update(
                     prediction_id=prediction_id,
@@ -711,6 +771,7 @@ async def websocket_handler(websocket, context):
                     score_guidance=review_dump["score_guidance"],
                     dimension_assessments=review_dump["dimension_assessments"],
                     tier_display=score_to_tier(plan_review.verifiability_score),
+                    verification_mode=resolved_mode,
                 )
 
                 updated_bundle = {
@@ -726,6 +787,7 @@ async def websocket_handler(websocket, context):
                     "score_guidance": review_dump["score_guidance"],
                     "dimension_assessments": review_dump["dimension_assessments"],
                     "tier_display": score_to_tier(plan_review.verifiability_score),
+                    "verification_mode": resolved_mode,
                 }
 
                 try:
@@ -734,7 +796,7 @@ async def websocket_handler(websocket, context):
                     logger.error(f"DDB update failed for {prediction_id}: {save_err}", exc_info=True)
                     updated_bundle["save_error"] = str(save_err)
 
-                await websocket.send_json({"type": "flow_complete", "prediction_id": prediction_id, "data": _sanitize_for_json(updated_bundle)})
+                await websocket.send_json({"type": "flow_complete", "prediction_id": prediction_id, "data": _sanitize_for_json({**updated_bundle, "verification_mode": resolved_mode})})
 
             except Exception as e:
                 logger.error(f"Clarification flow failed for {prediction_id}: {e}", exc_info=True)

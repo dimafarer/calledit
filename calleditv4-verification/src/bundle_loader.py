@@ -105,3 +105,74 @@ def update_bundle_with_verdict(
             "— already verified or deleted"
         )
         return False
+
+
+DEFAULT_MAX_SNAPSHOTS = 30
+
+
+def append_verification_snapshot(
+    table,
+    prediction_id: str,
+    result,
+    checked_at: str,
+    max_snapshots: int = DEFAULT_MAX_SNAPSHOTS,
+) -> bool:
+    """Append a verification snapshot for recurring predictions.
+
+    Builds a snapshot dict from the result, appends it to the
+    verification_snapshots list using DDB list_append, and prunes
+    oldest snapshots if the list exceeds max_snapshots.
+
+    Does NOT change status from pending.
+
+    Args:
+        table: boto3 DynamoDB Table resource
+        prediction_id: The prediction ID
+        result: VerificationResult Pydantic model instance
+        checked_at: ISO 8601 timestamp of this check
+        max_snapshots: Maximum snapshots to retain (default 30)
+
+    Returns:
+        True if append succeeded, False on error.
+    """
+    evidence_dicts = [e.model_dump() for e in result.evidence]
+    snapshot = {
+        "verdict": result.verdict,
+        "confidence": _convert_floats_to_decimal(result.confidence),
+        "evidence": _convert_floats_to_decimal(evidence_dicts),
+        "reasoning": result.reasoning,
+        "checked_at": checked_at,
+    }
+    try:
+        # Append snapshot using list_append
+        table.update_item(
+            Key={"PK": f"PRED#{prediction_id}", "SK": "BUNDLE"},
+            UpdateExpression=(
+                "SET verification_snapshots = list_append("
+                "if_not_exists(verification_snapshots, :empty), :snap)"
+            ),
+            ExpressionAttributeValues={
+                ":snap": [snapshot],
+                ":empty": [],
+            },
+        )
+        # Prune if over limit — read current list, trim, write back
+        resp = table.get_item(
+            Key={"PK": f"PRED#{prediction_id}", "SK": "BUNDLE"},
+            ProjectionExpression="verification_snapshots",
+        )
+        snapshots = resp.get("Item", {}).get("verification_snapshots", [])
+        if len(snapshots) > max_snapshots:
+            trimmed = snapshots[-max_snapshots:]
+            table.update_item(
+                Key={"PK": f"PRED#{prediction_id}", "SK": "BUNDLE"},
+                UpdateExpression="SET verification_snapshots = :trimmed",
+                ExpressionAttributeValues={":trimmed": trimmed},
+            )
+        return True
+    except Exception as e:
+        logger.error(
+            f"Snapshot append failed for {prediction_id}: {e}",
+            exc_info=True,
+        )
+        return False

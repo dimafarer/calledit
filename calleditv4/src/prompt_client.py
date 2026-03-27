@@ -28,8 +28,8 @@ PROMPT_IDENTIFIERS: Dict[str, str] = {
 # Update these when deploying new prompt versions.
 DEFAULT_PROMPT_VERSIONS: Dict[str, str] = {
     "prediction_parser": "2",
-    "verification_planner": "1",
-    "plan_reviewer": "2",
+    "verification_planner": "2",
+    "plan_reviewer": "3",
 }
 
 # Hardcoded fallback prompts for production-only graceful degradation

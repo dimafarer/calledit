@@ -12,8 +12,8 @@ text changed between runs. This makes before/after comparison impossible.
 
 **Current pinned versions** (in `calleditv4/src/prompt_client.py`):
 - `prediction_parser`: 2
-- `verification_planner`: 1
-- `plan_reviewer`: 2
+- `verification_planner`: 2
+- `plan_reviewer`: 3
 
 The agent code defaults to these numbered versions. DRAFT is never used unless
 someone explicitly passes `version="DRAFT"` or sets `PROMPT_VERSION_*=DRAFT` env var.

@@ -499,10 +499,34 @@ Resources:
                 AVAILABLE TOOLS:
                 {{tool_manifest}}
 
+                STEP 1 — CLASSIFY VERIFICATION MODE:
+                Determine the verification_mode based on the prediction's temporal characteristics:
+
+                - immediate: Verifiable right now with a single check and the answer is final.
+                  Example: "Christmas 2026 falls on a Friday"
+                - at_date: Only meaningful to check at a specific date; checking early gives the wrong answer.
+                  Example: "S&P 500 will close higher today than yesterday"
+                - before_date: Can be confirmed as soon as the event occurs, but can only be refuted after a deadline passes.
+                  Example: "Python 3.14 will be released before December 2026"
+                - recurring: A condition checked on a schedule; each verdict is a point-in-time snapshot, not a final answer.
+                  Example: "The US national debt exceeds $35 trillion"
+
+                When mode is recurring, also set recurring_interval:
+                - every_scan: condition changes very frequently (minutes/hours)
+                - daily: condition changes day-to-day
+                - weekly: condition changes slowly (week-to-week)
+
+                STEP 2 — BUILD PLAN:
                 Create a plan with:
                 - sources: list of reliable data sources to check
                 - criteria: list of measurable, objective criteria for truth
                 - steps: ordered list of verification steps to execute
+
+                Build mode-appropriate plan steps:
+                - immediate: single-pass verification steps
+                - at_date: steps that execute at the verification_date
+                - before_date: periodic check steps that can confirm early or refute after deadline
+                - recurring: snapshot-style steps with schedule awareness
 
                 RULES:
                 - Criteria must match the prediction's specificity exactly
@@ -511,14 +535,25 @@ Resources:
                 - Reference available tools by name in sources and steps
                 - For subjective predictions, use self-report verification
 
-                Return a JSON object with sources, criteria, and steps fields.
-                All three must be lists.
+                Return a JSON object with these fields:
+                - sources: list of strings
+                - criteria: list of strings
+                - steps: list of strings
+                - verification_mode: one of "immediate", "at_date", "before_date", "recurring"
+                - recurring_interval: one of "every_scan", "daily", "weekly" (only when verification_mode is "recurring", omit otherwise)
 
   VerificationPlannerPromptVersion:
     Type: AWS::Bedrock::PromptVersion
     Properties:
       PromptArn: !GetAtt VerificationPlannerPrompt.Arn
       Description: "v1 — initial verification planner prompt"
+
+  VerificationPlannerPromptVersionV2:
+    Type: AWS::Bedrock::PromptVersion
+    DependsOn: VerificationPlannerPromptVersion
+    Properties:
+      PromptArn: !GetAtt VerificationPlannerPrompt.Arn
+      Description: "v2 — verification mode classification (immediate, at_date, before_date, recurring)"
 
   PlanReviewerPrompt:
     Type: AWS::Bedrock::Prompt
@@ -588,8 +623,19 @@ Resources:
                 - score_label: "High Confidence", "Moderate Confidence", or "Low Confidence"
                 - score_guidance: actionable guidance text
                 - dimension_assessments: list of 5 objects, each with dimension, assessment, explanation
+                - verification_mode: your independent assessment of the correct mode (one of "immediate", "at_date", "before_date", "recurring")
                 - reviewable_sections: list of objects, each with section, improvable,
                   questions, and reasoning fields
+
+                4. INDEPENDENTLY ASSESS VERIFICATION MODE:
+                The planner classified a verification_mode. You must independently assess what the correct mode should be:
+                - immediate: verifiable right now, single check, answer is final
+                - at_date: only meaningful at a specific date, checking early gives wrong answer
+                - before_date: can confirm early if event occurs, refute only after deadline
+                - recurring: checked on schedule, each verdict is a snapshot not final
+
+                If you disagree with the planner's mode, explain why in your verifiability_reasoning.
+                Your assessment takes precedence when there is a disagreement.
 
   PlanReviewerPromptVersion:
     Type: AWS::Bedrock::PromptVersion
@@ -603,6 +649,13 @@ Resources:
     Properties:
       PromptArn: !GetAtt PlanReviewerPrompt.Arn
       Description: "v2 — V4-4 dimension assessments, score tier, and guidance text"
+
+  PlanReviewerPromptVersionV3:
+    Type: AWS::Bedrock::PromptVersion
+    DependsOn: PlanReviewerPromptVersionV2
+    Properties:
+      PromptArn: !GetAtt PlanReviewerPrompt.Arn
+      Description: "v3 — independent verification_mode assessment and disagreement flagging"
 
   # =========================================================================
   # V4 VERIFICATION PROMPT (V4-5a)
@@ -649,6 +702,28 @@ Resources:
                   - Planned sources are unavailable or don't contain relevant information
                   - You cannot determine truth with reasonable confidence
 
+                MODE-SPECIFIC VERDICT RULES:
+                The prediction bundle includes a VERIFICATION MODE. Apply these rules based on mode:
+
+                at_date mode:
+                - If the current time is BEFORE the verification_date, you MUST return "inconclusive"
+                  with reasoning: "Verification is premature — this prediction is only meaningful to check at the verification date."
+                - If the current time is at or after the verification_date, apply standard verdict rules above.
+
+                before_date mode:
+                - If the current time is BEFORE the verification_date:
+                  - Return "confirmed" ONLY if evidence shows the event has already occurred.
+                  - Return "inconclusive" if the event has not yet occurred (there is still time).
+                  - Do NOT return "refuted" before the deadline — the event may still happen.
+                - If the current time is at or AFTER the verification_date:
+                  - Return "refuted" if no evidence shows the event occurred before the deadline.
+                  - Return "confirmed" if evidence shows it occurred before the deadline.
+
+                recurring mode:
+                - Treat your verdict as a point-in-time snapshot, not a final answer.
+                - Always include the current check timestamp in your reasoning (e.g., "As of 2026-06-15T12:00:00Z, ...").
+                - The prediction will be checked again on schedule; your verdict reflects the current state only.
+
                 CONFIDENCE SCALE:
                 - 0.9-1.0: Strong, unambiguous evidence from multiple reliable sources
                 - 0.7-0.8: Good evidence from at least one reliable source
@@ -670,6 +745,13 @@ Resources:
     Properties:
       PromptArn: !GetAtt VerificationExecutorPrompt.Arn
       Description: "v1 — initial verification executor prompt"
+
+  VerificationExecutorPromptVersionV2:
+    Type: AWS::Bedrock::PromptVersion
+    DependsOn: VerificationExecutorPromptVersion
+    Properties:
+      PromptArn: !GetAtt VerificationExecutorPrompt.Arn
+      Description: "v2 — mode-specific verdict rules (at_date, before_date, recurring)"
 
 Outputs:
   ParserPromptId:

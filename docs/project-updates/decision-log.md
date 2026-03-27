@@ -1195,3 +1195,22 @@ The frontend is now always dark (`#0f172a` background). The `prefers-color-schem
 **Date:** March 27, 2026
 
 The main app navigation uses underline tabs (matching the dashboard tab pattern) instead of gradient pill buttons. Logout is a ghost button pinned to the top-right corner. This creates visual consistency between the main app and the eval dashboard. The `navigation-button`, `navigation-button.secondary`, and `navigation-button.legacy` CSS classes and all gradient styles were removed entirely.
+
+
+---
+
+## Decision 139: Verification Planner Classifies Mode, Reviewer Confirms
+
+**Source:** [Project Update 33](33-project-update-verification-modes.md)
+**Date:** March 27, 2026
+
+The verification_planner (turn 2) classifies `verification_mode` because it needs the mode to build mode-appropriate plan steps. The plan_reviewer (turn 3) independently confirms the mode as a consistency check. On disagreement, the reviewer wins (has more context from the full plan) and a warning is logged. Both the `VerificationPlan` and `PlanReview` Pydantic models include a `verification_mode` field.
+
+---
+
+## Decision 140: Recurring Interval and Max Snapshots
+
+**Source:** [Project Update 33](33-project-update-verification-modes.md)
+**Date:** March 27, 2026
+
+Recurring predictions include `recurring_interval` (every_scan/daily/weekly, default daily) and `max_snapshots` (default 30). The scanner checks the last snapshot's `checked_at` against the interval before invoking. Oldest snapshots are pruned when the limit is exceeded. This prevents unbounded DDB item growth for recurring predictions.

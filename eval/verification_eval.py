@@ -4,7 +4,7 @@ CLI-driven eval runner for the v4 verification agent. Invokes the deployed
 agent via HTTPS with JWT auth, applies tiered evaluators, and produces JSON
 reports.
 
-Scope: verification_mode=immediate only. See backlog item 0 for other modes.
+Supports all four verification modes: immediate, at_date, before_date, recurring.
 
 Usage:
     # Smoke run (2 cases, Tier 1 only)
@@ -48,6 +48,11 @@ from eval.evaluators import (
     verification_evidence_structure,
     verification_verdict_accuracy,
     verification_evidence_quality,
+)
+from eval.evaluators import (
+    verification_at_date_verdict_accuracy,
+    verification_before_date_verdict_appropriateness,
+    verification_recurring_evidence_freshness,
 )
 
 logger = logging.getLogger(__name__)
@@ -287,8 +292,12 @@ def cleanup_eval_table(cases: list) -> None:
 # Evaluator list builder
 # ---------------------------------------------------------------------------
 
-def build_evaluator_list(args) -> dict:
-    """Build the evaluator dict based on source mode and tier.
+def build_evaluator_list(args, verification_mode: str = "immediate") -> dict:
+    """Build the evaluator dict based on source mode, tier, and verification_mode.
+
+    Args:
+        args: CLI args with tier and source.
+        verification_mode: The verification mode for the case being evaluated.
 
     Returns:
         dict mapping evaluator name -> evaluator module
@@ -306,10 +315,35 @@ def build_evaluator_list(args) -> dict:
 
     # smoke+judges, full (golden), or any ddb run — add Tier 2
     evaluators = dict(tier1)
-    # Verdict accuracy only in golden mode (requires ground truth)
-    if args.source == "golden":
-        evaluators["verdict_accuracy"] = verification_verdict_accuracy
-    evaluators["evidence_quality"] = verification_evidence_quality
+
+    if verification_mode == "immediate":
+        # Existing behavior unchanged
+        if args.source == "golden":
+            evaluators["verdict_accuracy"] = verification_verdict_accuracy
+        evaluators["evidence_quality"] = verification_evidence_quality
+    elif verification_mode == "at_date":
+        # Replace verdict_accuracy with at_date-specific evaluator
+        if args.source == "golden":
+            evaluators["verdict_accuracy"] = verification_at_date_verdict_accuracy
+        evaluators["evidence_quality"] = verification_evidence_quality
+    elif verification_mode == "before_date":
+        # Replace verdict_accuracy with before_date-specific evaluator
+        if args.source == "golden":
+            evaluators["verdict_appropriateness"] = verification_before_date_verdict_appropriateness
+        evaluators["evidence_quality"] = verification_evidence_quality
+    elif verification_mode == "recurring":
+        # Add recurring-specific evaluators
+        if args.source == "golden":
+            evaluators["verdict_accuracy"] = verification_verdict_accuracy
+        evaluators["evidence_quality"] = verification_evidence_quality
+        evaluators["evidence_freshness"] = verification_recurring_evidence_freshness
+    else:
+        # Unknown mode — fall back to immediate evaluator set
+        logger.warning(f"Unknown verification_mode '{verification_mode}', using immediate evaluators")
+        if args.source == "golden":
+            evaluators["verdict_accuracy"] = verification_verdict_accuracy
+        evaluators["evidence_quality"] = verification_evidence_quality
+
     return evaluators
 
 
@@ -317,15 +351,42 @@ def build_evaluator_list(args) -> dict:
 # Eval orchestration
 # ---------------------------------------------------------------------------
 
-def run_eval(cases: list, backend, evaluators: dict, source: str) -> list:
-    """Run eval for all cases. Catches per-case errors without aborting."""
+def run_eval(cases: list, backend, evaluators: dict, source: str, args=None, golden_cases_by_id: dict = None) -> list:
+    """Run eval for all cases. Catches per-case errors without aborting.
+
+    Args:
+        cases: List of EvalCase objects.
+        backend: VerificationBackend instance.
+        evaluators: Default evaluator dict (used for immediate mode).
+        source: 'golden' or 'ddb'.
+        args: CLI args (needed for per-case evaluator list building).
+        golden_cases_by_id: Dict mapping case id -> golden dataset entry (for mode info).
+    """
     results = []
     total = len(cases)
 
     for i, case in enumerate(cases, 1):
         print(f"  [{i}/{total}] {case.prediction_id}: {case.prediction_text[:60]}...")
-        result = {"id": case.prediction_id, "prediction_text": case.prediction_text,
-                  "expected_verdict": case.expected_verdict, "scores": {}}
+
+        # Read verification_mode from golden dataset case (default: immediate)
+        golden_entry = (golden_cases_by_id or {}).get(case.prediction_id, {})
+        verification_mode = golden_entry.get("verification_mode", "immediate")
+        verification_date = golden_entry.get("ground_truth", {}).get(
+            "verification_timing", ""
+        )
+
+        result = {
+            "id": case.prediction_id,
+            "prediction_text": case.prediction_text,
+            "expected_verdict": case.expected_verdict,
+            "verification_mode": verification_mode,
+            "scores": {},
+        }
+
+        # Build per-case evaluator list based on verification_mode
+        case_evaluators = evaluators
+        if args is not None:
+            case_evaluators = build_evaluator_list(args, verification_mode)
 
         # Invoke backend
         try:
@@ -344,13 +405,33 @@ def run_eval(cases: list, backend, evaluators: dict, source: str) -> list:
         actual_verdict = verdict_response.get("verdict", "unknown")
         print(f"    → verdict: {actual_verdict}, confidence: {verdict_response.get('confidence')}")
 
-        # Run Tier 1 evaluators
-        for name, evaluator in evaluators.items():
-            if name == "verdict_accuracy":
+        # Run evaluators
+        for name, evaluator in case_evaluators.items():
+            if name == "verdict_accuracy" and verification_mode == "at_date":
+                # at_date-specific evaluator needs verification_date and simulated_time
+                score = evaluator.evaluate(
+                    verdict_response,
+                    case.expected_verdict,
+                    verification_date=verification_date,
+                    simulated_time=datetime.now(timezone.utc).isoformat(),
+                )
+                if score is not None:
+                    result["scores"][name] = score
+            elif name == "verdict_appropriateness":
+                # before_date-specific evaluator
+                score = evaluator.evaluate(
+                    verdict_response,
+                    case.expected_verdict,
+                    verification_date=verification_date,
+                    simulated_time=datetime.now(timezone.utc).isoformat(),
+                )
+                if score is not None:
+                    result["scores"][name] = score
+            elif name == "verdict_accuracy":
                 score = evaluator.evaluate(verdict_response, case.expected_verdict)
                 if score is not None:
                     result["scores"][name] = score
-            elif name == "evidence_quality":
+            elif name in ("evidence_quality", "evidence_freshness"):
                 score = evaluator.evaluate(verdict_response, case.prediction_text)
                 result["scores"][name] = score
             else:
@@ -366,7 +447,7 @@ def run_eval(cases: list, backend, evaluators: dict, source: str) -> list:
 # ---------------------------------------------------------------------------
 
 def compute_aggregates(results: list, evaluators: dict) -> dict:
-    """Compute per-evaluator averages and overall pass rate."""
+    """Compute per-evaluator averages, overall pass rate, and per-mode breakdowns."""
     evaluator_names = list(evaluators.keys())
     tier1_names = [
         "schema_validity", "verdict_validity", "confidence_range",
@@ -393,6 +474,36 @@ def compute_aggregates(results: list, evaluators: dict) -> dict:
         and "error" not in r
     )
     aggregates["overall_pass_rate"] = round(pass_count / len(results), 4) if results else 0.0
+
+    # Per-mode breakdowns (Task 11.4)
+    by_mode = {}
+    mode_groups = {}
+    for r in results:
+        mode = r.get("verification_mode", "immediate")
+        if mode not in mode_groups:
+            mode_groups[mode] = []
+        mode_groups[mode].append(r)
+
+    for mode, mode_results in mode_groups.items():
+        mode_agg = {}
+        # Collect all evaluator names present in this mode's results
+        all_eval_names = set()
+        for r in mode_results:
+            all_eval_names.update(r.get("scores", {}).keys())
+
+        for name in all_eval_names:
+            scores = [
+                r["scores"][name]["score"]
+                for r in mode_results
+                if name in r.get("scores", {}) and r["scores"][name] is not None
+            ]
+            if scores:
+                mode_agg[name] = round(sum(scores) / len(scores), 4)
+        if mode_agg:
+            by_mode[mode] = mode_agg
+
+    if by_mode:
+        aggregates["by_mode"] = by_mode
 
     return aggregates
 
@@ -520,8 +631,14 @@ def main():
     if args.source == "golden":
         setup_eval_table(cases)
 
-    # Build evaluator list
+    # Build evaluator list (default for immediate mode)
     evaluators = build_evaluator_list(args)
+
+    # Build golden cases lookup for mode-aware routing
+    golden_cases_by_id = {}
+    if dataset:
+        for bp in dataset.get("base_predictions", []):
+            golden_cases_by_id[bp["id"]] = bp
 
     # Initialize backend (SigV4 — uses AWS credentials, no Cognito token needed)
     backend = VerificationBackend()
@@ -530,7 +647,10 @@ def main():
     # Run eval
     print(f"Running {len(cases)} case(s) with {len(evaluators)} evaluator(s)...\n")
     start = time.time()
-    results = run_eval(cases, backend, evaluators, args.source)
+    results = run_eval(
+        cases, backend, evaluators, args.source,
+        args=args, golden_cases_by_id=golden_cases_by_id,
+    )
     duration = time.time() - start
 
     # Cleanup eval table (golden mode only — always runs, even after errors)

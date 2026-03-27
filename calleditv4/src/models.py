@@ -5,9 +5,11 @@ extraction from a specific turn. All fields include Field(description=...)
 so Strands can generate accurate tool specifications (Req 5.10).
 """
 
-from typing import List
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field
+
+VERIFICATION_MODES = Literal["immediate", "at_date", "before_date", "recurring"]
 
 
 class ParsedClaim(BaseModel):
@@ -35,6 +37,14 @@ class VerificationPlan(BaseModel):
     )
     steps: List[str] = Field(
         description="Ordered verification steps to execute"
+    )
+    verification_mode: VERIFICATION_MODES = Field(
+        default="immediate",
+        description="Verification timing mode: immediate, at_date, before_date, or recurring",
+    )
+    recurring_interval: Optional[str] = Field(
+        default=None,
+        description="Minimum time between recurring checks: 'every_scan', 'daily', or 'weekly'. Only set when verification_mode is 'recurring'.",
     )
 
 
@@ -97,6 +107,10 @@ class PlanReview(BaseModel):
     )
     dimension_assessments: List[DimensionAssessment] = Field(
         description="Exactly 5 entries, one per scoring dimension"
+    )
+    verification_mode: VERIFICATION_MODES = Field(
+        default="immediate",
+        description="Reviewer's independent assessment of the correct verification mode",
     )
 
 

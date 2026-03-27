@@ -135,6 +135,7 @@ class TestBundleAssemblyInvariants:
         "created_at",
         "status",
         "prompt_versions",
+        "verification_mode",
     }
 
     @settings(max_examples=100)

@@ -8,6 +8,7 @@ Items identified during development that aren't urgent but should be addressed.
 
 **Source:** V4-7a-3 design discussion (March 25, 2026)
 **Priority:** High — the current eval framework is intentionally scoped to `immediate` mode only
+**Status:** RESOLVED (March 27, 2026) — All four modes implemented in Update 33. Spec: `.kiro/specs/verification-modes/`. Decisions 139-140.
 
 **Context:** During V4-7a-3 spec design, we identified that prediction verification has fundamentally different timing semantics depending on the prediction type. The current eval framework (V4-7a-3) is explicitly scoped to `verification_mode: "immediate"` predictions — those that can be verified right now with a single agent invocation. This is the right starting point (cleanest test cases, unambiguous ground truth), but the full system needs to handle three additional modes.
 

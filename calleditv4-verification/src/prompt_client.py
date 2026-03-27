@@ -22,6 +22,13 @@ PROMPT_IDENTIFIERS: Dict[str, str] = {
     "verification_executor": "ZQQNZIP6SK",
 }
 
+# Default prompt versions — always pin to numbered versions, never DRAFT.
+# DRAFT makes eval comparison impossible (Decision 128, Update 32).
+# Update these when deploying new prompt versions.
+DEFAULT_PROMPT_VERSIONS: Dict[str, str] = {
+    "verification_executor": "2",
+}
+
 _prompt_version_manifest: Dict[str, str] = {}
 
 
@@ -57,7 +64,7 @@ def fetch_prompt(
 
     if version is None:
         env_key = f"PROMPT_VERSION_{prompt_name.upper()}"
-        version = os.environ.get(env_key, "DRAFT")
+        version = os.environ.get(env_key, DEFAULT_PROMPT_VERSIONS.get(prompt_name, "1"))
 
     client = _get_bedrock_agent_client()
     kwargs = {"promptIdentifier": prompt_id}

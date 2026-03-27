@@ -23,6 +23,9 @@ def build_bundle(
     reviewable_sections: list,
     prompt_versions: Dict[str, str],
     user_timezone: Optional[str] = None,
+    verification_mode: str = "immediate",
+    recurring_interval: Optional[str] = None,
+    max_snapshots: int = 30,
 ) -> Dict[str, Any]:
     """Assemble the prediction bundle from all 3 turn outputs."""
     bundle = {
@@ -38,12 +41,17 @@ def build_bundle(
         "created_at": datetime.now(timezone.utc).isoformat(),
         "status": "pending",
         "prompt_versions": prompt_versions,
+        "verification_mode": verification_mode,
     }
     # V4-5b: Promote verification_date to top-level for GSI indexing
     if parsed_claim.get("verification_date"):
         bundle["verification_date"] = parsed_claim["verification_date"]
     if user_timezone is not None:
         bundle["user_timezone"] = user_timezone
+    # Recurring-specific fields
+    if verification_mode == "recurring":
+        bundle["recurring_interval"] = recurring_interval
+        bundle["max_snapshots"] = max_snapshots
     return bundle
 
 
@@ -157,6 +165,7 @@ def format_ddb_update(
     score_guidance: Optional[str] = None,
     dimension_assessments: Optional[list] = None,
     tier_display: Optional[Dict[str, Any]] = None,
+    verification_mode: str = "immediate",
 ) -> Dict[str, Any]:
     """Build the kwargs for a DynamoDB update_item call.
 
@@ -176,6 +185,7 @@ def format_ddb_update(
         "prompt_versions = :pv",
         "updated_at = :ua",
         "verification_date = :vd",
+        "verification_mode = :vm",
         "clarification_history = list_append("
         "if_not_exists(clarification_history, :empty_list), :ch)",
     ]
@@ -200,6 +210,7 @@ def format_ddb_update(
         ":pv": prompt_versions,
         ":ua": now,
         ":vd": parsed_claim.get("verification_date", ""),
+        ":vm": verification_mode,
         ":ch": [{"answers": clarification_answers, "timestamp": now}],
         ":empty_list": [],
         ":one": 1,

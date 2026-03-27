@@ -25,6 +25,12 @@ logger.setLevel(logging.INFO)
 DYNAMODB_TABLE_NAME = os.environ.get("DYNAMODB_TABLE_NAME", "calledit-v4")
 GSI_NAME = os.environ.get("GSI_NAME", "status-verification_date-index")
 
+RECURRING_INTERVAL_SECONDS = {
+    "every_scan": 0,
+    "daily": 86400,
+    "weekly": 604800,
+}
+
 
 # ---------------------------------------------------------------------------
 # Prediction ID extraction
@@ -78,6 +84,134 @@ def query_due_predictions(
             break
         query_kwargs["ExclusiveStartKey"] = response["LastEvaluatedKey"]
     return items
+
+
+# ---------------------------------------------------------------------------
+# Mode-aware scheduling
+# ---------------------------------------------------------------------------
+
+def _seconds_since(iso_a: str, iso_b: str) -> float:
+    """Return seconds between two ISO 8601 timestamps."""
+    a = datetime.fromisoformat(iso_a.replace("Z", "+00:00"))
+    b = datetime.fromisoformat(iso_b.replace("Z", "+00:00"))
+    return abs((b - a).total_seconds())
+
+
+def should_invoke(item: dict, now_iso: str) -> tuple:
+    """Determine whether to invoke the verification agent for this item.
+
+    Returns (should_invoke: bool, reason: str).
+    """
+    mode = item.get("verification_mode", "immediate")
+    verification_date = item.get("verification_date", "")
+
+    if mode == "immediate":
+        return True, "immediate mode"
+    elif mode == "at_date":
+        if now_iso >= verification_date:
+            return True, "at_date: due"
+        return False, "at_date: not yet due"
+    elif mode == "before_date":
+        return True, "before_date: periodic check"
+    elif mode == "recurring":
+        interval = item.get("recurring_interval", "daily")
+        min_seconds = RECURRING_INTERVAL_SECONDS.get(interval, 86400)
+        snapshots = item.get("verification_snapshots", [])
+        if snapshots and min_seconds > 0:
+            last_checked = snapshots[-1].get("checked_at", "")
+            if last_checked and _seconds_since(last_checked, now_iso) < min_seconds:
+                return False, f"recurring: last check too recent ({interval})"
+        return True, "recurring: snapshot check"
+    else:
+        logger.warning(f"Unknown verification_mode: {mode}, treating as immediate")
+        return True, f"unknown mode {mode}, defaulting to immediate"
+
+
+def _append_verification_snapshot_inline(
+    table, prediction_id: str, response: dict, checked_at: str,
+    max_snapshots: int = 30,
+) -> bool:
+    """Append a verification snapshot for recurring predictions (inline scanner version).
+
+    Uses DDB list_append. Prunes oldest if over max_snapshots.
+    Does NOT change status from pending.
+    """
+    from decimal import Decimal
+
+    def _to_decimal(obj):
+        if isinstance(obj, float):
+            return Decimal(str(obj))
+        if isinstance(obj, dict):
+            return {k: _to_decimal(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [_to_decimal(i) for i in obj]
+        return obj
+
+    snapshot = {
+        "verdict": response.get("verdict", "inconclusive"),
+        "confidence": _to_decimal(response.get("confidence", 0.0)),
+        "evidence": _to_decimal(response.get("evidence", [])),
+        "reasoning": response.get("reasoning", ""),
+        "checked_at": checked_at,
+    }
+    try:
+        table.update_item(
+            Key={"PK": f"PRED#{prediction_id}", "SK": "BUNDLE"},
+            UpdateExpression=(
+                "SET verification_snapshots = list_append("
+                "if_not_exists(verification_snapshots, :empty), :snap)"
+            ),
+            ExpressionAttributeValues={
+                ":snap": [snapshot],
+                ":empty": [],
+            },
+        )
+        # Prune if over limit
+        resp = table.get_item(
+            Key={"PK": f"PRED#{prediction_id}", "SK": "BUNDLE"},
+            ProjectionExpression="verification_snapshots",
+        )
+        snapshots = resp.get("Item", {}).get("verification_snapshots", [])
+        if len(snapshots) > max_snapshots:
+            trimmed = snapshots[-max_snapshots:]
+            table.update_item(
+                Key={"PK": f"PRED#{prediction_id}", "SK": "BUNDLE"},
+                UpdateExpression="SET verification_snapshots = :trimmed",
+                ExpressionAttributeValues={":trimmed": trimmed},
+            )
+        return True
+    except Exception as e:
+        logger.error(f"Snapshot append failed for {prediction_id}: {e}")
+        return False
+
+
+def handle_verification_result(
+    table, prediction_id: str, response: dict, mode: str, now_iso: str,
+) -> None:
+    """Handle post-invocation logic based on verification mode.
+
+    - recurring: append snapshot, keep status=pending
+    - before_date + confirmed: let default status transition happen (agent already updated)
+    - before_date + inconclusive before deadline: leave as pending (no action)
+    - other modes: agent already handled status update
+    """
+    logger.info(
+        f"handle_verification_result: prediction_id={prediction_id}, "
+        f"verification_mode={mode}, verdict={response.get('verdict')}"
+    )
+    if mode == "recurring":
+        max_snaps = 30  # default; could read from bundle if needed
+        _append_verification_snapshot_inline(
+            table, prediction_id, response, now_iso, max_snaps
+        )
+    elif mode == "before_date" and response.get("verdict") == "inconclusive":
+        # Leave as pending for next scan cycle — no action needed
+        logger.info(
+            f"before_date inconclusive for {prediction_id}, leaving as pending"
+        )
+    else:
+        # Default: verification agent already updated status via bundle_loader
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -158,6 +292,7 @@ def lambda_handler(event, context) -> Dict[str, Any]:
         "total_invoked": 0,
         "total_succeeded": 0,
         "total_failed": 0,
+        "total_skipped": 0,
         "failures": [],
     }
 
@@ -186,7 +321,7 @@ def lambda_handler(event, context) -> Dict[str, Any]:
 
     logger.info(f"Found {len(items)} predictions due for verification.")
 
-    # Process each prediction sequentially
+    # Process each prediction sequentially with mode-aware dispatch
     for item in items:
         prediction_id = extract_prediction_id(item)
         if not prediction_id:
@@ -196,6 +331,30 @@ def lambda_handler(event, context) -> Dict[str, Any]:
                 "prediction_id": None,
                 "error": f"Bad PK: {item.get('PK')}",
             })
+            continue
+
+        # Fetch full bundle to get verification_mode, verification_snapshots, recurring_interval
+        # (GSI projection may not include these fields)
+        try:
+            full_item_resp = table.get_item(
+                Key={"PK": f"PRED#{prediction_id}", "SK": "BUNDLE"}
+            )
+            full_item = full_item_resp.get("Item", item)
+        except Exception as e:
+            logger.warning(
+                f"Failed to fetch full bundle for {prediction_id}, "
+                f"using GSI item: {e}"
+            )
+            full_item = item
+
+        mode = full_item.get("verification_mode", "immediate")
+        logger.info(f"Processing {prediction_id}: verification_mode={mode}")
+
+        # Check if we should invoke based on mode
+        invoke, reason = should_invoke(full_item, now_iso)
+        if not invoke:
+            logger.info(f"Skipping {prediction_id}: {reason}")
+            summary["total_skipped"] += 1
             continue
 
         summary["total_invoked"] += 1
@@ -217,6 +376,10 @@ def lambda_handler(event, context) -> Dict[str, Any]:
                     f"Verified {prediction_id}: "
                     f"verdict={response.get('verdict')}, "
                     f"confidence={response.get('confidence')}"
+                )
+                # Handle post-invocation logic based on mode
+                handle_verification_result(
+                    table, prediction_id, response, mode, now_iso
                 )
                 summary["total_succeeded"] += 1
         except Exception as e:

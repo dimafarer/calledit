@@ -62,9 +62,11 @@ def _build_user_message(bundle: dict) -> str:
     """Construct the user message from bundle fields."""
     parsed_claim = bundle.get("parsed_claim", {})
     plan = bundle.get("verification_plan", {})
+    verification_mode = bundle.get("verification_mode", "immediate")
     return (
         f"PREDICTION: {parsed_claim.get('statement', '')}\n"
-        f"VERIFICATION DATE: {parsed_claim.get('verification_date', '')}\n\n"
+        f"VERIFICATION DATE: {parsed_claim.get('verification_date', '')}\n"
+        f"VERIFICATION MODE: {verification_mode}\n\n"
         f"VERIFICATION PLAN:\n"
         f"Sources: {json.dumps(plan.get('sources', []))}\n"
         f"Criteria: {json.dumps(plan.get('criteria', []))}\n"

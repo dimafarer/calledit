@@ -198,8 +198,9 @@ def run_eval(
                     "reason": f"Evaluator error: {e}",
                 }
 
-        # Extract prompt_versions from bundle for metadata
+        # Extract prompt_versions and verification_mode from bundle for metadata
         case_result["prompt_versions"] = bundle.get("prompt_versions", {})
+        case_result["verification_mode"] = bundle.get("verification_mode", "immediate")
         results.append(case_result)
 
     return results
@@ -208,7 +209,7 @@ def run_eval(
 # --- Report Generation ---
 
 def compute_aggregates(results: list[dict], evaluators: dict) -> dict:
-    """Compute per-evaluator averages and overall pass rate."""
+    """Compute per-evaluator averages, overall pass rate, and per-mode breakdowns."""
     agg = {}
     tier_1_names = set(TIER_1_EVALUATORS.keys())
 
@@ -235,6 +236,34 @@ def compute_aggregates(results: list[dict], evaluators: dict) -> dict:
 
     total = len([r for r in results if "error" not in r or r.get("scores")])
     agg["overall_pass_rate"] = pass_count / total if total else 0.0
+
+    # Per-mode breakdowns
+    mode_groups = {}
+    for r in results:
+        mode = r.get("verification_mode", "immediate")
+        if mode not in mode_groups:
+            mode_groups[mode] = []
+        mode_groups[mode].append(r)
+
+    by_mode = {}
+    for mode, mode_results in mode_groups.items():
+        mode_agg = {}
+        all_eval_names = set()
+        for r in mode_results:
+            all_eval_names.update(r.get("scores", {}).keys())
+        for name in all_eval_names:
+            scores = [
+                r["scores"][name]["score"]
+                for r in mode_results
+                if name in r.get("scores", {}) and r["scores"][name] is not None
+            ]
+            if scores:
+                mode_agg[name] = round(sum(scores) / len(scores), 4)
+        if mode_agg:
+            by_mode[mode] = mode_agg
+
+    if by_mode:
+        agg["by_mode"] = by_mode
 
     return agg
 
