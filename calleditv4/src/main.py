@@ -230,6 +230,10 @@ async def handler(payload: dict, context: RequestContext):
     session_id = getattr(context, "session_id", None)
     user_timezone = payload.get("timezone")  # Decision 101
 
+    # Optional table_name override for eval isolation (Decision 143)
+    # Matches the verification agent pattern (Decision 130)
+    table_name = payload.get("table_name", DYNAMODB_TABLE_NAME)
+
     # --- Clarification route ---
     if "prediction_id" in payload and "clarification_answers" in payload:
         prediction_id = payload["prediction_id"]
@@ -262,7 +266,7 @@ async def handler(payload: dict, context: RequestContext):
 
         # Load existing bundle (Req 1.2-1.3)
         ddb = boto3.resource("dynamodb")
-        table = ddb.Table(DYNAMODB_TABLE_NAME)
+        table = ddb.Table(table_name)
         existing_bundle = load_bundle_from_ddb(table, prediction_id)
         if existing_bundle is None:
             yield _make_event("error", prediction_id, {
@@ -529,7 +533,7 @@ async def handler(payload: dict, context: RequestContext):
             # Save to DDB — failure doesn't block response
             try:
                 ddb = boto3.resource("dynamodb")
-                table = ddb.Table(DYNAMODB_TABLE_NAME)
+                table = ddb.Table(table_name)
                 table.put_item(Item=format_ddb_item(bundle))
             except Exception as save_err:
                 logger.error(

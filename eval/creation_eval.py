@@ -38,6 +38,9 @@ from eval.backends.agentcore_backend import (
     AgentCoreBackend, get_cognito_token, CREATION_AGENT_MODEL_ID,
     CREATION_AGENT_ARN,
 )
+
+# Eval isolation: creation agent writes bundles here instead of calledit-v4
+EVAL_TABLE_NAME = "calledit-v4-eval"
 from eval.evaluators import (
     schema_validity,
     field_completeness,
@@ -460,11 +463,27 @@ def main():
         sys.exit(1)
 
     # Run eval
-    backend = AgentCoreBackend()
+    backend = AgentCoreBackend(table_name=EVAL_TABLE_NAME)
     backend.set_token(token)
     start_time = time.time()
     results = run_eval(cases, backend, evaluators)
     duration = time.time() - start_time
+
+    # Cleanup eval bundles from the eval table (Decision 143)
+    prediction_ids = [r.get("prediction_id") for r in results if r.get("prediction_id")]
+    if prediction_ids:
+        try:
+            import boto3
+            ddb = boto3.resource("dynamodb", region_name="us-west-2")
+            eval_table = ddb.Table(EVAL_TABLE_NAME)
+            for pid in prediction_ids:
+                try:
+                    eval_table.delete_item(Key={"PK": f"PRED#{pid}", "SK": "BUNDLE"})
+                except Exception:
+                    pass
+            logger.info(f"Cleaned up {len(prediction_ids)} eval bundle(s) from {EVAL_TABLE_NAME}")
+        except Exception as e:
+            logger.warning(f"Eval bundle cleanup failed (non-fatal): {e}")
 
     # Build and save report
     metadata = build_run_metadata(args, dataset, results, duration)

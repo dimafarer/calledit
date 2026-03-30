@@ -94,10 +94,12 @@ class AgentCoreBackend:
         region: str = None,
         runtime_arn: str = None,
         bearer_token: str = None,
+        table_name: str = None,
     ):
         self.region = region or AWS_REGION
         self.runtime_arn = runtime_arn or CREATION_AGENT_ARN
         self.bearer_token = bearer_token
+        self.table_name = table_name  # Optional DDB table override for eval isolation
         # Build the HTTPS endpoint URL
         encoded_arn = requests.utils.quote(self.runtime_arn, safe="")
         self.invoke_url = (
@@ -125,11 +127,15 @@ class AgentCoreBackend:
                 "to constructor. Use get_cognito_token() to obtain one."
             )
 
-        payload = json.dumps({
+        payload = {
             "prediction_text": prediction_text,
             "user_id": "eval-runner",
             "timezone": "UTC",
-        })
+        }
+        if self.table_name:
+            payload["table_name"] = self.table_name
+
+        payload = json.dumps(payload)
 
         session_id = str(uuid.uuid4())
 

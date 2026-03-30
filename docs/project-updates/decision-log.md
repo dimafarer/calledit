@@ -1233,3 +1233,13 @@ The verification scanner Lambda invokes the AgentCore verification agent via HTT
 **Date:** March 30, 2026
 
 Scanner Lambda role: `dynamodb:Query/GetItem/UpdateItem` on `calledit-v4` + GSIs, `bedrock-agentcore:InvokeRuntime` on the verification agent runtime ARN, `sts:GetCallerIdentity`. AgentCore execution role: `dynamodb:GetItem/PutItem/UpdateItem/Query` on `calledit-v4`. Admin access was used temporarily for debugging, then replaced with least-privilege.
+
+
+---
+
+## Decision 143: Creation Agent Accepts table_name Override for Eval Isolation
+
+**Source:** [Project Update 34](34-project-update-ddb-cleanup-and-eval-isolation.md)
+**Date:** March 30, 2026
+
+The creation agent's HTTP handler accepts an optional `table_name` field in the payload, defaulting to `DYNAMODB_TABLE_NAME` env var (`calledit-v4`). This matches the verification agent's pattern (Decision 130). The eval runner passes `calledit-v4-eval` to isolate eval bundles from production data. The WebSocket handler (browser-facing) does NOT accept this override — browser payloads should not control DDB routing. The eval runner also cleans up bundles from the eval table after scoring. This resolves the data leak where 64 eval artifacts accumulated in the production table and were picked up by the scanner.
