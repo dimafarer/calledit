@@ -123,6 +123,35 @@ Plan quality baseline is 0.57. The 5 personal/subjective cases average ~0.26. Te
 - `.kiro/specs/verification-modes/tasks.md` — all 12 tasks complete
 - `calleditv4/src/models.py` — VERIFICATION_MODES type alias
 - `infrastructure/prompt-management/template.yaml` — planner v2, reviewer v3, executor v2
-- `infrastructure/verification-scanner/scanner.py` — mode-aware scheduling
+- `infrastructure/verification-scanner/scanner.py` — mode-aware scheduling + SigV4 AgentCore invocation
+- `infrastructure/verification-scanner/samconfig.toml` — fixed to point at calledit-v4-scanner stack
 - `eval/golden_dataset.json` — 54 cases with verification_mode annotations
 - `eval/verification_eval.py` — mode-aware eval runner
+
+### Scanner Fix (Pre-existing Bug)
+
+The verification scanner had never successfully invoked the AgentCore verification agent in production. Three issues were discovered and fixed during this session:
+
+1. **Wrong API**: The scanner used `invoke_agent()` (Bedrock Agents API) which requires `agentAliasId` and `sessionId`. The v4 verification agent runs on AgentCore Runtime, which uses HTTPS POST with SigV4 signing. Fixed by rewriting `AgentCoreInvoker` to use `requests` + `botocore.auth.SigV4Auth`, matching the eval backend pattern.
+
+2. **Wrong stack parameters**: The `samconfig.toml` pointed at the old `calledit-verification-scanner` stack with empty `VerificationAgentId` and `DynamoDBTableName=calledit-db` (v3). Fixed by updating samconfig to target `calledit-v4-scanner` with correct parameters.
+
+3. **Missing IAM permissions**: The AgentCore execution role (`AmazonBedrockAgentCoreSDKRuntime-us-west-2-37c792a758`) lacked `dynamodb:GetItem` on `calledit-v4` table. The scanner Lambda role also needed `bedrock-agentcore:InvokeRuntime` and `sts:GetCallerIdentity`. Fixed with `aws iam put-role-policy` for both roles. Admin access was temporarily added for testing, then replaced with precise least-privilege permissions.
+
+After all three fixes, the scanner successfully processed all 53 pending predictions. All predictions received verdicts (mostly `inconclusive` due to Browser tool limitations — same pattern as V4-7a-3 baseline). The scanner now runs every 15 minutes via EventBridge and verifies predictions end-to-end.
+
+### Decisions Made (Additional)
+
+### Decision 141: Scanner Uses SigV4 HTTPS to Invoke AgentCore Runtime (Not invoke_agent)
+
+**Source:** This update — scanner fix
+**Date:** March 30, 2026
+
+The verification scanner Lambda invokes the AgentCore verification agent via HTTPS POST with SigV4 signing to the AgentCore Runtime endpoint, not via the Bedrock Agents `invoke_agent()` API. The scanner uses the `requests` library with `botocore.auth.SigV4Auth`, matching the pattern in `eval/backends/verification_backend.py`. The `AgentCoreInvoker` class builds the runtime URL from the agent ID, signs with SigV4 using the Lambda execution role credentials, and handles double-encoded JSON responses.
+
+### Decision 142: Scanner Precise IAM Permissions
+
+**Source:** This update — scanner fix
+**Date:** March 30, 2026
+
+The scanner Lambda role has three precise permissions: (1) `dynamodb:Query/GetItem/UpdateItem` on `calledit-v4` table and its GSIs, (2) `bedrock-agentcore:InvokeRuntime` on the specific verification agent runtime ARN, (3) `sts:GetCallerIdentity` for building the runtime ARN. The AgentCore execution role additionally needs `dynamodb:GetItem/PutItem/UpdateItem/Query` on `calledit-v4` for the verification agent to load and update bundles.

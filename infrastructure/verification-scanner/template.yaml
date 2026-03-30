@@ -43,7 +43,7 @@ Resources:
           VERIFICATION_AGENT_ID: !Ref VerificationAgentId
           VERIFICATION_AGENT_ENDPOINT: !Ref VerificationAgentEndpoint
       Policies:
-        - DynamoDBReadPolicy:
+        - DynamoDBCrudPolicy:
             TableName: !Ref DynamoDBTableName
         - Statement:
             - Effect: Allow
@@ -55,6 +55,12 @@ Resources:
             - Effect: Allow
               Action:
                 - bedrock:InvokeAgent
+                - bedrock-agentcore:InvokeRuntime
+              Resource: "*"
+        - Statement:
+            - Effect: Allow
+              Action:
+                - sts:GetCallerIdentity
               Resource: "*"
       Events:
         ScheduledScan:

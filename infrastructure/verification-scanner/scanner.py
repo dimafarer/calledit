@@ -238,29 +238,64 @@ class HttpInvoker:
 
 
 class AgentCoreInvoker:
-    """Production: uses AgentCoreRuntimeClient."""
+    """Production: invokes AgentCore Runtime via HTTPS with SigV4 auth.
+
+    The v4 verification agent runs on AgentCore Runtime, which uses a
+    different API than Bedrock Agents (invoke_agent). AgentCore Runtime
+    uses a REST endpoint with SigV4 signing.
+    """
 
     def __init__(self, agent_id: str):
         self.agent_id = agent_id
-        self.client = boto3.client("bedrock-agent-runtime")
+        self.region = os.environ.get("AWS_REGION", "us-west-2")
+        # Build the AgentCore Runtime ARN from the agent_id
+        account_id = boto3.client("sts").get_caller_identity()["Account"]
+        runtime_arn = f"arn:aws:bedrock-agentcore:{self.region}:{account_id}:runtime/{agent_id}"
+        # URL-encode the ARN for the endpoint
+        from urllib.parse import quote
+        encoded_arn = quote(runtime_arn, safe="")
+        self.invoke_url = (
+            f"https://bedrock-agentcore.{self.region}.amazonaws.com"
+            f"/runtimes/{encoded_arn}/invocations"
+        )
+        # Get credentials from Lambda execution role
+        session = boto3.Session(region_name=self.region)
+        self._credentials = session.get_credentials().get_frozen_credentials()
 
     def invoke(self, prediction_id: str) -> Dict[str, Any]:
-        response = self.client.invoke_agent(
-            agentId=self.agent_id,
-            inputText=json.dumps({"prediction_id": prediction_id}),
+        from botocore.auth import SigV4Auth
+        from botocore.awsrequest import AWSRequest
+        import uuid
+        import requests as http_requests
+
+        payload = json.dumps({"prediction_id": prediction_id})
+        session_id = str(uuid.uuid4())
+
+        headers = {
+            "Content-Type": "application/json",
+            "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": session_id,
+        }
+
+        aws_request = AWSRequest(
+            method="POST",
+            url=self.invoke_url,
+            data=payload,
+            headers=headers,
         )
-        # Parse the agent response
-        completion = response.get("completion", "")
-        if isinstance(completion, str):
-            return json.loads(completion)
-        # Handle streaming response
-        chunks = []
-        for event in completion:
-            if "chunk" in event:
-                chunks.append(
-                    event["chunk"].get("bytes", b"").decode()
-                )
-        return json.loads("".join(chunks))
+        SigV4Auth(self._credentials, "bedrock-agentcore", self.region).add_auth(aws_request)
+
+        response = http_requests.post(
+            self.invoke_url,
+            data=payload,
+            headers=dict(aws_request.headers),
+            timeout=600,
+        )
+        response.raise_for_status()
+
+        result = response.json()
+        if isinstance(result, str):
+            result = json.loads(result)
+        return result
 
 
 def build_invocation_client():

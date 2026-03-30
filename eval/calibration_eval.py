@@ -40,7 +40,7 @@ EVAL_TABLE_NAME = "calledit-v4-eval"
 AWS_REGION = os.environ.get("AWS_REGION", "us-west-2")
 
 BIAS_WARNING = (
-    "All 7 qualifying verification cases have 'confirmed' expected outcomes. "
+    "All qualifying verification cases have 'confirmed' expected outcomes. "
     "Calibration accuracy for 'refuted' and 'inconclusive' predictions "
     "cannot be measured with the current dataset."
 )

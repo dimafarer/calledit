@@ -186,5 +186,5 @@ Three wins in one session. (1) Resolved the long-standing TTY/command execution 
 - All prompts pinned to numbered versions (parser:2, planner:2, reviewer:3, executor:2)
 - Frontend: unified dark theme, underline tab navigation
 - TTY/command execution issue resolved — Amazon Q CLI guard in ~/.bashrc
-- 140 architectural decisions documented across 33 project updates
+- 142 architectural decisions documented across 33 project updates
 - Next: full eval baselines with mode data, prompt iteration on mode classification, verification planner self-report (backlog 15)

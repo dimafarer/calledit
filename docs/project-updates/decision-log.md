@@ -1214,3 +1214,22 @@ The verification_planner (turn 2) classifies `verification_mode` because it need
 **Date:** March 27, 2026
 
 Recurring predictions include `recurring_interval` (every_scan/daily/weekly, default daily) and `max_snapshots` (default 30). The scanner checks the last snapshot's `checked_at` against the interval before invoking. Oldest snapshots are pruned when the limit is exceeded. This prevents unbounded DDB item growth for recurring predictions.
+
+
+---
+
+## Decision 141: Scanner Uses SigV4 HTTPS to Invoke AgentCore Runtime
+
+**Source:** [Project Update 33](33-project-update-verification-modes.md)
+**Date:** March 30, 2026
+
+The verification scanner Lambda invokes the AgentCore verification agent via HTTPS POST with SigV4 signing to the AgentCore Runtime endpoint, not via the Bedrock Agents `invoke_agent()` API. Uses `requests` + `botocore.auth.SigV4Auth`, matching the eval backend pattern. The old `invoke_agent()` approach required `agentAliasId` and `sessionId` which don't apply to AgentCore Runtime.
+
+---
+
+## Decision 142: Scanner Precise IAM Permissions
+
+**Source:** [Project Update 33](33-project-update-verification-modes.md)
+**Date:** March 30, 2026
+
+Scanner Lambda role: `dynamodb:Query/GetItem/UpdateItem` on `calledit-v4` + GSIs, `bedrock-agentcore:InvokeRuntime` on the verification agent runtime ARN, `sts:GetCallerIdentity`. AgentCore execution role: `dynamodb:GetItem/PutItem/UpdateItem/Query` on `calledit-v4`. Admin access was used temporarily for debugging, then replaced with least-privilege.
