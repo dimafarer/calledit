@@ -174,28 +174,28 @@ Implement `eval/unified_eval.py` as a single-file orchestrator that replaces the
 - [x] 10. Checkpoint — Verify end-to-end pipeline
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 11. Dashboard integration for unified reports
-  - [ ] 11.1 Update `frontend-v4/src/pages/EvalDashboard/types.ts`
+- [x] 11. Dashboard integration for unified reports
+  - [x] 11.1 Update `frontend-v4/src/pages/EvalDashboard/types.ts`
     - Add `'unified'` to the `AgentType` union type
     - Add a fourth entry to `AGENT_TABS` for unified reports
     - _Requirements: 9.2_
 
-  - [ ] 11.2 Update `frontend-v4/src/pages/EvalDashboard/components/AgentTab.tsx` for unified tab
+  - [x] 11.2 Update `frontend-v4/src/pages/EvalDashboard/components/AgentTab.tsx` for unified tab
     - Render creation scores, verification scores, and calibration scores sections in a single view when `agentType=unified`
     - _Requirements: 9.2_
 
-  - [ ] 11.3 Add calibration scatter plot component
+  - [x] 11.3 Add calibration scatter plot component
     - Create or update `frontend-v4/src/pages/EvalDashboard/components/CalibrationScatter.tsx`
     - Plot verifiability_score (x-axis) vs binary verification outcome (y-axis, 1=confirmed, 0=refuted/inconclusive)
     - Render within the unified tab view
     - _Requirements: 9.3_
 
-  - [ ] 11.4 Add score-vs-outcome correlation curves by tier
+  - [x] 11.4 Add score-vs-outcome correlation curves by tier
     - Render grouped curves for high, moderate, low Score_Tiers with case counts per tier
     - Display within the unified tab alongside the scatter plot
     - _Requirements: 9.4_
 
-- [ ] 12. Final checkpoint — Ensure all tests pass
+- [x] 12. Final checkpoint — Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

@@ -6,19 +6,31 @@ import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Responsive
 import type { CaseResult } from '../types';
 import { verdictToNumeric } from '../utils';
 
+/** Decision 148: high = easy to verify (confirm OR refute), not just confirm. */
+function isCalibrationCorrect(scoreTier: string, verdict: string): boolean {
+  if (scoreTier === 'high') return verdict === 'confirmed' || verdict === 'refuted';
+  return true; // moderate and low are always "correct"
+}
+
 interface Props {
   cases: CaseResult[];
 }
 
 export default function CalibrationScatter({ cases }: Props) {
   const raw = cases
-    .filter(c => !c.error && c.verifiability_score != null && c.actual_verdict)
+    .filter(c => {
+      const r = c as unknown as Record<string, unknown>;
+      return !c.error && !r.creation_error && !r.verification_error
+        && c.verifiability_score != null && c.actual_verdict;
+    })
     .map(c => ({
-      id: c.id,
+      id: c.id || (c as unknown as Record<string, unknown>).case_id as string || '?',
       x: c.verifiability_score!,
       y: verdictToNumeric(c.actual_verdict!),
       verdict: c.actual_verdict!,
-      correct: c.calibration_correct,
+      // Recompute calibration correctness client-side (Decision 148):
+      // high + resolved (confirmed/refuted) = correct, high + inconclusive = wrong
+      correct: isCalibrationCorrect(c.score_tier ?? 'moderate', c.actual_verdict!),
     }));
 
   // Add jitter to separate overlapping points
@@ -38,9 +50,12 @@ export default function CalibrationScatter({ cases }: Props) {
 
   return (
     <div style={{ marginBottom: '1.5rem' }}>
-      <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.9rem', color: '#94a3b8' }}>
-        Calibration: Verifiability Score vs Verification Outcome ({data.length} cases)
+      <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.2rem', color: '#f1f5f9', fontWeight: 600 }}>
+        Can Our Agents Verify What They Promise? ({data.length} cases)
       </h3>
+      <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: '#64748b' }}>
+        Verifiability Score (x) vs Actual Verification Outcome (y) — green = resolved, red = failed to resolve
+      </p>
       <ResponsiveContainer width="100%" height={300}>
         <ScatterChart margin={{ top: 10, right: 30, bottom: 30, left: 10 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
@@ -74,7 +89,7 @@ export default function CalibrationScatter({ cases }: Props) {
           />
           <Scatter data={data}>
             {data.map((d, i) => (
-              <Cell key={i} fill={d.correct ? '#22c55e' : '#ef4444'} r={8} />
+              <Cell key={i} fill={d.correct ? 'rgba(34, 197, 94, 0.7)' : 'rgba(239, 68, 68, 0.7)'} r={8} />
             ))}
           </Scatter>
         </ScatterChart>

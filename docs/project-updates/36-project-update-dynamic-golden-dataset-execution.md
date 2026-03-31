@@ -114,3 +114,17 @@ base-013 and dyn-rec-003 need Browser. Still broken in deployed runtime.
 
 ### Priority 4: Curate Dataset
 Remove or replace predictions that consistently return inconclusive due to tool limitations (base-013, dyn-rec-003). Per user direction: only keep cases we're confident our tools can handle.
+
+
+### Dashboard Updates (end of session)
+- Added "Unified Pipeline" tab as default tab in the eval dashboard
+- Scatter plot moved above score sections — narrative lead: "Can Our Agents Verify What They Promise?"
+- Fixed scatter plot colors: green = calibration correct (confirmed OR refuted), red = calibration wrong (inconclusive when score was high). Recomputed client-side per Decision 148.
+- Fixed missing case IDs in unified case table (case_id vs id field mapping)
+- Three-column score grid: Creation (blue), Verification (purple), Calibration (amber)
+- Phase timing breakdown shown above scores
+- Transparency on overlapping scatter points
+
+### Backlog Items Added
+- Item 18: Eval preflight check — test service dependencies before full run (~1 min)
+- Item 19: Verifiability score accuracy — creation agent should match verification reality (dyn-atd-003 scored 0.65 but trivially verifiable)

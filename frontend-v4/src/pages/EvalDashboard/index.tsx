@@ -10,7 +10,7 @@ import type { AgentType } from './types';
 import AgentTab from './components/AgentTab';
 
 export default function EvalDashboard() {
-  const [activeTab, setActiveTab] = useState<AgentType>('creation');
+  const [activeTab, setActiveTab] = useState<AgentType>('unified');
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: '1.5rem', background: '#0f172a', color: '#e2e8f0', minHeight: '100vh', borderRadius: 8 }}>

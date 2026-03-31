@@ -91,12 +91,17 @@ export default function AgentTab({ agentType }: Props) {
         </div>
       )}
 
-      {/* Aggregate Scores */}
-      {selectedSummary && <AggregateScores scores={selectedSummary.aggregate_scores} />}
-
-      {/* Calibration Scatter (calibration tab only) */}
-      {agentType === 'calibration' && fullReport?.case_results && (
+      {/* Calibration Scatter — the key narrative chart (unified and calibration tabs) */}
+      {(agentType === 'calibration' || agentType === 'unified') && fullReport?.case_results && (
         <CalibrationScatter cases={fullReport.case_results} />
+      )}
+
+      {/* Aggregate Scores */}
+      {selectedSummary && agentType !== 'unified' && <AggregateScores scores={selectedSummary.aggregate_scores} />}
+
+      {/* Unified Pipeline: Three score sections */}
+      {agentType === 'unified' && fullReport && (
+        <UnifiedScoreSections report={fullReport} />
       )}
 
       {/* Case Table */}
@@ -149,6 +154,79 @@ function MetadataPanel({ meta }: { meta: ReportSummary['run_metadata'] }) {
           </div>
         </details>
       )}
+    </div>
+  );
+}
+
+function UnifiedScoreSections({ report }: { report: FullReport }) {
+  const raw = report as unknown as Record<string, unknown>;
+  const creation = raw.creation_scores as Record<string, number> | undefined;
+  const verification = raw.verification_scores as Record<string, number> | undefined;
+  const calibration = raw.calibration_scores as Record<string, unknown> | undefined;
+  const phases = (report.run_metadata as unknown as Record<string, unknown>).phase_durations as Record<string, number> | undefined;
+
+  const scoreColor = (v: number) => v >= 0.9 ? '#22c55e' : v >= 0.7 ? '#eab308' : '#ef4444';
+
+  const renderScoreRow = (name: string, value: number | null | undefined) => {
+    if (value == null) return null;
+    return (
+      <div key={name} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.2rem 0' }}>
+        <span style={{ color: '#94a3b8' }}>{name}</span>
+        <span style={{ color: scoreColor(value), fontWeight: 600 }}>{value.toFixed(2)}</span>
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ marginBottom: '1.5rem' }}>
+      {/* Phase Timing */}
+      {phases && (
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+          {Object.entries(phases).map(([k, v]) => (
+            <div key={k} style={{ padding: '0.3rem 0.6rem', background: '#1e293b', borderRadius: 4, fontSize: '0.75rem', color: '#94a3b8' }}>
+              {k.replace('_seconds', '')}: {v}s
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Three score sections */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+        {/* Creation */}
+        <div style={{ background: '#1e293b', borderRadius: 6, padding: '0.8rem', border: '1px solid #334155' }}>
+          <h4 style={{ margin: '0 0 0.5rem', color: '#60a5fa', fontSize: '0.85rem' }}>Creation</h4>
+          {creation && Object.entries(creation).map(([k, v]) =>
+            typeof v === 'number' ? renderScoreRow(k, v) : null
+          )}
+        </div>
+
+        {/* Verification */}
+        <div style={{ background: '#1e293b', borderRadius: 6, padding: '0.8rem', border: '1px solid #334155' }}>
+          <h4 style={{ margin: '0 0 0.5rem', color: '#a78bfa', fontSize: '0.85rem' }}>Verification</h4>
+          {verification && Object.entries(verification).map(([k, v]) =>
+            typeof v === 'number' ? renderScoreRow(k, v) : null
+          )}
+        </div>
+
+        {/* Calibration */}
+        <div style={{ background: '#1e293b', borderRadius: 6, padding: '0.8rem', border: '1px solid #334155' }}>
+          <h4 style={{ margin: '0 0 0.5rem', color: '#f59e0b', fontSize: '0.85rem' }}>Calibration</h4>
+          {calibration && Object.entries(calibration).map(([k, v]) => {
+            if (typeof v === 'number') return renderScoreRow(k, v);
+            if (typeof v === 'object' && v !== null) {
+              return (
+                <div key={k} style={{ padding: '0.2rem 0' }}>
+                  <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>{k}: </span>
+                  {Object.entries(v as Record<string, number>).filter(([, n]) => n > 0).map(([vk, vv]) => (
+                    <span key={vk} style={{ color: '#e2e8f0', fontSize: '0.8rem', marginLeft: '0.3rem' }}>{vk}={vv}</span>
+                  ))}
+                </div>
+              );
+            }
+            return null;
+          })}
+        </div>
+      </div>
     </div>
   );
 }

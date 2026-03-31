@@ -4,6 +4,48 @@ Items identified during development that aren't urgent but should be addressed.
 
 ---
 
+## 19. Verifiability Score Accuracy — Creation Agent Should Match Verification Reality
+
+**Source:** Project Update 36 — Unified eval baseline analysis (March 31, 2026)
+**Priority:** High — directly improves calibration accuracy
+**Status:** OPEN
+
+**Problem:** The creation agent's verifiability score doesn't accurately predict the verification agent's ability to resolve a prediction. Example: dyn-atd-003 ("A notable news event was reported on March 30, 2026") scored 0.65 by the creation agent, but the verification agent easily confirmed it — this is trivially verifiable via web search and should score 0.90+. The goal is accuracy, not conservatism. The unified eval scatter plot now provides the feedback loop: cases where score and outcome disagree are prompt improvement targets.
+
+**What to do:**
+- Analyze the unified eval scatter plot for score-vs-outcome mismatches
+- Identify patterns: what types of predictions does the creation agent under-score?
+- Update the plan-reviewer prompt to better predict what the verification agent can actually do with its tools (Brave Search, Code Interpreter)
+- The plan-reviewer should know the tool capabilities — "can this be verified with a web search?" should push the score up
+- Re-run unified eval after prompt changes and compare scatter plots
+
+**References:**
+- Decision 147: Unified eval pipeline
+- Backlog item 15: Verification planner self-report plans (related — both are prompt quality)
+
+---
+
+## 18. Eval Preflight Check — Test Service Dependencies Before Full Run
+
+**Source:** Project Update 36 — IAM/Brave debugging (March 31, 2026)
+**Priority:** High — prevents wasting 45-minute eval runs on infrastructure issues
+**Status:** OPEN
+
+**Problem:** Multiple eval runs failed due to infrastructure issues (missing IAM permissions on eval table, missing BRAVE_API_KEY env var on relaunch) that weren't caught until deep into the run. A 1-minute preflight check before the full pipeline would catch these immediately.
+
+**What to do:**
+- Add `--preflight` flag to `eval/unified_eval.py`
+- Test each dependency: DDB write/read/delete on eval table, Cognito auth, creation agent invoke with trivial prediction, verification agent invoke with pre-written bundle, Brave Search direct call
+- Each check ~10 seconds, total ~1 minute
+- Fail fast with clear error message identifying which dependency is broken
+- Run automatically before every full eval unless `--skip-preflight` is passed
+
+**References:**
+- Decision 147: Unified eval pipeline
+- Project Update 36: IAM and Brave key debugging
+
+---
+
 ## 17. Debug AgentCore Browser Tool in Deployed Runtime
 
 **Source:** Project Update 34 — Browser investigation (March 30, 2026)

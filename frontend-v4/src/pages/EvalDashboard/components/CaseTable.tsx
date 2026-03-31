@@ -17,18 +17,27 @@ export default function CaseTable({ cases, agentType }: Props) {
     const keySet = new Set<string>();
     for (const c of cases) {
       if (c.scores) Object.keys(c.scores).forEach(k => keySet.add(k));
+      // Unified pipeline: merge creation_scores and verification_scores
+      const raw = c as unknown as Record<string, unknown>;
+      if (raw.creation_scores && typeof raw.creation_scores === 'object') {
+        Object.keys(raw.creation_scores as object).forEach(k => keySet.add(`c:${k}`));
+      }
+      if (raw.verification_scores && typeof raw.verification_scores === 'object') {
+        Object.keys(raw.verification_scores as object).forEach(k => keySet.add(`v:${k}`));
+      }
     }
     return Array.from(keySet).sort();
   }, [cases]);
 
   if (cases.length === 0) return <p style={{ color: '#94a3b8' }}>No cases in this run.</p>;
 
-  const getText = (c: CaseResult) => c.input ?? c.prediction_text ?? '';
+  const getId = (c: CaseResult) => c.id || (c as unknown as Record<string, unknown>).case_id as string || '?';
+  const getText = (c: CaseResult) => c.input ?? c.prediction_text ?? (c as unknown as Record<string, unknown>).prediction_text as string ?? '';
 
   // Count total columns for colSpan on expanded detail row
   let colCount = 2; // ID + Text
   if (agentType === 'verification') colCount += 1;
-  if (agentType === 'calibration') colCount += 4;
+  if (agentType === 'calibration' || agentType === 'unified') colCount += 4;
   colCount += scoreKeys.length;
 
   return (
@@ -39,41 +48,52 @@ export default function CaseTable({ cases, agentType }: Props) {
             <th style={thStyle}>ID</th>
             <th style={thStyle}>Text</th>
             {agentType === 'verification' && <th style={thStyle}>Expected</th>}
-            {agentType === 'calibration' && <th style={thStyle}>V-Score</th>}
-            {agentType === 'calibration' && <th style={thStyle}>Tier</th>}
-            {agentType === 'calibration' && <th style={thStyle}>Verdict</th>}
-            {agentType === 'calibration' && <th style={thStyle}>Cal?</th>}
+            {(agentType === 'calibration' || agentType === 'unified') && <th style={thStyle}>V-Score</th>}
+            {(agentType === 'calibration' || agentType === 'unified') && <th style={thStyle}>Tier</th>}
+            {(agentType === 'calibration' || agentType === 'unified') && <th style={thStyle}>Verdict</th>}
+            {(agentType === 'calibration' || agentType === 'unified') && <th style={thStyle}>Cal?</th>}
             {scoreKeys.map(k => <th key={k} style={thStyle}>{k}</th>)}
           </tr>
         </thead>
         <tbody>
           {cases.map(c => {
-            const isExpanded = expandedId === c.id;
-            const hasError = !!c.error;
+            const caseId = getId(c);
+            const isExpanded = expandedId === caseId;
+            const hasError = !!c.error || !!(c as unknown as Record<string, unknown>).creation_error || !!(c as unknown as Record<string, unknown>).verification_error;
             return (
-              <Fragment key={c.id}>
+              <Fragment key={caseId}>
                 <tr
-                  onClick={() => setExpandedId(isExpanded ? null : c.id)}
+                  onClick={() => setExpandedId(isExpanded ? null : caseId)}
                   style={{
                     cursor: 'pointer', borderBottom: '1px solid #334155',
                     background: hasError ? '#3b1111' : isExpanded ? '#1e293b' : 'transparent',
                   }}
                 >
-                  <td style={tdStyle}>{c.id}</td>
+                  <td style={tdStyle}>{caseId}</td>
                   <td style={tdStyle}>{truncateText(getText(c))}</td>
                   {agentType === 'verification' && <td style={tdStyle}>{c.expected_verdict ?? ''}</td>}
-                  {agentType === 'calibration' && (
+                  {(agentType === 'calibration' || agentType === 'unified') && (
                     <td style={tdStyle}>{c.verifiability_score?.toFixed(2) ?? 'ERR'}</td>
                   )}
-                  {agentType === 'calibration' && <td style={tdStyle}>{c.score_tier ?? ''}</td>}
-                  {agentType === 'calibration' && <td style={tdStyle}>{c.actual_verdict ?? 'ERR'}</td>}
-                  {agentType === 'calibration' && (
+                  {(agentType === 'calibration' || agentType === 'unified') && <td style={tdStyle}>{c.score_tier ?? ''}</td>}
+                  {(agentType === 'calibration' || agentType === 'unified') && <td style={tdStyle}>{c.actual_verdict ?? 'ERR'}</td>}
+                  {(agentType === 'calibration' || agentType === 'unified') && (
                     <td style={tdStyle}>
                       {c.calibration_correct == null ? '—' : c.calibration_correct ? '✓' : '✗'}
                     </td>
                   )}
                   {scoreKeys.map(k => {
-                    const s = c.scores?.[k];
+                    let s;
+                    if (k.startsWith('c:') || k.startsWith('v:')) {
+                      // Unified pipeline: read from creation_scores or verification_scores
+                      const raw = c as unknown as Record<string, unknown>;
+                      const prefix = k.startsWith('c:') ? 'creation_scores' : 'verification_scores';
+                      const realKey = k.slice(2);
+                      const scores = raw[prefix] as Record<string, { score: number; pass: boolean }> | undefined;
+                      s = scores?.[realKey];
+                    } else {
+                      s = c.scores?.[k];
+                    }
                     if (!s) return <td key={k} style={tdStyle}>—</td>;
                     return (
                       <td key={k} style={{ ...tdStyle, color: getScoreColor(s.score) }}>
@@ -85,7 +105,7 @@ export default function CaseTable({ cases, agentType }: Props) {
                 {isExpanded && (
                   <tr>
                     <td colSpan={colCount} style={{ padding: '0.75rem 1rem', background: '#0f172a' }}>
-                      <CaseDetail caseResult={c} />
+                      <CaseDetail caseResult={c} caseId={caseId} />
                     </td>
                   </tr>
                 )}
@@ -98,7 +118,7 @@ export default function CaseTable({ cases, agentType }: Props) {
   );
 }
 
-function CaseDetail({ caseResult }: { caseResult: CaseResult }) {
+function CaseDetail({ caseResult, caseId: _caseId }: { caseResult: CaseResult; caseId?: string }) {
   const text = caseResult.input ?? caseResult.prediction_text ?? '';
   return (
     <div style={{ fontSize: '0.8rem' }}>

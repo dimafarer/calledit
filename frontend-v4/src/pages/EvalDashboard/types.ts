@@ -54,9 +54,10 @@ export interface FullReport extends ReportSummary {
   bias_warning?: string;
 }
 
-export type AgentType = 'creation' | 'verification' | 'calibration';
+export type AgentType = 'creation' | 'verification' | 'calibration' | 'unified';
 
 export const AGENT_TABS: { key: AgentType; label: string }[] = [
+  { key: 'unified', label: 'Unified Pipeline' },
   { key: 'creation', label: 'Creation Agent' },
   { key: 'verification', label: 'Verification Agent' },
   { key: 'calibration', label: 'Cross-Agent Calibration' },
