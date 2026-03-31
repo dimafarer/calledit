@@ -85,6 +85,25 @@ Resources:
         - AttributeName: SK
           KeyType: RANGE
 
+  # --- DynamoDB Table for V4 Eval Bundles (isolation from production) ---
+  V4EvalBundlesTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: calledit-v4-eval
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+
 Outputs:
   V4FrontendBucketName:
     Description: V4 frontend S3 bucket name
@@ -127,3 +146,15 @@ Outputs:
     Value: !GetAtt V4EvalReportsTable.Arn
     Export:
       Name: !Sub '${AWS::StackName}-EvalReportsTableArn'
+
+  V4EvalBundlesTableName:
+    Description: V4 eval bundles DynamoDB table name (isolation from production)
+    Value: !Ref V4EvalBundlesTable
+    Export:
+      Name: !Sub '${AWS::StackName}-EvalBundlesTableName'
+
+  V4EvalBundlesTableArn:
+    Description: V4 eval bundles DynamoDB table ARN
+    Value: !GetAtt V4EvalBundlesTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-EvalBundlesTableArn'

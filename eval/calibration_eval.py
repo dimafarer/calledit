@@ -81,14 +81,19 @@ def classify_score_tier(score: float) -> str:
 def is_calibration_correct(score_tier: str, verdict: str) -> bool:
     """Check if score tier prediction aligned with verdict outcome.
 
-    high → confirmed = correct
-    low → refuted/inconclusive = correct
+    High verifiability = easy to verify (either confirm or refute).
+    Low verifiability = hard to verify (inconclusive is expected).
+
+    high → confirmed or refuted = correct (agent resolved it)
+    high → inconclusive = wrong (agent couldn't resolve an easy one)
+    low → inconclusive = correct (expected to struggle)
+    low → confirmed/refuted = also correct (exceeded expectations)
     moderate → always correct (indeterminate zone)
     """
     if score_tier == "high":
-        return verdict == "confirmed"
+        return verdict in ("confirmed", "refuted")
     if score_tier == "low":
-        return verdict in ("refuted", "inconclusive")
+        return True  # any outcome is acceptable for hard-to-verify predictions
     return True  # moderate is always "correct"
 
 

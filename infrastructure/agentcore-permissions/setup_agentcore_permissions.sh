@@ -25,11 +25,13 @@
 set -euo pipefail
 
 ROLE_NAME="AmazonBedrockAgentCoreSDKRuntime-us-west-2-37c792a758"
+CREATION_ROLE_NAME="AmazonBedrockAgentCoreSDKRuntime-us-west-2-5a297cfdfd"
 ACCOUNT_ID="894249332178"
 REGION="us-west-2"
 
-echo "=== Adding permissions to AgentCore execution role ==="
-echo "Role: ${ROLE_NAME}"
+echo "=== Adding permissions to AgentCore execution roles ==="
+echo "Verification Role: ${ROLE_NAME}"
+echo "Creation Role: ${CREATION_ROLE_NAME}"
 echo ""
 
 # 1. DynamoDB access for production table
@@ -74,6 +76,26 @@ aws iam put-role-policy \
     }]
   }"
 echo "   ✓ calledit-v4-eval-dynamodb policy attached"
+
+# 2b. DynamoDB access for eval table — CREATION agent role
+echo "2b. Adding DynamoDB permissions for calledit-v4-eval (creation agent)..."
+aws iam put-role-policy \
+  --role-name "${CREATION_ROLE_NAME}" \
+  --policy-name "calledit-v4-eval-dynamodb" \
+  --policy-document "{
+    \"Version\": \"2012-10-17\",
+    \"Statement\": [{
+      \"Effect\": \"Allow\",
+      \"Action\": [
+        \"dynamodb:GetItem\",
+        \"dynamodb:PutItem\",
+        \"dynamodb:UpdateItem\",
+        \"dynamodb:DeleteItem\"
+      ],
+      \"Resource\": \"arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/calledit-v4-eval\"
+    }]
+  }"
+echo "   ✓ calledit-v4-eval-dynamodb policy attached (creation agent)"
 
 # 3. Bedrock Prompt Management
 echo "3. Adding Bedrock GetPrompt permission..."

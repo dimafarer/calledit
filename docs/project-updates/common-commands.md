@@ -390,16 +390,46 @@ source .env
     --dataset eval/golden_dataset.json \
     --dynamic-dataset eval/dynamic_golden_dataset.json \
     --tier full --description "full baseline with dynamic dataset"
+```
 
-/home/wsluser/projects/calledit/venv/bin/python eval/verification_eval.py \
+## Unified Eval Pipeline (RECOMMENDED)
+
+```bash
+# Generate fresh dynamic dataset + run unified pipeline
+source .env
+/home/wsluser/projects/calledit/venv/bin/python eval/generate_dynamic_dataset.py && \
+/home/wsluser/projects/calledit/venv/bin/python eval/unified_eval.py \
     --dataset eval/golden_dataset.json \
     --dynamic-dataset eval/dynamic_golden_dataset.json \
-    --tier full --description "full baseline with dynamic dataset"
+    --tier full --description "unified baseline"
 
-/home/wsluser/projects/calledit/venv/bin/python eval/calibration_eval.py \
+# Dry run — list qualifying cases
+source .env
+/home/wsluser/projects/calledit/venv/bin/python eval/unified_eval.py \
     --dataset eval/golden_dataset.json \
     --dynamic-dataset eval/dynamic_golden_dataset.json \
-    --tier full --description "full baseline with dynamic dataset"
+    --dry-run
+
+# Single case test
+source .env
+/home/wsluser/projects/calledit/venv/bin/python eval/unified_eval.py \
+    --dataset eval/golden_dataset.json \
+    --dynamic-dataset eval/dynamic_golden_dataset.json \
+    --case dyn-imm-001 --tier full --description "single case test"
+
+# Skip cleanup (debug — leave bundles in eval table)
+source .env
+/home/wsluser/projects/calledit/venv/bin/python eval/unified_eval.py \
+    --dataset eval/golden_dataset.json \
+    --dynamic-dataset eval/dynamic_golden_dataset.json \
+    --tier full --skip-cleanup --description "debug run"
+
+# Resume interrupted run
+source .env
+/home/wsluser/projects/calledit/venv/bin/python eval/unified_eval.py \
+    --dataset eval/golden_dataset.json \
+    --dynamic-dataset eval/dynamic_golden_dataset.json \
+    --tier full --resume --description "resumed run"
 ```
 
 

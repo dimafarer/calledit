@@ -199,17 +199,16 @@ Discovered fundamental flaw in golden dataset: time-dependent ground truth goes 
 
 - v4 production COMPLETE — full MVP + eval dashboard + verification modes + Brave Search deployed
 - Eval dashboard live at `https://d2fngmclz6psil.cloudfront.net/eval`
-- Dynamic golden dataset spec EXECUTED — generator produces 16 time-anchored predictions (9 deterministic + 7 Brave Search) across all 4 verification modes
-- Merged dataset: 70 predictions (54 static + 16 dynamic, base-010 replaced by dyn-bfd-001)
-- Smoke tests passed across all 3 eval runners with merged dataset
-- Brave Search tool added to verification agent — primary web search tool (Decision 145)
-- Browser tool broken in deployed runtime — works via direct API, fails in container (backlog 17)
-- Eval isolation: creation agent accepts `table_name` override, eval bundles go to `calledit-v4-eval`
-- Production table clean: 5 real predictions only
-- Three eval frameworks with baselines (pre-dynamic-dataset):
-  - Creation: IP=0.79 (0.86 adj), PQ=0.56 (0.58 adj), all T1=1.00 (55 cases)
-  - Verification: VA=0.71 (0.86 adj), EQ=0.56, all T1=1.00 (7 cases)
-  - Calibration: CA=0.86, 6/7 correct (7 cases)
-- Golden dataset: 55 base + 23 fuzzy static, 16 dynamic (schema 4.0, 12 smoke test cases)
-- 146 architectural decisions documented across 36 project updates
-- Next: full baselines with merged dataset, debug Browser tool (backlog 17), self-report plans (backlog 15)
+- Unified eval pipeline built — single `eval/unified_eval.py` replaces 3 separate runners (Decision 147)
+- Dynamic golden dataset generator — 16 templates (9 deterministic + 7 Brave) across all 4 modes
+- Merged dataset: 70 predictions (54 static + 16 dynamic), 23 qualifying (non-null verdicts)
+- First unified baseline (23 cases, March 31):
+  - Creation: T1=1.00, IP=0.89, PQ=0.88
+  - Verification: T1=1.00, VA=0.89, EQ=0.59
+  - Calibration: CA=~0.91 (after logic fix, Decision 148)
+- Calibration logic fixed: high score = easy to verify (confirm OR refute), not just confirm
+- Eval table `calledit-v4-eval` imported into CloudFormation (proper IaC)
+- Both AgentCore execution roles have eval table DDB permissions
+- Browser tool still broken in deployed runtime (backlog 17)
+- 148 architectural decisions documented across 36 project updates
+- Next: preflight check, dashboard integration, Browser debugging, dataset curation

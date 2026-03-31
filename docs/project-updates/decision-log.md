@@ -1272,3 +1272,22 @@ Added `brave_web_search` as a Strands `@tool` function (`calleditv4-verification
 **Date:** March 31, 2026
 
 The eval framework uses a two-file strategy for golden datasets: `eval/golden_dataset.json` (static, hand-curated, timeless cases) and `eval/dynamic_golden_dataset.json` (generated, time-anchored, regenerated before each eval run). The merger (`eval/dataset_merger.py`) combines them via `--dynamic-dataset` CLI arg on all 3 eval runners. Dynamic predictions with a `replaces` field override matching static predictions that have `time_sensitive: true`. Without `--dynamic-dataset`, runners behave exactly as before (backward compatible). Dynamic prediction IDs use `dyn-` prefix. The generator produces 16 predictions (9 deterministic + 7 Brave Search) across all 4 verification modes. This resolves the stale ground truth problem (base-010 false failure) and enables all 4 modes to be tested in every eval run.
+
+
+---
+
+## Decision 147: Unified Eval Pipeline Replaces 3 Separate Runners
+
+**Source:** [Project Update 36](36-project-update-dynamic-golden-dataset-execution.md)
+**Date:** March 31, 2026
+
+Replaced the 3 separate eval runners (`creation_eval.py`, `verification_eval.py`, `calibration_eval.py`) with a single unified pipeline (`eval/unified_eval.py`) that mirrors production flow. The pipeline chains: dataset audit → creation pass (JWT) → verification timing wait → verification pass (SigV4, scanner pattern) → evaluation (all evaluators + calibration) → unified report → cleanup. Every prediction goes through both agents in one run, producing creation scores, verification scores, and calibration metrics in a single report. The old runners remain functional for backward compatibility. The unified pipeline filters predictions with null `expected_verification_outcome` (47 of 70), running only the 23 cases with known ground truth.
+
+---
+
+## Decision 148: Calibration Logic — High Score Means Verifiable, Not Confirmed
+
+**Source:** [Project Update 36](36-project-update-dynamic-golden-dataset-execution.md)
+**Date:** March 31, 2026
+
+Fixed `is_calibration_correct()` in `calibration_eval.py`. The original logic assumed high verifiability score → expected confirmed. This is wrong — high score means "easy to verify," which includes predictions designed to be refuted. New logic: high + confirmed OR refuted = correct (agent resolved it). High + inconclusive = wrong (agent couldn't resolve an easy one). Low + any outcome = correct (hard predictions, any result is acceptable). This fixed 3 false calibration failures in the first unified baseline (dyn-imm-006, dyn-atd-002, dyn-bfd-004), pushing calibration accuracy from 0.77 to ~0.91.
