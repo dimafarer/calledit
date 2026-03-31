@@ -395,9 +395,106 @@ def _validate_dimension_tags(dt: dict, bp_id: str):
     return errors, domain, stakes, horizon, persona
 
 
+def validate_dynamic_dataset(path: str) -> List[str]:
+    """Validate a dynamic golden dataset with relaxed coverage requirements.
+
+    Checks:
+    1. STRUCTURAL: schema 4.0, required fields, valid enums
+    2. DYNAMIC: generated_at in metadata, ground_truth_computation in each prediction,
+       non-null expected_verification_outcome for all predictions
+    3. ID PREFIX: all IDs start with 'dyn-'
+    4. RECURRING: recurring predictions have recurring_interval
+
+    Relaxed vs static:
+    - No minimum category counts (dynamic datasets are smaller)
+    - No fuzzy prediction requirements
+    - No persona/boundary coverage requirements
+    """
+    errors: List[str] = []
+
+    try:
+        with open(path, "r") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        return [f"File not found: {path}"]
+    except json.JSONDecodeError as e:
+        return [f"Invalid JSON: {e}"]
+
+    # Schema version
+    version = data.get("schema_version")
+    if version != "4.0":
+        errors.append(f"STRUCTURAL: schema_version must be '4.0', got '{version}'")
+
+    # Metadata
+    meta = data.get("metadata", {})
+    if not meta.get("generated_at"):
+        errors.append("DYNAMIC: metadata.generated_at is required")
+
+    preds = data.get("base_predictions", [])
+    if not preds:
+        errors.append("STRUCTURAL: base_predictions is empty")
+
+    valid_modes = {"immediate", "at_date", "before_date", "recurring"}
+    valid_verdicts = {"confirmed", "refuted", "inconclusive"}
+    valid_sources = {"deterministic", "brave_search", "api_lookup"}
+
+    for idx, bp in enumerate(preds):
+        bp_id = bp.get("id", f"<missing-{idx}>")
+
+        # ID prefix
+        if not bp_id.startswith("dyn-"):
+            errors.append(f"DYNAMIC: {bp_id} must start with 'dyn-'")
+
+        # Non-null verdict
+        verdict = bp.get("expected_verification_outcome")
+        if verdict not in valid_verdicts:
+            errors.append(
+                f"DYNAMIC: {bp_id} expected_verification_outcome must be one of "
+                f"{valid_verdicts}, got '{verdict}'"
+            )
+
+        # Verification mode
+        mode = bp.get("verification_mode")
+        if mode not in valid_modes:
+            errors.append(f"STRUCTURAL: {bp_id} verification_mode must be one of {valid_modes}")
+
+        # Difficulty
+        diff = bp.get("difficulty")
+        if diff not in VALID_DIFFICULTIES:
+            errors.append(f"STRUCTURAL: {bp_id} invalid difficulty '{diff}'")
+
+        # Ground truth computation
+        gt = bp.get("ground_truth", {})
+        gtc = gt.get("ground_truth_computation")
+        if not gtc or not isinstance(gtc, dict):
+            errors.append(f"DYNAMIC: {bp_id} ground_truth.ground_truth_computation is required")
+        else:
+            for field in ["source", "raw_data", "computation_logic", "computed_at"]:
+                if field not in gtc:
+                    errors.append(f"DYNAMIC: {bp_id} ground_truth_computation.{field} is required")
+
+        # Ground truth source
+        gts = gt.get("ground_truth_source")
+        if gts not in valid_sources:
+            errors.append(f"DYNAMIC: {bp_id} ground_truth_source must be one of {valid_sources}")
+
+        # Recurring must have interval
+        if mode == "recurring" and not bp.get("recurring_interval"):
+            errors.append(f"DYNAMIC: {bp_id} recurring predictions must have recurring_interval")
+
+    return errors
+
+
 def main():
     path = sys.argv[1] if len(sys.argv) > 1 else "eval/golden_dataset.json"
-    errors = validate_dataset(path)
+
+    # Detect dynamic dataset by filename or --dynamic flag
+    is_dynamic = "dynamic" in path.lower() or "--dynamic" in sys.argv
+
+    if is_dynamic:
+        errors = validate_dynamic_dataset(path)
+    else:
+        errors = validate_dataset(path)
 
     if errors:
         print(f"VALIDATION FAILED: {len(errors)} error(s) found", file=sys.stderr)

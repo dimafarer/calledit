@@ -527,6 +527,7 @@ def build_run_metadata(args, dataset: dict, results: list, duration: float) -> d
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "duration_seconds": round(duration, 1),
         "case_count": len(results),
+        "dataset_sources": [args.dataset] + ([args.dynamic_dataset] if getattr(args, 'dynamic_dataset', None) else []),
         "ground_truth_limitation": GROUND_TRUTH_LIMITATION,
     }
 
@@ -571,6 +572,8 @@ def parse_args():
                         help="List cases without executing")
     parser.add_argument("--case", default=None,
                         help="Execute single case by id (golden mode only)")
+    parser.add_argument("--dynamic-dataset", default=None,
+                        help="Path to dynamic golden dataset (merged with --dataset)")
     return parser.parse_args()
 
 
@@ -618,7 +621,8 @@ def main():
     # Load dataset and cases
     dataset = None
     if args.source == "golden":
-        dataset = load_dataset(args.dataset)
+        from eval.dataset_merger import load_and_merge
+        dataset = load_and_merge(args.dataset, getattr(args, 'dynamic_dataset', None))
         cases = load_golden_cases(dataset, args.tier, args.case)
     else:
         cases = load_ddb_cases()

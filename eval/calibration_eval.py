@@ -427,6 +427,7 @@ def build_report(
             "timestamp": now,
             "duration_seconds": round(duration, 1),
             "case_count": len(case_results),
+            "dataset_sources": [args.dataset] + ([args.dynamic_dataset] if getattr(args, 'dynamic_dataset', None) else []),
             "ground_truth_limitation": GROUND_TRUTH_LIMITATION,
         },
         "aggregate_scores": metrics,
@@ -465,6 +466,8 @@ def parse_args():
                         help="List cases without executing")
     parser.add_argument("--case", default=None,
                         help="Execute single case by id")
+    parser.add_argument("--dynamic-dataset", default=None,
+                        help="Path to dynamic golden dataset (merged with --dataset)")
     return parser.parse_args()
 
 
@@ -529,7 +532,8 @@ def main():
         )
 
     # Load dataset and cases
-    dataset = load_dataset(args.dataset)
+    from eval.dataset_merger import load_and_merge
+    dataset = load_and_merge(args.dataset, getattr(args, 'dynamic_dataset', None))
     cases = load_cases(dataset, args.tier, args.case)
 
     if args.dry_run:

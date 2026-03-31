@@ -1262,3 +1262,13 @@ Added full Browser IAM permissions (`StartBrowserSession`, `CreateBrowser`, `Get
 **Date:** March 30, 2026
 
 Added `brave_web_search` as a Strands `@tool` function (`calleditv4-verification/src/brave_search.py`) that calls the Brave Search API via HTTP GET. Free-tier key (2,000 queries/month). Placed first in the verification agent's TOOLS list, ahead of Browser and Code Interpreter. The verification executor prompt (deployed via CloudFormation) was updated with a TOOL PRIORITY section directing the agent to use `brave_web_search` for all fact-finding, Code Interpreter for calculations, and Browser only as a last resort for interactive pages. This single change improved verification verdict accuracy from 0.43 to 0.86 (corrected for the base-010 false failure in the golden dataset).
+
+
+---
+
+## Decision 146: Dynamic Golden Dataset Two-File Strategy
+
+**Source:** [Project Update 36](36-project-update-dynamic-golden-dataset-execution.md)
+**Date:** March 31, 2026
+
+The eval framework uses a two-file strategy for golden datasets: `eval/golden_dataset.json` (static, hand-curated, timeless cases) and `eval/dynamic_golden_dataset.json` (generated, time-anchored, regenerated before each eval run). The merger (`eval/dataset_merger.py`) combines them via `--dynamic-dataset` CLI arg on all 3 eval runners. Dynamic predictions with a `replaces` field override matching static predictions that have `time_sensitive: true`. Without `--dynamic-dataset`, runners behave exactly as before (backward compatible). Dynamic prediction IDs use `dyn-` prefix. The generator produces 16 predictions (9 deterministic + 7 Brave Search) across all 4 verification modes. This resolves the stale ground truth problem (base-010 false failure) and enables all 4 modes to be tested in every eval run.

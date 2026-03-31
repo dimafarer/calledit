@@ -331,6 +331,7 @@ def build_run_metadata(
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "duration_seconds": round(duration, 1),
         "case_count": len(results),
+        "dataset_sources": [args.dataset] + ([args.dynamic_dataset] if getattr(args, 'dynamic_dataset', None) else []),
         "features": {
             "long_term_memory": False,
             "short_term_memory": False,
@@ -417,6 +418,11 @@ def parse_args():
         default=None,
         help="Run a single case by id (e.g., base-001)",
     )
+    parser.add_argument(
+        "--dynamic-dataset",
+        default=None,
+        help="Path to dynamic golden dataset (merged with --dataset)",
+    )
     return parser.parse_args()
 
 
@@ -435,7 +441,8 @@ def main():
     args = parse_args()
 
     # Load and filter cases
-    dataset = load_dataset(args.dataset)
+    from eval.dataset_merger import load_and_merge
+    dataset = load_and_merge(args.dataset, getattr(args, 'dynamic_dataset', None))
     cases = filter_cases(dataset, args.tier, args.case)
 
     if args.dry_run:

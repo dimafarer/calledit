@@ -410,6 +410,7 @@
     {
       "id": "base-010",
       "prediction_text": "The next full moon will occur before April 1, 2026",
+      "time_sensitive": true,
       "difficulty": "easy",
       "ground_truth": {
         "verifiability_reasoning": "Lunar cycles are deterministic and calculable through astronomical algorithms. No external data source or tool is needed — pure reasoning about well-established orbital mechanics suffices. The full moon cycle is approximately 29.5 days.",

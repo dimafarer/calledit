@@ -371,6 +371,38 @@ cd /home/wsluser/projects/calledit/calleditv4-verification && agentcore status
 ```
 
 
+## Dynamic Golden Dataset
+
+```bash
+# Generate fresh dynamic dataset (requires BRAVE_API_KEY for full 16 predictions)
+source .env
+/home/wsluser/projects/calledit/venv/bin/python eval/generate_dynamic_dataset.py
+
+# Generate deterministic-only (no BRAVE_API_KEY needed, 9 predictions)
+/home/wsluser/projects/calledit/venv/bin/python eval/generate_dynamic_dataset.py
+
+# Validate dynamic dataset
+/home/wsluser/projects/calledit/venv/bin/python eval/validate_dataset.py eval/dynamic_golden_dataset.json
+
+# Run any eval with merged dataset (add --dynamic-dataset to existing commands)
+source .env
+/home/wsluser/projects/calledit/venv/bin/python eval/creation_eval.py \
+    --dataset eval/golden_dataset.json \
+    --dynamic-dataset eval/dynamic_golden_dataset.json \
+    --tier full --description "full baseline with dynamic dataset"
+
+/home/wsluser/projects/calledit/venv/bin/python eval/verification_eval.py \
+    --dataset eval/golden_dataset.json \
+    --dynamic-dataset eval/dynamic_golden_dataset.json \
+    --tier full --description "full baseline with dynamic dataset"
+
+/home/wsluser/projects/calledit/venv/bin/python eval/calibration_eval.py \
+    --dataset eval/golden_dataset.json \
+    --dynamic-dataset eval/dynamic_golden_dataset.json \
+    --tier full --description "full baseline with dynamic dataset"
+```
+
+
 ## V4 Eval Framework (V4-7a)
 
 ```bash
