@@ -35,6 +35,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from models import VerificationResult
 from bundle_loader import load_bundle_from_ddb, update_bundle_with_verdict
 from prompt_client import fetch_prompt, get_prompt_version_manifest
+from brave_search import brave_web_search
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +44,10 @@ app = BedrockAgentCoreApp()
 MODEL_ID = "us.anthropic.claude-sonnet-4-20250514-v1:0"
 DYNAMODB_TABLE_NAME = os.environ.get("DYNAMODB_TABLE_NAME", "calledit-v4")
 
-browser_tool = AgentCoreBrowser()
+browser_tool = AgentCoreBrowser(region="us-west-2")
 code_interpreter_tool = AgentCoreCodeInterpreter()
-TOOLS = [browser_tool.browser, code_interpreter_tool.code_interpreter, current_time]
+TOOLS = [brave_web_search, browser_tool.browser, code_interpreter_tool.code_interpreter, current_time]
+logger.info(f"Tools initialized: brave_web_search, browser, code_interpreter, current_time")
 
 
 def _make_inconclusive(reasoning: str) -> VerificationResult:

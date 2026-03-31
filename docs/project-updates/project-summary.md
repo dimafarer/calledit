@@ -188,3 +188,26 @@ Three wins in one session. (1) Resolved the long-standing TTY/command execution 
 - TTY/command execution issue resolved — Amazon Q CLI guard in ~/.bashrc
 - 142 architectural decisions documented across 33 project updates
 - Next: full eval baselines with mode data, prompt iteration on mode classification, verification planner self-report (backlog 15)
+
+### Update 34 (March 30): DDB Cleanup + Eval Isolation + Brave Search
+Major infrastructure and tooling session. (1) Investigated "only 5 predictions visible" — traced to v3 vs v4 PK format difference and 64 eval artifacts in the production table. (2) Added `table_name` payload override to creation agent for eval isolation (Decision 143). (3) Cleaned 64 junk items from `calledit-v4` and 18 items from `calledit-db`. (4) Added base-055 (beach day) to golden dataset from v3 data. (5) Created full infrastructure diagram (`docs/architecture-v4-infrastructure.md`). (6) Investigated Browser tool failure — works via direct API but fails in deployed runtime. Added Browser IAM permissions (Decision 144) but issue persists. (7) Added Brave Search `@tool` to verification agent (Decision 145) — verdict accuracy jumped from 0.43 to 0.86 (corrected). (8) Ran full baselines across all three eval frameworks. Three new decisions (143-145).
+
+### Update 35 (March 30): Dynamic Golden Dataset Spec
+Discovered fundamental flaw in golden dataset: time-dependent ground truth goes stale (base-010 false failure). 47 of 55 predictions have null expected outcomes, zero `refuted` cases. Built complete spec for dynamic golden dataset generator: 10 requirements, design with 16 correctness properties, 9 implementation tasks. Generator produces 12 time-anchored predictions (3 per mode) with computed ground truth via deterministic calculations + Brave Search. Eval runners merge static + dynamic datasets via `--dynamic-dataset` flag. Added backlog item 17 (Browser debugging).
+
+## Current State (March 30, 2026)
+
+- v4 production COMPLETE — full MVP + eval dashboard + verification modes + Brave Search deployed
+- Eval dashboard live at `https://d2fngmclz6psil.cloudfront.net/eval`
+- Brave Search tool added to verification agent — primary web search tool (Decision 145)
+- Browser tool broken in deployed runtime — works via direct API, fails in container (backlog 17)
+- Eval isolation: creation agent accepts `table_name` override, eval bundles go to `calledit-v4-eval`
+- Production table clean: 5 real predictions only
+- Three eval frameworks with full baselines:
+  - Creation: IP=0.79 (0.86 adj), PQ=0.56 (0.58 adj), all T1=1.00 (55 cases)
+  - Verification: VA=0.71 (0.86 adj), EQ=0.56, all T1=1.00 (7 cases)
+  - Calibration: CA=0.86, 6/7 correct (7 cases)
+- Golden dataset: 55 base + 23 fuzzy predictions (schema 4.0, 12 smoke test cases)
+- Dynamic golden dataset spec COMPLETE — ready to execute (`.kiro/specs/dynamic-golden-dataset/`)
+- 145 architectural decisions documented across 35 project updates
+- Next: execute dynamic golden dataset spec, debug Browser tool (backlog 17), self-report plans (backlog 15)

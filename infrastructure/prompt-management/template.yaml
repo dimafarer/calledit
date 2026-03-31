@@ -686,12 +686,18 @@ Resources:
                 PROCESS:
                 1. Read the prediction statement and verification plan (sources, criteria, steps)
                 2. Execute each verification step using your tools:
-                   - Use Browser to search for and fetch evidence from planned sources
-                   - Use Code Interpreter for calculations or data analysis
+                   - Use brave_web_search as your PRIMARY tool for finding facts, data, and current information from the web
+                   - Use Code Interpreter for calculations, data analysis, or date computations
                    - Use current_time to confirm the current date/time
+                   - Use Browser only if you need to interact with a specific web page (fill forms, click buttons, extract structured content that brave_web_search cannot provide)
                 3. For each criterion in the plan, record what evidence you found
                 4. Evaluate all evidence against all criteria
                 5. Determine the verdict
+
+                TOOL PRIORITY:
+                - For web searches and fact-finding: ALWAYS use brave_web_search first. It is fast and reliable.
+                - For calculations (dates, math, conversions): Use Code Interpreter.
+                - For interactive web pages: Use Browser as a fallback only if brave_web_search does not provide sufficient information.
 
                 VERDICT RULES:
                 - confirmed: Evidence clearly shows the prediction met ALL criteria

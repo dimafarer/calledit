@@ -1243,3 +1243,22 @@ Scanner Lambda role: `dynamodb:Query/GetItem/UpdateItem` on `calledit-v4` + GSIs
 **Date:** March 30, 2026
 
 The creation agent's HTTP handler accepts an optional `table_name` field in the payload, defaulting to `DYNAMODB_TABLE_NAME` env var (`calledit-v4`). This matches the verification agent's pattern (Decision 130). The eval runner passes `calledit-v4-eval` to isolate eval bundles from production data. The WebSocket handler (browser-facing) does NOT accept this override — browser payloads should not control DDB routing. The eval runner also cleans up bundles from the eval table after scoring. This resolves the data leak where 64 eval artifacts accumulated in the production table and were picked up by the scanner.
+
+
+---
+
+## Decision 144: Browser IAM Permissions Added (But Browser Still Broken in Runtime)
+
+**Source:** [Project Update 34](34-project-update-ddb-cleanup-and-eval-isolation.md)
+**Date:** March 30, 2026
+
+Added full Browser IAM permissions (`StartBrowserSession`, `CreateBrowser`, `GetBrowser`, `GetBrowserSession`, `StopBrowserSession`, `ConnectBrowserAutomationStream`, `ConnectBrowserLiveViewStream`) to the AgentCore execution role via `setup_agentcore_permissions.sh`. The Browser API works when called directly (local credentials, MCP power) but fails inside the deployed AgentCore Runtime with vague "access restrictions" error. Root cause unknown — likely a Strands `AgentCoreBrowser` wrapper issue in the container environment. Browser remains in the TOOLS list as a fallback but is not relied upon for verification.
+
+---
+
+## Decision 145: Brave Search as Primary Web Search Tool for Verification
+
+**Source:** [Project Update 34](34-project-update-ddb-cleanup-and-eval-isolation.md)
+**Date:** March 30, 2026
+
+Added `brave_web_search` as a Strands `@tool` function (`calleditv4-verification/src/brave_search.py`) that calls the Brave Search API via HTTP GET. Free-tier key (2,000 queries/month). Placed first in the verification agent's TOOLS list, ahead of Browser and Code Interpreter. The verification executor prompt (deployed via CloudFormation) was updated with a TOOL PRIORITY section directing the agent to use `brave_web_search` for all fact-finding, Code Interpreter for calculations, and Browser only as a last resort for interactive pages. This single change improved verification verdict accuracy from 0.43 to 0.86 (corrected for the base-010 false failure in the golden dataset).

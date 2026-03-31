@@ -4,6 +4,42 @@ Items identified during development that aren't urgent but should be addressed.
 
 ---
 
+## 17. Debug AgentCore Browser Tool in Deployed Runtime
+
+**Source:** Project Update 34 — Browser investigation (March 30, 2026)
+**Priority:** High — the Browser tool works via direct API calls but fails silently inside the deployed AgentCore Runtime
+**Status:** OPEN
+
+**Problem:** The AgentCore Browser tool (`strands_tools.browser.AgentCoreBrowser`) fails in the deployed verification agent runtime with a vague "unavailable due to access restrictions" error. The Browser API works perfectly when called directly via the AgentCore MCP power (local credentials) — we successfully navigated to `fiscaldata.treasury.gov` and got full page content. But inside the deployed runtime container, the Strands wrapper fails silently. No detailed error appears in CloudWatch or OTEL logs.
+
+**What we've tried:**
+1. Added full Browser IAM permissions to the execution role (Decision 144) — no change
+2. Added explicit `region="us-west-2"` to `AgentCoreBrowser()` constructor — no change
+3. Relaunched the verification agent after both changes — no change
+
+**What we know:**
+- The execution role has both Browser and Code Interpreter permissions
+- Code Interpreter works fine in the same runtime
+- Browser works fine from local credentials (same account, same region)
+- The error is in the Strands `AgentCoreBrowser` wrapper, not the underlying API
+- No stack trace or detailed error in any log stream
+
+**Possible root causes to investigate:**
+1. The Strands `AgentCoreBrowser` wrapper may use a different credential path than Code Interpreter inside the runtime container
+2. The `playwright` dependency (required by AgentCoreBrowser) may not be available or functional in the AgentCore Runtime container environment
+3. The Browser tool may require a WebSocket connection that the runtime container's network config doesn't support
+4. There may be a service-level quota or enablement step for Browser in the runtime context
+
+**Impact:** Brave Search covers web search (the primary use case), but Browser is needed for interactive page fetching (e.g., counting Wikipedia references, filling forms, extracting structured content from dynamic pages). base-013 in the eval is blocked by this.
+
+**References:**
+- Decision 144: Browser IAM permissions added
+- Decision 145: Brave Search as workaround
+- `infrastructure/agentcore-permissions/setup_agentcore_permissions.sh` — Browser IAM policy
+- CloudWatch logs: `/aws/bedrock-agentcore/runtimes/calleditv4_verification_Agent-77DiT7GHdH-DEFAULT`
+
+---
+
 ## 0. Extend Verification Eval Framework to Support All verification_mode Types
 
 **Source:** V4-7a-3 design discussion (March 25, 2026)
