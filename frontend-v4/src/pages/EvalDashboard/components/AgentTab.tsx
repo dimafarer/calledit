@@ -213,6 +213,21 @@ function UnifiedScoreSections({ report }: { report: FullReport }) {
           <h4 style={{ margin: '0 0 0.5rem', color: '#f59e0b', fontSize: '0.85rem' }}>Calibration</h4>
           {calibration && Object.entries(calibration).map(([k, v]) => {
             if (typeof v === 'number') return renderScoreRow(k, v);
+            if (k === 'verdict_distribution' && typeof v === 'object' && v !== null) {
+              const dist = v as Record<string, number>;
+              const resolved = (dist.confirmed || 0) + (dist.refuted || 0);
+              const failed = (dist.inconclusive || 0);
+              const errors = (dist.creation_error || 0) + (dist.verification_error || 0);
+              return (
+                <div key={k} style={{ padding: '0.2rem 0' }}>
+                  <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>outcomes: </span>
+                  <span style={{ color: '#22c55e', fontSize: '0.8rem', marginLeft: '0.3rem' }}>resolved={resolved}</span>
+                  <span style={{ color: '#64748b', fontSize: '0.75rem', marginLeft: '0.2rem' }}>({dist.confirmed || 0}✓ {dist.refuted || 0}✗)</span>
+                  {failed > 0 && <span style={{ color: '#ef4444', fontSize: '0.8rem', marginLeft: '0.3rem' }}>inconclusive={failed}</span>}
+                  {errors > 0 && <span style={{ color: '#f59e0b', fontSize: '0.8rem', marginLeft: '0.3rem' }}>errors={errors}</span>}
+                </div>
+              );
+            }
             if (typeof v === 'object' && v !== null) {
               return (
                 <div key={k} style={{ padding: '0.2rem 0' }}>

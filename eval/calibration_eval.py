@@ -143,20 +143,21 @@ def compute_calibration_metrics(case_results: list[dict]) -> dict:
         total_scored += 1
 
         # MAE: |verifiability_score - binary_outcome|
-        binary = 1.0 if verdict == "confirmed" else 0.0
+        # Decision 148: resolved (confirmed OR refuted) = 1.0, inconclusive = 0.0
+        binary = 1.0 if verdict in ("confirmed", "refuted") else 0.0
         mae_sum += abs(v_score - binary)
         mae_count += 1
 
-        # High score confirmation rate
+        # High score resolution rate (confirmed OR refuted)
         if score_tier == "high":
             high_total += 1
-            if verdict == "confirmed":
+            if verdict in ("confirmed", "refuted"):
                 high_confirmed += 1
 
-        # Low score failure rate
+        # Low score inconclusive rate
         if score_tier == "low":
             low_total += 1
-            if verdict in ("refuted", "inconclusive"):
+            if verdict == "inconclusive":
                 low_failed += 1
 
     return {

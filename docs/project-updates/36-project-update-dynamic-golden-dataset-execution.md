@@ -128,3 +128,6 @@ Remove or replace predictions that consistently return inconclusive due to tool 
 ### Backlog Items Added
 - Item 18: Eval preflight check — test service dependencies before full run (~1 min)
 - Item 19: Verifiability score accuracy — creation agent should match verification reality (dyn-atd-003 scored 0.65 but trivially verifiable)
+
+### Calibration Metrics Fix (end of session)
+Extended Decision 148 to cover MAE and rate metrics — not just `is_calibration_correct()`. The MAE binary outcome, `high_score_confirmation_rate`, and `low_score_failure_rate` all treated refuted as failure (binary 0). Fixed: resolved (confirmed OR refuted) = 1.0, only inconclusive = 0.0. Example: dyn-imm-006 scored 0.85, correctly refuted → MAE was 0.85 (wrong), now 0.15 (correct).
