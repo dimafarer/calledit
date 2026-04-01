@@ -70,16 +70,17 @@ Both agents use Claude Sonnet 4 via Bedrock and Bedrock Prompt Management for ve
 
 This is the part we're most proud of. The eval system answers the question every AI project eventually faces: "is it actually getting better, or does it just feel like it?"
 
-**Three layers:**
-- **Strands Evals SDK** (inner loop) — local eval runners invoking deployed agents via HTTPS. 6 deterministic evaluators catch structural regressions instantly. 2 LLM judges (Opus 4.6) measure reasoning quality.
-- **AgentCore Evaluations** (bridge) — deployed agent evaluation with span-level trace analysis. Production-like traffic patterns.
-- **Bedrock Evaluations** (outer loop) — production quality monitoring at scale.
+**What's built and running today:** Local eval runners that invoke the deployed AgentCore agents via HTTPS, run 8 deterministic evaluators and 4 LLM judges against the results, compute calibration metrics, and produce reports stored in DynamoDB. A React dashboard at `/eval` visualizes everything.
 
 **Golden dataset:** 54 static predictions (hand-curated, timeless) + 16 dynamic predictions (time-anchored, regenerated before each run). Covers all 4 verification modes: immediate, at_date, before_date, recurring.
 
 **Methodology:** Isolated single-variable testing. Every eval iteration changes exactly one thing — a prompt, a dataset, or a tool configuration — and measures the impact. 37 project updates document every iteration with before/after comparisons.
 
 **The dashboard** at `/eval` visualizes everything: score trends, per-case breakdowns, calibration scatter plots ("Can Our Agents Verify What They Promise?"), phase timing, verdict distributions. It's data-driven — adding a new evaluator requires zero frontend code changes.
+
+**Future layers (not yet built):** AgentCore Evaluations integration for span-level trace analysis on production traffic (infrastructure ready, observability enabled on both runtimes).
+
+For the full technical deep dive — every evaluator's rubric, dataset design, calibration logic, historical baselines, and cost breakdown — see [docs/eval-framework-deep-dive.md](docs/eval-framework-deep-dive.md).
 
 ## Tech Stack
 

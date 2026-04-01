@@ -99,6 +99,8 @@ Three correctness properties:
 - `.kiro/specs/browser-tool-fix/tasks.md` — 12 top-level tasks, ~25 sub-tasks
 - `browser-poc/` — Minimal Browser PoC agent (entrypoint, pyproject.toml, .bedrock_agentcore.yaml)
 - `browser-poc/tests/test_env_filter.py` — 4 property tests + 8 unit tests for env var filtering
+- `docs/eval-framework-deep-dive.md` — Eval framework deep dive (new, standalone reference)
+- `docs/project-updates/next-agent-11-prompt-dual-model-reflection.md` — Next session prompt
 - `docs/project-updates/37-project-update-browser-tool-debugging.md` — This update
 
 ### Modified

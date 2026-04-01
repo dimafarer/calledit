@@ -116,6 +116,8 @@ The eval framework demonstrates production-grade AI quality assurance across thr
 
 The dashboard enables multi-dimensional comparison: filter and overlay runs by model, prompt versions, git commit, and feature flags. Designed to support future experiments (LTM integration, STM between clarification rounds, model swaps).
 
+For the full technical deep dive — evaluator rubrics, dataset design, calibration logic, historical baselines, and cost breakdown — see [docs/eval-framework-deep-dive.md](docs/eval-framework-deep-dive.md).
+
 Key artifacts (v4):
 - Golden dataset v4.0 (45 base + 23 fuzzy predictions, schema 4.0, 12 smoke test cases)
 - 6 Tier 1 deterministic evaluators (schema validity, field completeness, score range, date resolution, dimension count, tier consistency)
