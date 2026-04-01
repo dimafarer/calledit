@@ -222,4 +222,4 @@ Discovered fundamental flaw in golden dataset: time-dependent ground truth goes 
 - Creation PQ regression: 0.81 (was 0.88) — tool manifest change, needs investigation
 - base-013 excluded from qualifying set (Wikipedia reference count is time-varying)
 - 150 architectural decisions documented across 37 project updates
-- Next: Multi-Model Reflection Architecture (backlog item 20) — Haiku parsing, reflection prompts, quality-gated clarification
+- Next: Strands Evals SDK migration (`.kiro/specs/strands-evals-migration/`) — clean break from custom eval code, adopt SDK framework. Then dual-model reflection architecture (backlog item 20).
