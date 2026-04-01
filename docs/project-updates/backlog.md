@@ -50,7 +50,7 @@ Items identified during development that aren't urgent but should be addressed.
 
 **Source:** Project Update 34 — Browser investigation (March 30, 2026)
 **Priority:** High — the Browser tool works via direct API calls but fails silently inside the deployed AgentCore Runtime
-**Status:** OPEN
+**Status:** RESOLVED (March 31, 2026) — Root cause: IAM resource ARN mismatch. The system browser `aws.browser.v1` uses `aws` as the account portion of the ARN, not the account ID. Fix: added `arn:aws:bedrock-agentcore:REGION:aws:browser/*` to IAM policy. Browser now works in deployed runtime. See Decisions 149, 150. Spec: `.kiro/specs/browser-tool-fix/`.
 
 **Problem:** The AgentCore Browser tool (`strands_tools.browser.AgentCoreBrowser`) fails in the deployed verification agent runtime with a vague "unavailable due to access restrictions" error. The Browser API works perfectly when called directly via the AgentCore MCP power (local credentials) — we successfully navigated to `fiscaldata.treasury.gov` and got full page content. But inside the deployed runtime container, the Strands wrapper fails silently. No detailed error appears in CloudWatch or OTEL logs.
 
@@ -483,3 +483,60 @@ The full eval report (including per-agent judge averages, evaluator groups, and 
 - Decision 129: Plan Quality 0.57 Baseline — Verification Planner Fails on Personal/Subjective Predictions
 - Decision 126: Creation Agent Priority Metrics (plan quality is priority #2)
 - V3 VBPrompt "Track 2 — Self-report" pattern in `infrastructure/prompt-management/template.yaml`
+
+---
+
+## 20. Multi-Model Reflection Architecture — Fast Draft + Deep Reflection (Creation Agent)
+
+**Source:** Project Update 37 — Browser debugging session conversation (March 31, 2026)
+**Priority:** High — next major feature after Browser fix validation
+**Status:** OPEN
+
+**Problem:** The current creation agent runs the same 3-turn flow (parse → plan → review) identically on every round, including clarification rounds. Round 2+ is re-execution with more context, not reflection on the previous output. The reasoning is verbose and tortured rather than concise and reflective. Clarification questions are often generic, repetitive, and don't meaningfully improve the prediction bundle.
+
+**Scope:** This is a CREATION AGENT feature only. The verification agent's job is simpler — take the structured bundle and execute the plan. If the bundle is well-constructed, the verification agent should confirm or refute without needing reflection. (A separate, smaller improvement for the verification agent: targeted retry on inconclusive verdicts — see below.)
+
+**The vision — two models, two jobs, parallel start:**
+
+1. **Haiku (instant, complete)**: Runs the full 3-turn flow (parse → plan → review) with NO tools, NO external calls. Uses only: prediction text, HTTP request metadata (user timezone, user agent), server UTC time. Makes enough assumptions to produce a complete, verifiable bundle. Flags every assumption explicitly (e.g., "Assumed 'tonight' = April 1st Lakers vs Clippers game"). Streams to the user immediately (~2-3 seconds). The user sees a complete bundle with flagged assumptions.
+
+2. **Opus (reflective, precise)**: Receives Haiku's complete output simultaneously. Does NOT redo the work — reviews it. For each flagged assumption, evaluates: "Would a wrong assumption here change the verification outcome?" If the assumption is safe (only one reasonable interpretation), Opus leaves it alone. If the assumption is risky (ambiguous date, multiple interpretations, could change the verification plan), Opus asks the user a specific, targeted question. Each user answer triggers Opus to patch the affected bundle fields — not re-run the whole thing. Multiple rounds until Opus is satisfied that intent_preservation, plan_quality, and schema_validity are high, or the user says "good enough."
+
+**Key design principle:** Haiku's job is speed and completeness (fill every field, make every assumption). Opus's job is precision and intent preservation (challenge the assumptions that matter, leave the rest alone). They are NOT doing the same task at different quality levels — they are doing fundamentally different tasks.
+
+**Why this solves the clarification quality problem:** Opus only asks questions when a Haiku assumption could meaningfully change the bundle. No generic "what timeframe?" questions because Haiku already assumed a timeframe and Opus evaluates whether that assumption is reasonable. Questions are specific: "You said 'tonight' — I assumed the April 1st Lakers vs Clippers game. Is that right?"
+
+3. **Clarification (quality-gated by Opus)**: Questions are only asked if: (a) they reference a specific Haiku assumption, (b) a wrong assumption would significantly change the verification plan or verifiability score, and (c) the question hasn't been answered or inferable from prior context. Opus can have multiple rounds with the user, patching the bundle after each answer.
+
+**Key design decisions to make:**
+- Per-turn model assignment: `{"parse": "haiku", "plan": "sonnet", "review": "sonnet"}` for pass 1
+- Reflection prompts: fundamentally different from pass 1 prompts (critique, not re-execute)
+- Question quality gate: could be a simple LLM judge call on each question, or a deterministic filter (no duplicates, must reference a specific ambiguity)
+- User control: "looks good" vs "think harder" button in the frontend
+- Model for reflection pass: Sonnet (cheaper, faster) vs Opus (deeper reasoning) — test with eval framework
+
+**How to validate:**
+- The eval framework already captures `model_id` in run metadata
+- Add `model_config` field: `{"parse": "haiku", "plan": "sonnet", "review": "sonnet"}`
+- Run both configs against the same qualifying cases
+- Compare IP (intent preservation) and PQ (plan quality) scores
+- Measure clarification question quality with a new evaluator
+
+**What to do:**
+1. Build Haiku fast-pass: full 3-turn flow with no tools, assumption flagging, streaming output
+2. Build Opus reflection pass: receives Haiku output, evaluates assumptions, asks targeted questions
+3. Build assumption-patching: Opus updates specific bundle fields per user answer (not full re-run)
+4. Build parallel execution: Haiku streams to user while Opus reviews in background
+5. Build quality gate: Opus evaluates IP/PQ/schema_validity internally before accepting the bundle
+6. Frontend UX: show Haiku bundle immediately, then Opus questions as they arrive, user can answer or accept
+7. Run eval comparison: Haiku-only vs Haiku+Opus on the same qualifying cases
+
+**References:**
+- Decision 94: Single agent, multi-turn prompts
+- Decision 99: 3 turns not 4
+- Decision 27: Opus 4.6 as judge model (could also be reflection model)
+- Backlog item 15: Verification planner self-report plans (related — prompt quality)
+- Backlog item 19: Verifiability score accuracy (related — reflection could improve scoring)
+
+**Related but separate — Verification Agent Inconclusive Retry:**
+The verification agent doesn't need full reflection, but a targeted retry on inconclusive verdicts could help. If the agent returns inconclusive, a second pass with a more explicit prompt ("You found Bitcoin at $67,828. The criterion is 'above $10,000'. What is the verdict?") could resolve cases where the agent had the evidence but fumbled the reasoning. This only triggers on inconclusive, so it doesn't slow down the happy path. Consider as a separate small spec.

@@ -60,9 +60,9 @@ class TestConstants:
         """DYNAMODB_TABLE_NAME defaults to calledit-v4."""
         assert DYNAMODB_TABLE_NAME == "calledit-v4"
 
-    def test_tools_list_has_three_elements(self):
-        """TOOLS list must have 3 elements: browser, code_interpreter, current_time."""
-        assert len(TOOLS) == 3
+    def test_tools_list_has_expected_elements(self):
+        """TOOLS list must have at least 2 elements (code_interpreter + current_time) and at most 4."""
+        assert 2 <= len(TOOLS) <= 4
 
     def test_max_clarification_rounds_defaults_to_five(self):
         """MAX_CLARIFICATION_ROUNDS defaults to 5 (Req 3.1, 3.4)."""

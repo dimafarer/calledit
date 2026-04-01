@@ -114,9 +114,15 @@ aws iam put-role-policy \
   }"
 echo "   ✓ calledit-bedrock-prompts policy attached"
 
-# 4. AgentCore Browser tool (Decision 144)
+# 4. AgentCore Browser tool (Decision 144, fixed in Decision 149)
 # The auto-created role includes Code Interpreter but NOT Browser.
 # Without this, all Browser tool calls fail with AccessDeniedException.
+#
+# CRITICAL: The system browser (aws.browser.v1) is an AWS-owned resource
+# with ARN arn:aws:bedrock-agentcore:REGION:aws:browser/aws.browser.v1
+# (note "aws" instead of account ID). The original policy only covered
+# account-scoped resources (ACCOUNT_ID:browser/*), which is why Browser
+# failed in the deployed runtime despite having "full" permissions.
 echo "4. Adding AgentCore Browser permissions..."
 aws iam put-role-policy \
   --role-name "${ROLE_NAME}" \
@@ -124,7 +130,7 @@ aws iam put-role-policy \
   --policy-document "{
     \"Version\": \"2012-10-17\",
     \"Statement\": [{
-      \"Sid\": \"BedrockAgentCoreBrowser\",
+      \"Sid\": \"BedrockAgentCoreBrowserAccountScoped\",
       \"Effect\": \"Allow\",
       \"Action\": [
         \"bedrock-agentcore:CreateBrowser\",
@@ -140,9 +146,67 @@ aws iam put-role-policy \
         \"bedrock-agentcore:ConnectBrowserLiveViewStream\"
       ],
       \"Resource\": \"arn:aws:bedrock-agentcore:${REGION}:${ACCOUNT_ID}:browser/*\"
+    },
+    {
+      \"Sid\": \"BedrockAgentCoreBrowserSystemOwned\",
+      \"Effect\": \"Allow\",
+      \"Action\": [
+        \"bedrock-agentcore:StartBrowserSession\",
+        \"bedrock-agentcore:GetBrowserSession\",
+        \"bedrock-agentcore:StopBrowserSession\",
+        \"bedrock-agentcore:ListBrowserSessions\",
+        \"bedrock-agentcore:UpdateBrowserStream\",
+        \"bedrock-agentcore:ConnectBrowserAutomationStream\",
+        \"bedrock-agentcore:ConnectBrowserLiveViewStream\"
+      ],
+      \"Resource\": \"arn:aws:bedrock-agentcore:${REGION}:aws:browser/*\"
     }]
   }"
-echo "   ✓ calledit-agentcore-browser policy attached"
+echo "   ✓ calledit-agentcore-browser policy attached (account + system-owned)"
+
+# 4b. AgentCore Browser tool — CREATION agent role
+# The creation agent needs Browser tool access so the LLM sees correct tool
+# schemas during planning/review turns (Requirement 9, Decision 149).
+echo "4b. Adding AgentCore Browser permissions (creation agent)..."
+aws iam put-role-policy \
+  --role-name "${CREATION_ROLE_NAME}" \
+  --policy-name "calledit-agentcore-browser" \
+  --policy-document "{
+    \"Version\": \"2012-10-17\",
+    \"Statement\": [{
+      \"Sid\": \"BedrockAgentCoreBrowserAccountScoped\",
+      \"Effect\": \"Allow\",
+      \"Action\": [
+        \"bedrock-agentcore:CreateBrowser\",
+        \"bedrock-agentcore:GetBrowser\",
+        \"bedrock-agentcore:DeleteBrowser\",
+        \"bedrock-agentcore:ListBrowsers\",
+        \"bedrock-agentcore:StartBrowserSession\",
+        \"bedrock-agentcore:GetBrowserSession\",
+        \"bedrock-agentcore:StopBrowserSession\",
+        \"bedrock-agentcore:ListBrowserSessions\",
+        \"bedrock-agentcore:UpdateBrowserStream\",
+        \"bedrock-agentcore:ConnectBrowserAutomationStream\",
+        \"bedrock-agentcore:ConnectBrowserLiveViewStream\"
+      ],
+      \"Resource\": \"arn:aws:bedrock-agentcore:${REGION}:${ACCOUNT_ID}:browser/*\"
+    },
+    {
+      \"Sid\": \"BedrockAgentCoreBrowserSystemOwned\",
+      \"Effect\": \"Allow\",
+      \"Action\": [
+        \"bedrock-agentcore:StartBrowserSession\",
+        \"bedrock-agentcore:GetBrowserSession\",
+        \"bedrock-agentcore:StopBrowserSession\",
+        \"bedrock-agentcore:ListBrowserSessions\",
+        \"bedrock-agentcore:UpdateBrowserStream\",
+        \"bedrock-agentcore:ConnectBrowserAutomationStream\",
+        \"bedrock-agentcore:ConnectBrowserLiveViewStream\"
+      ],
+      \"Resource\": \"arn:aws:bedrock-agentcore:${REGION}:aws:browser/*\"
+    }]
+  }"
+echo "   ✓ calledit-agentcore-browser policy attached (creation agent)"
 
 echo ""
 echo "=== All permissions applied ==="

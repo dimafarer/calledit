@@ -1291,3 +1291,35 @@ Replaced the 3 separate eval runners (`creation_eval.py`, `verification_eval.py`
 **Date:** March 31, 2026
 
 Fixed `is_calibration_correct()` in `calibration_eval.py`. The original logic assumed high verifiability score → expected confirmed. This is wrong — high score means "easy to verify," which includes predictions designed to be refuted. New logic: high + confirmed OR refuted = correct (agent resolved it). High + inconclusive = wrong (agent couldn't resolve an easy one). Low + any outcome = correct (hard predictions, any result is acceptable). This fixed 3 false calibration failures in the first unified baseline (dyn-imm-006, dyn-atd-002, dyn-bfd-004), pushing calibration accuracy from 0.77 to ~0.91.
+
+---
+
+## Decision 149: Browser IAM Fix — System Browser Uses AWS-Owned Resource ARN
+
+**Source:** [Project Update 37](37-project-update-browser-tool-debugging.md)
+**Date:** March 31, 2026
+
+**Root cause identified:** The AgentCore Browser tool failed in the deployed runtime because the IAM policy (Decision 144) scoped the resource ARN to the account ID (`arn:aws:bedrock-agentcore:us-west-2:894249332178:browser/*`), but the system browser `aws.browser.v1` is an AWS-owned resource with ARN `arn:aws:bedrock-agentcore:us-west-2:aws:browser/aws.browser.v1` — note `aws` instead of the account ID.
+
+**Diagnosis method:** Built a minimal Browser PoC agent (`browser-poc/`) that tests each layer of the Browser tool lifecycle independently with full logging. The PoC passed all steps locally (`agentcore dev` with shared-credentials-file) but failed at Layer 1 (`StartBrowserSession` API call) in the deployed runtime (`agentcore launch` with iam-role). The error message explicitly showed the resource ARN mismatch: the role was denied `StartBrowserSession` on `arn:aws:bedrock-agentcore:us-west-2:aws:browser/aws.browser.v1`.
+
+**Fix:** Added a second IAM statement to `infrastructure/agentcore-permissions/setup_agentcore_permissions.sh` covering `arn:aws:bedrock-agentcore:REGION:aws:browser/*` (AWS-owned system browsers) alongside the existing account-scoped statement. After applying the fix and relaunching, the PoC successfully navigated to Wikipedia and returned the page title from the deployed runtime.
+
+**Why this was missed:** The original IAM policy followed the standard pattern of scoping resources to the account ID. The AgentCore Browser quickstart docs show `arn:aws:bedrock-agentcore:<region>:<account_id>:browser/*` which works for custom browsers but not for the system browser. Code Interpreter doesn't have this issue because its system resource (`aws.codeinterpreter.v1`) permissions are included in the auto-created execution role.
+
+**Our Layer 2 hypothesis was wrong.** We expected the failure to be in the WebSocket/Playwright layer (Layer 2), but the PoC's layer-by-layer approach immediately showed it was Layer 1 (IAM). Playwright, WebSocket connectivity, and CDP all work fine in the AgentCore Runtime container.
+
+---
+
+## Decision 150: VERIFICATION_TOOLS Env Var — Configurable Tool Selection for Both Agents
+
+**Source:** [Project Update 37](37-project-update-browser-tool-debugging.md)
+**Date:** March 31, 2026
+
+Both the creation agent and verification agent now read a `VERIFICATION_TOOLS` environment variable at startup to determine which web tools are active. Values: `"browser"` (Browser only), `"brave"` (Brave Search only), `"both"` (both tools). Default: `"brave"` (safe fallback, maintains pre-fix behavior).
+
+The creation agent uses this to build its tool manifest (`build_tool_manifest()`) and TOOLS list (`build_tools()`) so the planner and reviewer know what tools the verification agent has. The verification agent uses it to build its execution tool list. Both agents always include Code Interpreter and current_time regardless of the web tool setting.
+
+The env var is passed at `agentcore launch` time: `agentcore launch --env VERIFICATION_TOOLS=browser`. Both agents must be relaunched when the value changes. Unrecognized values log a warning and fall back to `"brave"`.
+
+This replaces the hardcoded TOOLS lists in both agents and the hardcoded `_get_tool_manifest()` and `SIMPLE_PROMPT_SYSTEM` in the creation agent.

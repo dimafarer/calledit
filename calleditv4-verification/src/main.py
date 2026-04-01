@@ -44,10 +44,51 @@ app = BedrockAgentCoreApp()
 MODEL_ID = "us.anthropic.claude-sonnet-4-20250514-v1:0"
 DYNAMODB_TABLE_NAME = os.environ.get("DYNAMODB_TABLE_NAME", "calledit-v4")
 
-browser_tool = AgentCoreBrowser(region="us-west-2")
-code_interpreter_tool = AgentCoreCodeInterpreter()
-TOOLS = [brave_web_search, browser_tool.browser, code_interpreter_tool.code_interpreter, current_time]
-logger.info(f"Tools initialized: brave_web_search, browser, code_interpreter, current_time")
+
+def build_tools(verification_tools_env: str | None) -> list:
+    """Build the tool list based on VERIFICATION_TOOLS env var.
+
+    Args:
+        verification_tools_env: Value of VERIFICATION_TOOLS env var.
+            "browser" → Browser + Code Interpreter + current_time
+            "brave"   → Brave Search + Code Interpreter + current_time
+            "both"    → all four
+            None/empty/unrecognized → defaults to "brave"
+
+    Returns:
+        List of Strands tool callables.
+    """
+    code_interpreter_tool = AgentCoreCodeInterpreter()
+    always_tools = [code_interpreter_tool.code_interpreter, current_time]
+
+    value = (verification_tools_env or "").strip().lower()
+
+    if value == "browser":
+        browser_tool = AgentCoreBrowser(region="us-west-2")
+        tools = [browser_tool.browser] + always_tools
+        tool_names = "browser, code_interpreter, current_time"
+    elif value == "both":
+        browser_tool = AgentCoreBrowser(region="us-west-2")
+        tools = [brave_web_search, browser_tool.browser] + always_tools
+        tool_names = "brave_web_search, browser, code_interpreter, current_time"
+    else:
+        # Default: brave (includes None, empty, unrecognized)
+        if value and value not in ("brave", ""):
+            logger.warning(
+                f"Unrecognized VERIFICATION_TOOLS value: '{verification_tools_env}', "
+                f"falling back to 'brave'"
+            )
+        tools = [brave_web_search] + always_tools
+        tool_names = "brave_web_search, code_interpreter, current_time"
+
+    logger.info(
+        f"Verification tools configured: {tool_names} "
+        f"(VERIFICATION_TOOLS={verification_tools_env!r})"
+    )
+    return tools
+
+
+TOOLS = build_tools(os.environ.get("VERIFICATION_TOOLS"))
 
 
 def _make_inconclusive(reasoning: str) -> VerificationResult:

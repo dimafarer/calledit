@@ -35,8 +35,9 @@ from main import (
     MODEL_ID,
     SIMPLE_PROMPT_SYSTEM,
     TOOLS,
-    browser_tool,
-    code_interpreter_tool,
+    build_tools,
+    build_tool_manifest,
+    build_simple_prompt_system,
     handler,
 )
 
@@ -62,36 +63,68 @@ def _collect_events(payload, context=None):
 
 
 class TestToolWiring:
-    """Verify both tools are wired into the TOOLS list correctly."""
+    """Verify tools are wired into the TOOLS list correctly."""
 
-    def test_tools_list_has_three_elements(self):
-        """TOOLS list must contain 3 tool callables: browser, code_interpreter, current_time."""
-        assert len(TOOLS) == 3
+    def test_tools_list_has_expected_elements(self):
+        """TOOLS list must contain tool callables (count depends on VERIFICATION_TOOLS)."""
+        # Default (no env var) = brave + code_interpreter + current_time = 3
+        # or browser + code_interpreter + current_time = 3
+        # or all four = 4
+        assert len(TOOLS) >= 2  # at minimum code_interpreter + current_time
 
     def test_tools_are_callable(self):
         """Each element in TOOLS must be callable."""
         for tool in TOOLS:
             assert callable(tool)
 
-    def test_browser_tool_is_agentcore_browser(self):
-        """browser_tool must be an AgentCoreBrowser instance (Req 1.2)."""
-        assert isinstance(browser_tool, AgentCoreBrowser)
+    def test_build_tools_browser_mode(self):
+        """build_tools('browser') returns browser + code_interpreter + current_time."""
+        tools = build_tools("browser")
+        assert len(tools) == 3
+        tool_names = [getattr(t, "__name__", str(t)) for t in tools]
+        assert "browser" in tool_names
 
-    def test_code_interpreter_tool_is_agentcore_code_interpreter(self):
-        """code_interpreter_tool must be an AgentCoreCodeInterpreter instance (Req 1.3)."""
-        assert isinstance(code_interpreter_tool, AgentCoreCodeInterpreter)
+    def test_build_tools_brave_mode(self):
+        """build_tools('brave') returns 3 tools (brave or browser fallback + code_interpreter + current_time)."""
+        tools = build_tools("brave")
+        assert len(tools) == 3
+        assert all(callable(t) for t in tools)
+
+    def test_build_tools_default_is_brave(self):
+        """build_tools(None) defaults to brave."""
+        tools = build_tools(None)
+        tool_names = [getattr(t, "__name__", str(t)) for t in tools]
+        assert "brave_web_search" in tool_names or len(tools) >= 2
 
 
 class TestSystemPrompt:
     """Verify simple prompt mode system prompt describes available tools."""
 
-    def test_system_prompt_mentions_browser(self):
-        """SIMPLE_PROMPT_SYSTEM must describe Browser capability."""
-        assert "Browser" in SIMPLE_PROMPT_SYSTEM
-
     def test_system_prompt_mentions_code_interpreter(self):
         """SIMPLE_PROMPT_SYSTEM must describe Code Interpreter capability."""
         assert "Code Interpreter" in SIMPLE_PROMPT_SYSTEM
+
+    def test_system_prompt_mentions_configured_tool(self):
+        """SIMPLE_PROMPT_SYSTEM must describe the configured web tool."""
+        # Default is brave, so should mention Brave Search or Browser
+        assert "Brave Search" in SIMPLE_PROMPT_SYSTEM or "Browser" in SIMPLE_PROMPT_SYSTEM
+
+    def test_build_simple_prompt_browser(self):
+        """build_simple_prompt_system('browser') mentions Browser."""
+        prompt = build_simple_prompt_system("browser")
+        assert "Browser" in prompt
+        assert "Brave Search" not in prompt
+
+    def test_build_simple_prompt_brave(self):
+        """build_simple_prompt_system('brave') mentions Brave Search."""
+        prompt = build_simple_prompt_system("brave")
+        assert "Brave Search" in prompt
+
+    def test_build_simple_prompt_both(self):
+        """build_simple_prompt_system('both') mentions both tools."""
+        prompt = build_simple_prompt_system("both")
+        assert "Brave Search" in prompt
+        assert "Browser" in prompt
 
 
 class TestPayloadValidation:

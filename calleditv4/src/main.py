@@ -87,25 +87,124 @@ MAX_CLARIFICATION_ROUNDS = int(
     os.environ.get("MAX_CLARIFICATION_ROUNDS", "5")
 )
 
-# V4-1/V4-2 simple prompt mode system prompt (backward compatibility)
-SIMPLE_PROMPT_SYSTEM = (
-    "You are the CalledIt v4 agent. "
-    "You have access to two tools:\n"
-    "1. Browser — navigate URLs, search the web, extract content from web pages. "
-    "Use this when you need to look up current information, verify facts, or read web content.\n"
-    "2. Code Interpreter — execute Python code in a secure sandbox. "
-    "Use this for calculations, date math, data analysis, or any task that benefits from running code.\n"
-    "Use the appropriate tool when the user's request would benefit from it. "
-    "Respond helpfully to any message."
-)
 
-# Tool instances — lightweight config objects, no connections until agent uses them
-browser_tool = AgentCoreBrowser()
-code_interpreter_tool = AgentCoreCodeInterpreter()
+def build_tools(verification_tools_env: str | None) -> list:
+    """Build the tool list based on VERIFICATION_TOOLS env var.
 
-# 3 tools: Browser, Code Interpreter, current_time
-# current_time gives the agent awareness of "now" + server timezone (Decision 100)
-TOOLS = [browser_tool.browser, code_interpreter_tool.code_interpreter, current_time]
+    The creation agent needs the same tools as the verification agent
+    so the LLM sees correct tool schemas during planning and review.
+    The creation agent doesn't execute web searches — but the planner
+    and reviewer need to know what tools are available for verification.
+
+    Args:
+        verification_tools_env: "browser" | "brave" | "both" | None
+    Returns:
+        List of Strands tool callables.
+    """
+    code_interpreter_tool = AgentCoreCodeInterpreter()
+    always_tools = [code_interpreter_tool.code_interpreter, current_time]
+
+    value = (verification_tools_env or "").strip().lower()
+
+    if value == "browser":
+        browser_tool = AgentCoreBrowser()
+        tools = [browser_tool.browser] + always_tools
+        tool_names = "browser, code_interpreter, current_time"
+    elif value == "both":
+        from brave_search import brave_web_search
+        browser_tool = AgentCoreBrowser()
+        tools = [brave_web_search, browser_tool.browser] + always_tools
+        tool_names = "brave_web_search, browser, code_interpreter, current_time"
+    else:
+        if value and value not in ("brave", ""):
+            logger.warning(
+                f"Unrecognized VERIFICATION_TOOLS value: '{verification_tools_env}', "
+                f"falling back to 'brave'"
+            )
+        try:
+            from brave_search import brave_web_search
+            tools = [brave_web_search] + always_tools
+            tool_names = "brave_web_search, code_interpreter, current_time"
+        except ImportError:
+            # Creation agent doesn't have brave_search — use browser as fallback
+            browser_tool = AgentCoreBrowser()
+            tools = [browser_tool.browser] + always_tools
+            tool_names = "browser, code_interpreter, current_time (brave_search not available, using browser)"
+
+    logger.info(
+        f"Creation agent tools configured: {tool_names} "
+        f"(VERIFICATION_TOOLS={verification_tools_env!r})"
+    )
+    return tools
+
+
+def build_tool_manifest(verification_tools_env: str | None) -> str:
+    """Build a human-readable tool manifest matching the configured tools.
+
+    Injected into the verification_planner prompt via {{tool_manifest}}.
+    Must match the tools the verification agent actually has.
+    """
+    value = (verification_tools_env or "").strip().lower()
+    lines = []
+
+    if value == "browser":
+        lines.append("- Browser: navigate URLs, search the web, extract content from pages")
+    elif value == "both":
+        lines.append("- Brave Search: search the web for current facts, news, and data")
+        lines.append("- Browser: navigate URLs, interact with web pages, extract content")
+    else:
+        # Default: brave
+        lines.append("- Brave Search: search the web for current facts, news, and data")
+
+    lines.append(
+        "- Code Interpreter: execute Python code for calculations, "
+        "date math, data analysis"
+    )
+    lines.append("- current_time: get the current date and time with timezone info")
+    return "\n".join(lines)
+
+
+def build_simple_prompt_system(verification_tools_env: str | None) -> str:
+    """Build the simple-mode system prompt with correct tool descriptions.
+
+    Used for V4-1/V4-2 backward compatibility mode.
+    """
+    value = (verification_tools_env or "").strip().lower()
+
+    if value == "browser":
+        tool_desc = (
+            "1. Browser — navigate URLs, search the web, extract content from web pages. "
+            "Use this when you need to look up current information, verify facts, or read web content.\n"
+            "2. Code Interpreter — execute Python code in a secure sandbox. "
+            "Use this for calculations, date math, data analysis, or any task that benefits from running code."
+        )
+    elif value == "both":
+        tool_desc = (
+            "1. Brave Search — search the web for current facts, news, and data.\n"
+            "2. Browser — navigate URLs, interact with web pages, extract structured content.\n"
+            "3. Code Interpreter — execute Python code in a secure sandbox. "
+            "Use this for calculations, date math, data analysis, or any task that benefits from running code."
+        )
+    else:
+        # Default: brave
+        tool_desc = (
+            "1. Brave Search — search the web for current facts, news, and data. "
+            "Use this when you need to look up current information or verify facts.\n"
+            "2. Code Interpreter — execute Python code in a secure sandbox. "
+            "Use this for calculations, date math, data analysis, or any task that benefits from running code."
+        )
+
+    return (
+        "You are the CalledIt v4 agent. "
+        f"You have access to these tools:\n{tool_desc}\n"
+        "Use the appropriate tool when the user's request would benefit from it. "
+        "Respond helpfully to any message."
+    )
+
+
+_VERIFICATION_TOOLS_ENV = os.environ.get("VERIFICATION_TOOLS")
+TOOLS = build_tools(_VERIFICATION_TOOLS_ENV)
+SIMPLE_PROMPT_SYSTEM = build_simple_prompt_system(_VERIFICATION_TOOLS_ENV)
 
 
 def _make_event(event_type: str, prediction_id: str, data: dict) -> str:
@@ -134,13 +233,10 @@ def _get_tool_manifest() -> str:
     This is substituted into the verification planner prompt via {{tool_manifest}}.
     The agent also sees the tool schemas from Strands automatically, but this
     human-readable description helps the agent reference tools by name in the plan.
+
+    Dynamic based on VERIFICATION_TOOLS env var (Decision 149).
     """
-    return (
-        "- Browser: navigate URLs, search the web, extract content from pages\n"
-        "- Code Interpreter: execute Python code for calculations, "
-        "date math, data analysis\n"
-        "- current_time: get the current date and time with timezone info"
-    )
+    return build_tool_manifest(_VERIFICATION_TOOLS_ENV)
 
 
 async def _run_streaming_turn(agent, prompt, model_cls, turn_number,

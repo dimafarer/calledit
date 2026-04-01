@@ -209,6 +209,15 @@ Discovered fundamental flaw in golden dataset: time-dependent ground truth goes 
 - Calibration logic fixed: high score = easy to verify (confirm OR refute), not just confirm
 - Eval table `calledit-v4-eval` imported into CloudFormation (proper IaC)
 - Both AgentCore execution roles have eval table DDB permissions
-- Browser tool still broken in deployed runtime (backlog 17)
-- 148 architectural decisions documented across 36 project updates
-- Next: preflight check, dashboard integration, Browser debugging, dataset curation
+- Browser tool debugging spec complete (`.kiro/specs/browser-tool-fix/`) — 9 requirements, 12 tasks
+  - Root cause identified via Kiro powers research: Browser uses a two-layer architecture (boto3 API + WebSocket/Playwright CDP) that Code Interpreter doesn't have
+  - PoC agent planned to test each layer independently in deployed runtime
+  - Tool configurability planned: `VERIFICATION_TOOLS` env var drives both agents' tool lists
+  - Creation agent tool synchronization: planner/reviewer must know what tools verification agent has
+- Browser tool FIXED in deployed runtime (Decision 149 — IAM resource ARN mismatch with AWS-owned system browser)
+- Tool configurability: `VERIFICATION_TOOLS` env var drives both agents (Decision 150)
+- Browser baseline (22 cases): VA=0.94 (+0.05), EQ=0.73 (+0.14), CA=0.95 (+0.04)
+- Creation PQ regression: 0.81 (was 0.88) — tool manifest change, needs investigation
+- base-013 excluded from qualifying set (Wikipedia reference count is time-varying)
+- 150 architectural decisions documented across 37 project updates
+- Next: Multi-Model Reflection Architecture (backlog item 20) — Haiku parsing, reflection prompts, quality-gated clarification
