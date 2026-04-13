@@ -137,6 +137,9 @@ Key observations:
 - 1 inconclusive (dyn-rec-002) — agent couldn't resolve
 - dyn-rec-003 (Wikipedia, previously broken) now works: confirmed with 0.95 confidence
 
+### Scanner Lambda Fix (Decision 151)
+The verification scanner Lambda had been running every 15 minutes for 2+ weeks but silently failing on every invocation. The `:live` alias (SnapStart) pointed to published version 4 which had `VERIFICATION_AGENT_ID=""` — the env var was updated on `$LATEST` via CLI but never republished. SAM redeploy with `--parameter-overrides VerificationAgentId=calleditv4_verification_Agent-77DiT7GHdH` fixed it. User's "Spring will pop by next week" prediction (overdue since 4/6) should now get verified on the next 15-minute cycle.
+
 ## What the Next Agent Should Do
 
 ### Execute the remaining spec tasks

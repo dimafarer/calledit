@@ -1323,3 +1323,18 @@ The creation agent uses this to build its tool manifest (`build_tool_manifest()`
 The env var is passed at `agentcore launch` time: `agentcore launch --env VERIFICATION_TOOLS=browser`. Both agents must be relaunched when the value changes. Unrecognized values log a warning and fall back to `"brave"`.
 
 This replaces the hardcoded TOOLS lists in both agents and the hardcoded `_get_tool_manifest()` and `SIMPLE_PROMPT_SYSTEM` in the creation agent.
+
+---
+
+## Decision 151: Scanner Lambda SnapStart Env Var Fix — Published Version Must Match $LATEST
+
+**Source:** [Project Update 37](37-project-update-browser-tool-debugging.md)
+**Date:** April 13, 2026
+
+**Root cause:** The verification scanner Lambda had been running every 15 minutes for 2+ weeks (96 invocations/day, zero Lambda errors) but silently returning `{"statusCode": 500, "body": {"error": "Configuration error: set VERIFICATION_AGENT_ENDPOINT or VERIFICATION_AGENT_ID"}}` on every invocation. No predictions were being verified despite the EventBridge rule being active.
+
+**Diagnosis:** The `:live` alias pointed to published version 4, which had `VERIFICATION_AGENT_ID=""` and `DYNAMODB_TABLE_NAME="calledit-db"` (the old v3 table). The `$LATEST` version had the correct values (`calleditv4_verification_Agent-77DiT7GHdH` and `calledit-v4`), but SnapStart uses the published version's env vars, not `$LATEST`. The env vars were updated via CLI on `$LATEST` at some point but never republished.
+
+**Fix:** Redeployed the scanner stack via SAM with `--parameter-overrides VerificationAgentId=calleditv4_verification_Agent-77DiT7GHdH DynamoDBTableName=calledit-v4`. SAM published a new version and updated the `:live` alias with the correct env vars.
+
+**Lesson:** When using SnapStart with `AutoPublishAlias`, env var changes via CLI only affect `$LATEST`. The published version (and its SnapStart snapshot) retains the old values. Always deploy env var changes through SAM/CloudFormation, never via `aws lambda update-function-configuration`.

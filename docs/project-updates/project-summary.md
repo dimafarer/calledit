@@ -221,5 +221,6 @@ Discovered fundamental flaw in golden dataset: time-dependent ground truth goes 
 - Browser baseline (22 cases): VA=0.94 (+0.05), EQ=0.73 (+0.14), CA=0.95 (+0.04)
 - Creation PQ regression: 0.81 (was 0.88) — tool manifest change, needs investigation
 - base-013 excluded from qualifying set (Wikipedia reference count is time-varying)
-- 150 architectural decisions documented across 37 project updates
+- 151 architectural decisions documented across 37 project updates
+- Scanner Lambda FIXED — SnapStart published version had stale env vars, predictions weren't being verified for 2+ weeks (Decision 151)
 - Next: Strands Evals SDK migration (`.kiro/specs/strands-evals-migration/`) — clean break from custom eval code, adopt SDK framework. Then dual-model reflection architecture (backlog item 20).
