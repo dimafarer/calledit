@@ -540,3 +540,32 @@ The full eval report (including per-agent judge averages, evaluator groups, and 
 
 **Related but separate — Verification Agent Inconclusive Retry:**
 The verification agent doesn't need full reflection, but a targeted retry on inconclusive verdicts could help. If the agent returns inconclusive, a second pass with a more explicit prompt ("You found Bitcoin at $67,828. The criterion is 'above $10,000'. What is the verdict?") could resolve cases where the agent had the evidence but fumbled the reasoning. This only triggers on inconclusive, so it doesn't slow down the happy path. Consider as a separate small spec.
+
+---
+
+## 21. Golden Dataset Expansion — Sports, Weather, Finance Qualifying Cases
+
+**Source:** Project Update 37 — Yankees/Knicks verification analysis (April 13, 2026)
+**Priority:** High — current dataset doesn't cover the domains where Brave Search adds the most value
+**Status:** OPEN
+
+**Problem:** Of 55 static predictions, only 7 have expected outcomes (qualifying for verdict accuracy). Those 7 are heavily skewed toward calendar math and astronomical calculations — domains where Code Interpreter alone suffices. The dataset has 3 sports, 5 weather, and 11 finance predictions, but ALL have null expected outcomes. These are exactly the domains where Brave Search shines and where real users make predictions (Yankees, Knicks, rain, stock prices).
+
+The dynamic dataset helps (7 Brave-dependent predictions) but they're mostly simple fact checks ("Is the current president Trump?", "Is Bitcoin above $10,000?"), not the fuzzy sports/weather/finance predictions real users make.
+
+**What to do:**
+- Add 10-15 qualifying predictions in sports, weather, and finance domains with known historical outcomes
+- Examples: "The Yankees played a home game on [specific past date]" (confirmed/refuted), "It rained in NYC on [specific past date]" (confirmed/refuted), "The S&P 500 closed above [value] on [specific past date]" (confirmed/refuted)
+- Use past dates with verifiable outcomes so the expected_verification_outcome is deterministic
+- Cover all 4 verification modes where applicable
+- Run after SDK migration (Spec A) to establish a new expanded baseline
+
+**Important:** Adding cases doesn't invalidate existing baselines — it extends them. Never compare expanded-dataset baselines against pre-expansion baselines. The run metadata captures case_count and dataset_sources for traceability.
+
+**Sequence:** SDK migration (Spec A) → validate on existing 22 cases → expand dataset → new baseline on expanded set.
+
+**References:**
+- Yankees verification failure: agent searched for World Series instead of April 13 game
+- Knicks verification success: Brave Search found "Thunder 111, Knicks 100" correctly
+- Decision 145: Brave Search as primary web search tool
+- Decision 150: VERIFICATION_TOOLS=both for Browser + Brave

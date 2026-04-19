@@ -160,11 +160,14 @@ EVAL_REPORTS_TABLE=calledit-v4-eval-reports
 
 ## Approach
 
-1. **Finish the spec** — design document + task list
-2. **Install strands-agents-evals** in the venv
-3. **Build the new eval module** — Case loader, evaluators, task function, experiment runner
-4. **Run baseline comparison** — old pipeline vs new pipeline on smoke cases
-5. **Delete old code** — clean break
-6. **Update dashboard** — adapt for SDK report format
-7. **Run full baseline** — 22 cases with new pipeline
-8. **Document** — decisions, project update, update eval deep dive doc
+1. **Execute Spec A** — the Strands Evals SDK pipeline migration (20 tasks)
+2. **Validate equivalence** — baseline comparison on existing 22 cases (old vs new pipeline)
+3. **Delete old code** — clean break
+4. **Expand golden dataset** (backlog item 21) — add 10-15 qualifying sports/weather/finance predictions with known historical outcomes. Current dataset is skewed toward calendar math; Brave Search domains are underrepresented.
+5. **New expanded baseline** — run full eval on expanded dataset
+6. **Execute Spec B** — dashboard adaptation for SDK report format
+7. **Document** — decisions, project update, eval deep dive update
+
+### Known Issues to Address
+- **Verification agent date anchoring**: The Yankees prediction was correctly parsed as "April 13, 2026 game" but the verification agent searched for "2025 World Series" instead. The verification executor prompt needs to be more explicit about using the exact date from the verification plan in search queries. Consider fixing this during or after the SDK migration.
+- **VERIFICATION_TOOLS=both is now deployed** on the verification agent. Brave Search works for sports scores (Knicks: Thunder 111, Knicks 100 — correct). Browser gets blocked by ESPN/MLB.com bot detection. The `both` mode lets the agent fall back to Brave when Browser fails.

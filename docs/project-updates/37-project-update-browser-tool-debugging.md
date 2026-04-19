@@ -138,7 +138,16 @@ Key observations:
 - dyn-rec-003 (Wikipedia, previously broken) now works: confirmed with 0.95 confidence
 
 ### Scanner Lambda Fix (Decision 151)
-The verification scanner Lambda had been running every 15 minutes for 2+ weeks but silently failing on every invocation. The `:live` alias (SnapStart) pointed to published version 4 which had `VERIFICATION_AGENT_ID=""` — the env var was updated on `$LATEST` via CLI but never republished. SAM redeploy with `--parameter-overrides VerificationAgentId=calleditv4_verification_Agent-77DiT7GHdH` fixed it. User's "Spring will pop by next week" prediction (overdue since 4/6) should now get verified on the next 15-minute cycle.
+The verification scanner Lambda had been running every 15 minutes for 2+ weeks but silently failing on every invocation. The `:live` alias (SnapStart) pointed to published version 4 which had `VERIFICATION_AGENT_ID=""` — the env var was updated on `$LATEST` via CLI but never republished. SAM redeploy with `--parameter-overrides VerificationAgentId=calleditv4_verification_Agent-77DiT7GHdH` fixed it. User's "Spring will pop by next week" prediction (overdue since 4/6) was verified successfully.
+
+### Live Prediction Testing (April 13, 2026)
+After the scanner fix, tested with real user predictions:
+- **Knicks (March 29)**: Re-verified with `VERIFICATION_TOOLS=both`. Brave Search found "Thunder 111, Knicks 100" — correctly refuted. This validates the Browser + Brave dual-tool approach.
+- **Yankees (April 13)**: Creation agent parsed correctly (April 13 game, at_date mode, ESPN/MLB.com sources). But the verification agent searched for "2025 World Series" instead of the April 13 game — a reasoning failure, not a tool failure. The verification executor prompt needs explicit date anchoring.
+- **Spring (April 6)**: Verified successfully after scanner fix.
+
+### Golden Dataset Gap Discovery
+Analyzed the golden dataset and found a significant coverage gap: of 55 static predictions, only 7 have expected outcomes, and those are almost entirely calendar math. Zero qualifying predictions in sports, weather, or finance — exactly the domains where Brave Search adds the most value and where real users make predictions. Added backlog item 21 for dataset expansion after the SDK migration.
 
 ## What the Next Agent Should Do
 

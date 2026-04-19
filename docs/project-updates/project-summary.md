@@ -223,4 +223,8 @@ Discovered fundamental flaw in golden dataset: time-dependent ground truth goes 
 - base-013 excluded from qualifying set (Wikipedia reference count is time-varying)
 - 151 architectural decisions documented across 37 project updates
 - Scanner Lambda FIXED — SnapStart published version had stale env vars, predictions weren't being verified for 2+ weeks (Decision 151)
-- Next: Strands Evals SDK migration (`.kiro/specs/strands-evals-migration/`) — clean break from custom eval code, adopt SDK framework. Then dual-model reflection architecture (backlog item 20).
+- Verification agent now deployed with VERIFICATION_TOOLS=both (Browser + Brave Search)
+- Knicks prediction verified correctly via Brave: "Thunder 111, Knicks 100" — refuted
+- Yankees prediction verified incorrectly: agent searched for World Series instead of April 13 game — verification executor prompt needs date anchoring fix
+- Golden dataset gap identified: 55 predictions but only 7 qualifying, none in sports/weather/finance domains where Brave adds most value (backlog item 21)
+- Next: Strands Evals SDK migration (`.kiro/specs/strands-evals-migration/`) → dataset expansion (backlog 21) → dashboard adaptation (Spec B). Then dual-model reflection (backlog 20).
