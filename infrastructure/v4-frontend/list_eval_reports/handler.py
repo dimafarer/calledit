@@ -54,7 +54,7 @@ def lambda_handler(event, context):
         query_kwargs = {
             "KeyConditionExpression": "PK = :pk",
             "ExpressionAttributeValues": {":pk": f"AGENT#{agent}"},
-            "ProjectionExpression": "run_metadata, aggregate_scores",
+            "ProjectionExpression": "run_metadata, aggregate_scores, creation_scores, verification_scores, calibration_scores",
             "ScanIndexForward": False,
         }
         while True:
@@ -65,7 +65,10 @@ def lambda_handler(event, context):
             query_kwargs["ExclusiveStartKey"] = resp["LastEvaluatedKey"]
 
         logger.info(f"Returning {len(items)} reports for agent {agent}")
-        return _response(200, items)
+        # Filter out companion items (#CASES splits) that have no run_metadata
+        reports = [item for item in items if "run_metadata" in item]
+        logger.info(f"Filtered to {len(reports)} reports (excluded {len(items) - len(reports)} companion items)")
+        return _response(200, reports)
 
     except ClientError as e:
         logger.error(f"DynamoDB query failed: {e}", exc_info=True)

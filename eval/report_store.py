@@ -193,16 +193,23 @@ def list_reports(agent_type: str) -> list[dict]:
     response = table.query(
         KeyConditionExpression="PK = :pk",
         ExpressionAttributeValues={":pk": pk},
-        ProjectionExpression="PK, SK, run_metadata, aggregate_scores",
+        ProjectionExpression="PK, SK, run_metadata, aggregate_scores, creation_scores, verification_scores, calibration_scores",
         ScanIndexForward=False,  # newest first
     )
 
     results = []
     for item in response.get("Items", []):
-        results.append({
+        entry = {
             "run_metadata": _decimal_to_float(item.get("run_metadata", {})),
-            "aggregate_scores": _decimal_to_float(item.get("aggregate_scores", {})),
-        })
+        }
+        # Support both old format (aggregate_scores) and new (creation/verification/calibration)
+        if "creation_scores" in item:
+            entry["creation_scores"] = _decimal_to_float(item.get("creation_scores", {}))
+            entry["verification_scores"] = _decimal_to_float(item.get("verification_scores", {}))
+            entry["calibration_scores"] = _decimal_to_float(item.get("calibration_scores", {}))
+        if "aggregate_scores" in item:
+            entry["aggregate_scores"] = _decimal_to_float(item.get("aggregate_scores", {}))
+        results.append(entry)
 
     return results
 

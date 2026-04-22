@@ -59,14 +59,18 @@ export default function CaseTable({ cases, agentType }: Props) {
           {cases.map(c => {
             const caseId = getId(c);
             const isExpanded = expandedId === caseId;
-            const hasError = !!c.error || !!(c as unknown as Record<string, unknown>).creation_error || !!(c as unknown as Record<string, unknown>).verification_error;
+            const raw = c as unknown as Record<string, unknown>;
+            const verificationError = raw.verification_error as string | null | undefined;
+            const isSkipped = verificationError && typeof verificationError === 'string' && verificationError.toLowerCase().includes('non-qualifying');
+            const hasError = !isSkipped && (!!c.error || !!raw.creation_error || !!verificationError);
             return (
               <Fragment key={caseId}>
                 <tr
                   onClick={() => setExpandedId(isExpanded ? null : caseId)}
                   style={{
                     cursor: 'pointer', borderBottom: '1px solid #334155',
-                    background: hasError ? '#3b1111' : isExpanded ? '#1e293b' : 'transparent',
+                    background: hasError ? '#3b1111' : isSkipped ? 'transparent' : isExpanded ? '#1e293b' : 'transparent',
+                    opacity: isSkipped ? 0.5 : 1,
                   }}
                 >
                   <td style={tdStyle}>{caseId}</td>
@@ -76,7 +80,16 @@ export default function CaseTable({ cases, agentType }: Props) {
                     <td style={tdStyle}>{c.verifiability_score?.toFixed(2) ?? 'ERR'}</td>
                   )}
                   {(agentType === 'calibration' || agentType === 'unified') && <td style={tdStyle}>{c.score_tier ?? ''}</td>}
-                  {(agentType === 'calibration' || agentType === 'unified') && <td style={tdStyle}>{c.actual_verdict ?? 'ERR'}</td>}
+                  {(agentType === 'calibration' || agentType === 'unified') && (() => {
+                    if (isSkipped) return <td style={tdStyle}>—</td>;
+                    const verdict = c.actual_verdict;
+                    if (!verdict) return <td style={tdStyle}>ERR</td>;
+                    const expected = c.expected_verdict ?? (raw.expected_output as string | undefined);
+                    const isInconclusive = verdict === 'inconclusive';
+                    const isMismatch = expected && verdict !== expected;
+                    const color = isInconclusive || isMismatch ? '#ef4444' : '#22c55e';
+                    return <td style={{ ...tdStyle, color, fontWeight: 600 }}>{verdict}</td>;
+                  })()}
                   {(agentType === 'calibration' || agentType === 'unified') && (
                     <td style={tdStyle}>
                       {c.calibration_correct == null ? '—' : c.calibration_correct ? '✓' : '✗'}

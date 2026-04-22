@@ -1,5 +1,17 @@
 {
   "mcpServers": {
+    "npm:chrome-devtools-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "chrome-devtools-mcp@latest",
+        "--isolated"
+      ],
+      "autoApprove": [
+        "navigate_page",
+        "take_screenshot"
+      ]
+    },
     "awslabs.lambda-tool-mcp-server": {
       "command": "uvx",
       "args": [
@@ -37,7 +49,7 @@
       "env": {
         "AWS_REGION": "us-west-2"
       },
-      "disabled": false
+      "disabled": true
     }
   }
 }

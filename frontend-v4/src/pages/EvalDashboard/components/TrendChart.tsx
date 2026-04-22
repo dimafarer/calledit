@@ -17,7 +17,10 @@ export default function TrendChart({ reports, metricKeys }: Props) {
   const availableKeys = useMemo(() => {
     const keys = new Set<string>();
     reports.forEach(r => {
-      Object.entries(r.aggregate_scores).forEach(([k, v]) => {
+      // Support both old format (aggregate_scores) and new SDK format (creation/verification/calibration_scores)
+      const scores = r.aggregate_scores
+        ?? { ...(r.creation_scores || {}), ...(r.verification_scores || {}), ...(r.calibration_scores || {}) };
+      Object.entries(scores).forEach(([k, v]) => {
         if (isNumericScore(v)) keys.add(k);
       });
     });
@@ -36,7 +39,9 @@ export default function TrendChart({ reports, metricKeys }: Props) {
           fullTimestamp: r.run_metadata.timestamp,
         };
         keysToPlot.forEach(k => {
-          const v = r.aggregate_scores[k];
+          const scores = r.aggregate_scores
+            ?? { ...(r.creation_scores || {}), ...(r.verification_scores || {}), ...(r.calibration_scores || {}) };
+          const v = scores[k];
           if (isNumericScore(v)) point[k] = v;
         });
         return point;

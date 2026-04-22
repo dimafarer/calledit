@@ -1338,3 +1338,28 @@ This replaces the hardcoded TOOLS lists in both agents and the hardcoded `_get_t
 **Fix:** Redeployed the scanner stack via SAM with `--parameter-overrides VerificationAgentId=calleditv4_verification_Agent-77DiT7GHdH DynamoDBTableName=calledit-v4`. SAM published a new version and updated the `:live` alias with the correct env vars.
 
 **Lesson:** When using SnapStart with `AutoPublishAlias`, env var changes via CLI only affect `$LATEST`. The published version (and its SnapStart snapshot) retains the old values. Always deploy env var changes through SAM/CloudFormation, never via `aws lambda update-function-configuration`.
+
+---
+
+## Decision 152: Strands Evals SDK Migration — Clean Break from Custom Eval Framework
+
+**Source:** [Project Update 39](39-project-update-strands-evals-sdk-migration.md)
+**Date:** April 19, 2026
+
+Migrated the entire custom eval framework (~1,200 lines) to the Strands Evals SDK. Clean break — all custom eval orchestration, evaluator interfaces, LLM judge wrappers, and legacy runners deleted. No backward compatibility.
+
+**What was replaced:**
+- `eval/unified_eval.py` (~700 lines) → `eval/run_eval.py` (~200 lines) using `Experiment.run_evaluations()`
+- 18 flat evaluator files → 18 SDK `Evaluator` subclasses in `eval/evaluators/creation/` and `eval/evaluators/verification/`
+- 3 hand-rolled LLM judges (~80 lines each) → 3 `OutputEvaluator(rubric=RUBRIC)` configs (~5 lines each)
+- 12 legacy runner/utility files deleted
+- Old Streamlit dashboard deleted (React dashboard preserved)
+
+**What was preserved:** Golden datasets, dataset merger, report store (adapted), backends (unchanged), historical reports.
+
+**Key SDK insight:** When the task function returns a dict, the SDK extracts `actual_output = return_value["output"]`. Task function must wrap its return in `{"output": result}` for evaluators to access the data.
+
+**Dashboard compatibility:** Case results flatten key fields (`verifiability_score`, `score_tier`, `actual_verdict`, `confidence`) to the top level alongside the nested `creation_bundle` and `verification_result` dicts. This maintains backward compatibility with the React dashboard's scatter plot and case table.
+
+**Test coverage:** 98 automated tests (10 property-based with Hypothesis, 88 unit tests) covering all evaluators, case loader, task function, calibration, CLI, and baseline comparison.
+

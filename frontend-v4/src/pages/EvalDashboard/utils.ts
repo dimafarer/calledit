@@ -44,7 +44,9 @@ export function diffPromptVersions(
 export function sortByTimestampDesc<T extends { run_metadata: RunMetadata }>(
   reports: T[],
 ): T[] {
-  return [...reports].sort(
+  // Filter out items without run_metadata (e.g., #CASES companion items)
+  const valid = reports.filter(r => r.run_metadata?.timestamp);
+  return [...valid].sort(
     (a, b) => b.run_metadata.timestamp.localeCompare(a.run_metadata.timestamp),
   );
 }

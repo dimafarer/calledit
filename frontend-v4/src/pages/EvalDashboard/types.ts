@@ -20,7 +20,11 @@ export interface RunMetadata {
 
 export interface ReportSummary {
   run_metadata: RunMetadata;
-  aggregate_scores: Record<string, number | Record<string, number> | null>;
+  aggregate_scores?: Record<string, number | Record<string, number> | null>;
+  // New SDK format
+  creation_scores?: Record<string, number>;
+  verification_scores?: Record<string, number>;
+  calibration_scores?: Record<string, number | Record<string, number>>;
 }
 
 export interface CaseScore {

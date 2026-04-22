@@ -43,7 +43,9 @@ export function evalApiPlugin(): Plugin {
           }));
 
           res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify(result.Items ?? []));
+          // Filter out companion items (#CASES splits) that have no run_metadata
+          const reports = (result.Items ?? []).filter((item: any) => item.run_metadata);
+          res.end(JSON.stringify(reports));
         } catch (e: any) {
           console.error('eval-api list error:', e.message);
           res.statusCode = 500;

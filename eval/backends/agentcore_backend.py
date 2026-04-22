@@ -226,5 +226,4 @@ class AgentCoreBackend:
             },
             "prompt_versions": bundle.get("prompt_versions", {}),
             "prediction_id": bundle.get("prediction_id"),
-            "raw_bundle": bundle,
         }

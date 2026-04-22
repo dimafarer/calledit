@@ -3,10 +3,11 @@
 import { getScoreColor, isNumericScore } from '../utils';
 
 interface Props {
-  scores: Record<string, number | Record<string, number> | null>;
+  scores?: Record<string, number | Record<string, number> | null>;
 }
 
 export default function AggregateScores({ scores }: Props) {
+  if (!scores) return null;
   const entries = Object.entries(scores).filter(([, v]) => v != null);
   if (entries.length === 0) return null;
 
