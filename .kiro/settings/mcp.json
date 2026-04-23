@@ -9,8 +9,11 @@
       ],
       "autoApprove": [
         "navigate_page",
-        "take_screenshot"
-      ]
+        "take_screenshot",
+        "take_snapshot",
+        "click"
+      ],
+      "disabled": false
     },
     "awslabs.lambda-tool-mcp-server": {
       "command": "uvx",
@@ -21,7 +24,7 @@
         "AWS_REGION": "us-west-2",
         "FUNCTION_PREFIX": "calledit-backend"
       },
-      "disabled": false
+      "disabled": true
     },
     "awslabs.aws-iac-mcp-server": {
       "command": "uvx",

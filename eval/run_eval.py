@@ -84,7 +84,34 @@ def parse_args():
                         help="Skip creation — verify existing bundles in eval DDB table")
     parser.add_argument("--local-backup", action="store_true",
                         help="Write local JSON report to eval/reports/")
-    return parser.parse_args()
+
+    # Continuous mode flags
+    parser.add_argument("--continuous", action="store_true",
+                        help="Enable continuous verification mode (create once, verify repeatedly)")
+    parser.add_argument("--interval", type=int, default=15,
+                        help="Minutes between verification passes (default: 15)")
+    parser.add_argument("--max-passes", type=int, default=None,
+                        help="Stop after N verification passes (default: indefinite)")
+    parser.add_argument("--once", action="store_true",
+                        help="Single verification pass, no creation, no loop")
+    parser.add_argument("--reverify-resolved", action="store_true",
+                        help="Re-verify already-resolved cases")
+
+    args = parser.parse_args()
+
+    # Flag interaction rules
+    if args.continuous:
+        args.skip_cleanup = True  # Bundles must persist across passes
+    if args.once and not args.continuous:
+        parser.error("--once requires --continuous")
+    if args.interval != 15 and not args.continuous:
+        parser.error("--interval requires --continuous")
+    if args.max_passes is not None and not args.continuous:
+        parser.error("--max-passes requires --continuous")
+    if args.reverify_resolved and not args.continuous:
+        parser.error("--reverify-resolved requires --continuous")
+
+    return args
 
 
 def build_evaluators(tier: str) -> list:
@@ -542,6 +569,316 @@ def run_verification_phase(creation_results: list, verification_backend, eval_ta
     return results, time.time() - start
 
 
+# ---------------------------------------------------------------------------
+# Continuous Eval Runner
+# ---------------------------------------------------------------------------
+
+class ContinuousEvalRunner:
+    """Orchestrates create-once, verify-repeatedly eval loop."""
+
+    STATE_PATH = "eval/continuous_state.json"
+
+    def __init__(self, args, cases, creation_backend, verification_backend,
+                 evaluators, state, token_refresher=None):
+        self.args = args
+        self.cases = cases
+        self.creation_backend = creation_backend
+        self.verification_backend = verification_backend
+        self.evaluators = evaluators
+        self.state = state
+        self.token_refresher = token_refresher
+        self._shutdown_requested = False
+        self._token_time = time.time()
+
+    def run(self):
+        """Main loop: create (if needed) → verify → evaluate → report → sleep → repeat."""
+        import signal
+        signal.signal(signal.SIGINT, self._handle_sigint)
+
+        # Phase 1: Creation (unless --verify-only or --once)
+        if not self.args.verify_only and not self.args.once:
+            self._run_creation_phase()
+            self.state.save(self.STATE_PATH)
+        elif self.args.verify_only or self.args.once:
+            # Load existing bundles from DDB and populate state
+            self._load_existing_into_state()
+
+        # Verification loop
+        pass_num = 0
+        while True:
+            if self._shutdown_requested:
+                break
+
+            pass_num += 1
+            self.state.pass_number = pass_num
+            print(f"\n{'='*60}")
+            print(f"=== Verification Pass {pass_num} ===")
+            print(f"{'='*60}")
+
+            # Refresh token if needed
+            self._maybe_refresh_token()
+
+            # Run verification
+            task_outputs = self._run_verification_pass(pass_num)
+
+            # Run evaluation
+            report = self._run_evaluation(task_outputs, pass_num)
+
+            # Write report
+            self._write_report(report)
+
+            # Save state
+            self.state.pass_timestamps.append(
+                datetime.now(timezone.utc).isoformat()
+            )
+            self.state.save(self.STATE_PATH)
+
+            # Print pass summary
+            cal = report.get("calibration_scores", {})
+            resolved = sum(1 for c in self.state.cases.values() if c.status == "resolved")
+            total = len(self.state.cases)
+            print(f"\nPass {pass_num} complete: {resolved}/{total} resolved, "
+                  f"resolution_rate={cal.get('resolution_rate', 0):.2f}")
+
+            # Check termination
+            if self.args.once:
+                break
+            if self.args.max_passes and pass_num >= self.args.max_passes:
+                print(f"\nMax passes ({self.args.max_passes}) reached.")
+                break
+            if self._shutdown_requested:
+                break
+
+            # Sleep
+            print(f"\nSleeping {self.args.interval} minutes until next pass...")
+            for _ in range(self.args.interval * 60):
+                if self._shutdown_requested:
+                    break
+                time.sleep(1)
+
+        print(f"\n=== Continuous eval complete ({pass_num} passes) ===")
+
+    def _run_creation_phase(self):
+        """Run creation agent on all cases. Populates state with prediction_ids."""
+        print(f"\n=== Creation Phase ({len(self.cases)} cases) ===")
+        results, duration = run_creation_phase(
+            self.cases, self.creation_backend, token_refresher=self.token_refresher,
+        )
+        print(f"Creation complete in {duration:.0f}s")
+
+        for i, cr in enumerate(results):
+            case = self.cases[i]
+            case_id = case.name or f"case-{i}"
+            bundle = cr.get("creation_bundle") or {}
+            review = bundle.get("plan_review", {})
+            parsed = bundle.get("parsed_claim", {})
+
+            cs = CaseState(
+                case_id=case_id,
+                prediction_id=cr.get("prediction_id"),
+                status="error" if cr.get("creation_error") else "pending",
+                creation_error=cr.get("creation_error"),
+                creation_duration=cr.get("creation_duration", 0.0),
+                verification_date=parsed.get("verification_date"),
+                verifiability_score=review.get("verifiability_score"),
+                score_tier=review.get("score_tier"),
+            )
+            self.state.cases[case_id] = cs
+
+    def _load_existing_into_state(self):
+        """Load existing bundles from DDB and populate state for cases not already tracked."""
+        existing = _load_existing_bundles(self.cases, EVAL_TABLE_NAME)
+        for i, cr in enumerate(existing):
+            case = self.cases[i]
+            case_id = case.name or f"case-{i}"
+            if case_id in self.state.cases:
+                continue  # Already tracked from resume
+            bundle = cr.get("creation_bundle") or {}
+            review = bundle.get("plan_review", {})
+            parsed = bundle.get("parsed_claim", {})
+            cs = CaseState(
+                case_id=case_id,
+                prediction_id=cr.get("prediction_id"),
+                status="pending" if cr.get("prediction_id") else "error",
+                creation_error=cr.get("creation_error"),
+                verification_date=parsed.get("verification_date"),
+                verifiability_score=review.get("verifiability_score"),
+                score_tier=review.get("score_tier"),
+            )
+            self.state.cases[case_id] = cs
+
+    def _run_verification_pass(self, pass_num: int) -> list[dict]:
+        """Single verification pass over eligible cases. Returns task outputs."""
+        eligible = self.state.get_eligible_for_verification(
+            reverify_resolved=self.args.reverify_resolved,
+        )
+        print(f"Eligible for verification: {len(eligible)} of {len(self.state.cases)} cases")
+
+        task_outputs = []
+        for i, case_state in enumerate(eligible):
+            case_id = case_state.case_id
+            print(f"  [{i+1}/{len(eligible)}] Verifying {case_id}...", end=" ", flush=True)
+
+            self._maybe_refresh_token()
+
+            v_start = time.time()
+            try:
+                vresult = self.verification_backend.invoke(
+                    prediction_id=case_state.prediction_id,
+                    table_name=self.state.eval_table,
+                    case_id=case_id,
+                )
+                dur = time.time() - v_start
+                verdict = vresult.get("verdict")
+                confidence = vresult.get("confidence")
+                print(f"OK ({dur:.0f}s, verdict={verdict})")
+
+                self.state.update_case_verdict(case_id, verdict, confidence, pass_num)
+
+                # Store evidence/reasoning
+                cs = self.state.cases[case_id]
+                cs.evidence = vresult.get("evidence")
+                cs.reasoning = vresult.get("reasoning")
+                cs.verification_error = None
+
+            except Exception as e:
+                dur = time.time() - v_start
+                print(f"FAILED ({dur:.0f}s)")
+                logger.error("Case %s: verification failed: %s", case_id, e)
+                self.state.update_case_verdict(case_id, None, None, pass_num)
+                cs = self.state.cases[case_id]
+                cs.verification_error = str(e)
+
+        # Build task_outputs for evaluators (all cases, not just eligible)
+        for case in self.cases:
+            case_id = case.name
+            cs = self.state.cases.get(case_id)
+            if not cs:
+                task_outputs.append({
+                    "creation_bundle": None, "verification_result": None,
+                    "creation_error": "not tracked", "verification_error": "not tracked",
+                    "prediction_id": None, "creation_duration": 0, "verification_duration": 0,
+                })
+                continue
+
+            # Reconstruct task output from state
+            vresult = None
+            if cs.verdict and cs.status == "resolved":
+                vresult = {
+                    "verdict": cs.verdict,
+                    "confidence": cs.confidence,
+                    "evidence": cs.evidence or [],
+                    "reasoning": cs.reasoning or "",
+                }
+
+            task_outputs.append({
+                "creation_bundle": {
+                    "plan_review": {
+                        "verifiability_score": cs.verifiability_score,
+                        "score_tier": cs.score_tier,
+                    },
+                    "parsed_claim": {
+                        "verification_date": cs.verification_date,
+                    },
+                } if cs.verifiability_score is not None else None,
+                "verification_result": vresult,
+                "creation_error": cs.creation_error,
+                "verification_error": cs.verification_error,
+                "prediction_id": cs.prediction_id,
+                "creation_duration": cs.creation_duration,
+                "verification_duration": 0,
+            })
+
+        return task_outputs
+
+    def _run_evaluation(self, task_outputs: list[dict], pass_num: int) -> dict:
+        """Run evaluators and compute calibration. Returns report dict."""
+        print(f"\n--- Evaluation (pass {pass_num}) ---")
+
+        outputs_by_name = {
+            self.cases[i].name: task_outputs[i] for i in range(len(self.cases))
+        }
+
+        def precomputed_fn(case):
+            result = outputs_by_name.get(case.name, {
+                "creation_bundle": None, "verification_result": None,
+                "creation_error": "not run", "verification_error": "not run",
+                "prediction_id": None, "creation_duration": 0, "verification_duration": 0,
+            })
+            return {"output": result}
+
+        experiment = Experiment(cases=self.cases, evaluators=self.evaluators)
+        reports = experiment.run_evaluations(precomputed_fn)
+
+        evaluator_scores = extract_evaluator_scores(self.evaluators, reports)
+
+        # Continuous calibration
+        from eval.continuous_metrics import compute_continuous_calibration
+        calibration_scores = compute_continuous_calibration(self.state, task_outputs)
+
+        # Build case results with continuous-specific fields
+        case_results = extract_case_results(self.cases, task_outputs)
+        for cr in case_results:
+            cs = self.state.cases.get(cr["case_id"])
+            if cs:
+                cr["status"] = cs.status
+                cr["resolved_on_pass"] = cs.resolved_on_pass
+                cr["verification_date"] = cs.verification_date
+                cr["verdict_history"] = [
+                    {"pass": vh.pass_number, "verdict": vh.verdict, "confidence": vh.confidence}
+                    for vh in cs.verdict_history
+                ]
+
+        # Build report
+        report = build_report(
+            self.args, case_results, evaluator_scores, calibration_scores,
+            duration=0,  # Per-pass duration not tracked
+        )
+        report["run_metadata"]["agent"] = "continuous"
+        report["run_metadata"]["pass_number"] = pass_num
+        report["run_metadata"]["total_passes"] = pass_num
+        report["run_metadata"]["interval_minutes"] = self.args.interval
+        report["run_metadata"]["description"] = (
+            self.args.description or f"Continuous eval — pass {pass_num}"
+        )
+
+        return report
+
+    def _write_report(self, report: dict):
+        """Write Continuous_Report to DDB Reports_Table."""
+        try:
+            from eval.report_store import write_report
+            write_report("continuous", report)
+            print("Report written to DDB (agent=continuous)")
+        except Exception as e:
+            logger.warning("DDB report write failed: %s", e)
+
+    def _maybe_refresh_token(self):
+        """Refresh Cognito JWT if >50 minutes since last refresh."""
+        if not self.token_refresher:
+            return
+        if (time.time() - self._token_time) > 3000:
+            logger.info("Refreshing Cognito token")
+            try:
+                token = self.token_refresher()
+                self.creation_backend.set_token(token)
+                self._token_time = time.time()
+            except Exception as e:
+                logger.error("Token refresh failed: %s", e)
+
+    def _handle_sigint(self, signum, frame):
+        """Graceful shutdown on first SIGINT, force exit on second."""
+        if self._shutdown_requested:
+            print("\nForce exit.")
+            sys.exit(1)
+        print("\nShutdown requested — completing current pass...")
+        self._shutdown_requested = True
+
+
+# Need CaseState import for the runner
+from eval.continuous_state import CaseState, ContinuousState
+
+
 def main():
     """Main entry point — three-phase batched pipeline.
 
@@ -588,6 +925,27 @@ def main():
     evaluators = build_evaluators(args.tier)
     print(f"Evaluators: {len(evaluators)} ({args.tier} tier)")
 
+    # --- Continuous mode ---
+    if args.continuous:
+        if args.resume:
+            state = ContinuousState.load(ContinuousEvalRunner.STATE_PATH)
+            print(f"Resumed from pass {state.pass_number} ({len(state.cases)} cases tracked)")
+        else:
+            state = ContinuousState.fresh(EVAL_TABLE_NAME)
+
+        runner = ContinuousEvalRunner(
+            args=args,
+            cases=cases,
+            creation_backend=creation_backend,
+            verification_backend=verification_backend,
+            evaluators=evaluators,
+            state=state,
+            token_refresher=get_cognito_token,
+        )
+        runner.run()
+        return
+
+    # --- Batched mode (existing) ---
     start_time = time.time()
 
     # --- Phase 1: Creation (batch) ---

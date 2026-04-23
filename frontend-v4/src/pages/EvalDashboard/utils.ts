@@ -55,3 +55,27 @@ export function sortByTimestampDesc<T extends { run_metadata: RunMetadata }>(
 export function isNumericScore(value: unknown): value is number {
   return typeof value === 'number' && !isNaN(value);
 }
+
+
+/** Verdict color for continuous eval cases */
+export function getContinuousVerdictColor(caseResult: Record<string, unknown>): string {
+  const verdict = caseResult.actual_verdict as string | undefined;
+  const verificationDate = caseResult.verification_date as string | undefined;
+
+  // Resolved (confirmed or refuted) → green
+  if (verdict === 'confirmed' || verdict === 'refuted') return '#22c55e';
+
+  // Inconclusive with past verification date → red (stale)
+  if (verdict === 'inconclusive' && verificationDate) {
+    const vDate = new Date(verificationDate);
+    if (vDate < new Date()) return '#ef4444';
+  }
+
+  // Pending, future, or no verdict → grey
+  return '#64748b';
+}
+
+/** Check if a continuous case has an error */
+export function hasContinuousError(caseResult: Record<string, unknown>): boolean {
+  return !!(caseResult.creation_error || caseResult.verification_error);
+}

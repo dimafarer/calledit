@@ -2,7 +2,7 @@
 
 import { useState, useMemo, Fragment } from 'react';
 import type { CaseResult, AgentType } from '../types';
-import { truncateText, getScoreColor } from '../utils';
+import { truncateText, getScoreColor, getContinuousVerdictColor } from '../utils';
 
 interface Props {
   cases: CaseResult[];
@@ -52,6 +52,10 @@ export default function CaseTable({ cases, agentType }: Props) {
             {(agentType === 'calibration' || agentType === 'unified') && <th style={thStyle}>Tier</th>}
             {(agentType === 'calibration' || agentType === 'unified') && <th style={thStyle}>Verdict</th>}
             {(agentType === 'calibration' || agentType === 'unified') && <th style={thStyle}>Cal?</th>}
+            {agentType === 'continuous' && <th style={thStyle}>Status</th>}
+            {agentType === 'continuous' && <th style={thStyle}>Verdict</th>}
+            {agentType === 'continuous' && <th style={thStyle}>V-Score</th>}
+            {agentType === 'continuous' && <th style={thStyle}>Pass#</th>}
             {scoreKeys.map(k => <th key={k} style={thStyle}>{k}</th>)}
           </tr>
         </thead>
@@ -94,6 +98,22 @@ export default function CaseTable({ cases, agentType }: Props) {
                     <td style={tdStyle}>
                       {c.calibration_correct == null ? '—' : c.calibration_correct ? '✓' : '✗'}
                     </td>
+                  )}
+                  {agentType === 'continuous' && (() => {
+                    const status = (raw.status as string) ?? 'pending';
+                    const statusColor = status === 'resolved' ? '#22c55e' : status === 'error' ? '#ef4444' : '#94a3b8';
+                    return <td style={{ ...tdStyle, color: statusColor }}>{status}</td>;
+                  })()}
+                  {agentType === 'continuous' && (() => {
+                    const color = getContinuousVerdictColor(raw);
+                    const verdict = c.actual_verdict ?? (raw.verdict as string) ?? '—';
+                    return <td style={{ ...tdStyle, color, fontWeight: 600 }}>{verdict}</td>;
+                  })()}
+                  {agentType === 'continuous' && (
+                    <td style={tdStyle}>{c.verifiability_score?.toFixed(2) ?? '—'}</td>
+                  )}
+                  {agentType === 'continuous' && (
+                    <td style={tdStyle}>{(raw.resolved_on_pass as number) ?? '—'}</td>
                   )}
                   {scoreKeys.map(k => {
                     let s;

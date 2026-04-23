@@ -1,0 +1,61 @@
+{
+  "pass_number": 1,
+  "created_at": "2026-04-23T12:40:59.491851+00:00",
+  "eval_table": "calledit-v4-eval",
+  "pass_timestamps": [
+    "2026-04-23T12:43:48.009589+00:00",
+    "2026-04-23T12:49:09.162330+00:00"
+  ],
+  "cases": {
+    "base-002": {
+      "case_id": "base-002",
+      "prediction_id": "pred-c832e858-7315-42b7-8b94-ade986e90f0a",
+      "status": "resolved",
+      "verdict": "confirmed",
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "finding": "December 25, 2026 falls on a Friday (weekday 4, ISO weekday 5)",
+          "relevant_to_criteria": "Day of the week calculation must be mathematically correct",
+          "source": "Python datetime library calculation"
+        },
+        {
+          "finding": "Page states 'Christmas Day 2026 Friday December 25'",
+          "relevant_to_criteria": "December 25, 2026 must fall on a Friday according to the Gregorian calendar",
+          "source": "https://print-a-calendar.com/holiday/christmas-day/2026"
+        },
+        {
+          "finding": "Page states 'Christmas Day for the year 2026 is celebrated/ observed on Friday, December 25th' and shows calendar grid with December 25 on Friday",
+          "relevant_to_criteria": "December 25, 2026 must fall on a Friday according to the Gregorian calendar",
+          "source": "https://www.calendardate.com/christmas_day_2026.htm"
+        },
+        {
+          "finding": "Multiple search result descriptions confirm 'Friday, December 25' and 'Fri, Dec 25' for Christmas 2026",
+          "relevant_to_criteria": "December 25, 2026 must fall on a Friday according to the Gregorian calendar",
+          "source": "Brave Search results"
+        },
+        {
+          "finding": "Validated calculation method by checking pattern of Christmas dates 2024-2028: Wed, Thu, Fri, Sat, Mon - showing correct progression",
+          "relevant_to_criteria": "Day of the week calculation must be mathematically correct",
+          "source": "Python datetime cross-verification"
+        }
+      ],
+      "reasoning": "The prediction that 'Christmas 2026 will fall on a Friday' is confirmed by multiple independent sources and calculation methods. \n\nFor the first criterion 'December 25, 2026 must fall on a Friday according to the Gregorian calendar': I found consistent confirmation from three different calendar websites (print-a-calendar.com, calendardate.com, and multiple search results), all explicitly stating that December 25, 2026 falls on a Friday.\n\nFor the second criterion 'Day of the week calculation must be mathematically correct': I used Python's datetime library to calculate that December 25, 2026 is weekday 4 (Friday in 0-indexed system) or ISO weekday 5 (Friday in 1-indexed system). I also validated this calculation method by checking the Christmas dates for surrounding years (2024-2028), which showed the expected daily progression pattern: Wednesday \u2192 Thursday \u2192 Friday \u2192 Saturday \u2192 Monday.\n\nAll sources are in complete agreement, and the mathematical calculation aligns perfectly with the online calendar sources. The evidence is unambiguous and comes from multiple reliable sources including both computational verification and established calendar websites.\"",
+      "creation_error": null,
+      "verification_error": null,
+      "creation_duration": 28.022902488708496,
+      "verification_date": "2026-04-23T12:41:07Z",
+      "resolved_on_pass": 1,
+      "verifiability_score": 0.92,
+      "score_tier": "high",
+      "verdict_history": [
+        {
+          "pass_number": 1,
+          "timestamp": "2026-04-23T12:43:47.574401+00:00",
+          "verdict": "confirmed",
+          "confidence": 0.95
+        }
+      ]
+    }
+  }
+}

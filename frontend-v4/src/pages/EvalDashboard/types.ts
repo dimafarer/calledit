@@ -58,11 +58,35 @@ export interface FullReport extends ReportSummary {
   bias_warning?: string;
 }
 
-export type AgentType = 'creation' | 'verification' | 'calibration' | 'unified';
+export type AgentType = 'creation' | 'verification' | 'calibration' | 'unified' | 'continuous';
 
 export const AGENT_TABS: { key: AgentType; label: string }[] = [
   { key: 'unified', label: 'Unified Pipeline' },
   { key: 'creation', label: 'Creation Agent' },
   { key: 'verification', label: 'Verification Agent' },
   { key: 'calibration', label: 'Cross-Agent Calibration' },
+  { key: 'continuous', label: 'Continuous Eval' },
 ];
+
+/** Extended case result for continuous eval */
+export interface ContinuousCaseResult extends CaseResult {
+  status?: 'pending' | 'inconclusive' | 'resolved' | 'error';
+  resolved_on_pass?: number | null;
+  verification_date?: string | null;
+  verdict_history?: Array<{
+    pass: number;
+    verdict: string;
+    confidence: number | null;
+  }>;
+}
+
+/** Continuous calibration scores */
+export interface ContinuousCalibrationScores {
+  resolution_rate?: number;
+  stale_inconclusive_rate?: number;
+  resolution_speed_by_tier?: {
+    high: number | null;
+    moderate: number | null;
+    low: number | null;
+  };
+}

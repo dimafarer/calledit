@@ -97,84 +97,89 @@ source /home/wsluser/projects/calledit/.env
 ## Dashboard
 
 ```bash
-/home/wsluser/projects/calledit/venv/bin/python -m streamlit run eval/dashboard/app.py
+# Dev mode — runs at http://localhost:5173/eval
+cd /home/wsluser/projects/calledit/frontend-v4
+npm run dev
+# Navigate to http://localhost:5173/eval
 ```
 
-## Eval Runs
+## Eval Runs — Strands Evals SDK (CURRENT)
 
-All eval commands run from the strands_make_call directory:
+All eval commands run from the project root:
 
 ```bash
-cd /home/wsluser/projects/calledit/backend/calledit-backend/handlers/strands_make_call
+cd /home/wsluser/projects/calledit
+source .env
 ```
 
-### Serial backend with judge (current best prompts — v3 pipeline)
+### Batched Pipeline (standard)
+
 ```bash
-PROMPT_VERSION_PARSER=1 PROMPT_VERSION_CATEGORIZER=2 PROMPT_VERSION_VB=3 PROMPT_VERSION_REVIEW=4 \
-/home/wsluser/projects/calledit/venv/bin/python eval_runner.py \
-    --dataset ../../../../eval/golden_dataset.json --backend serial --judge
+# Dry run — list cases
+PYTHONPATH=. /home/wsluser/projects/calledit/venv/bin/python eval/run_eval.py --dry-run
+
+# Smoke test — 12 cases, Tier 1 deterministic only
+PYTHONPATH=. /home/wsluser/projects/calledit/venv/bin/python eval/run_eval.py --tier smoke --description "smoke test"
+
+# Full run — all 70 cases, all evaluators
+PYTHONPATH=. /home/wsluser/projects/calledit/venv/bin/python eval/run_eval.py \
+    --tier full --description "full baseline"
+
+# With dynamic dataset
+PYTHONPATH=. /home/wsluser/projects/calledit/venv/bin/python eval/run_eval.py \
+    --dynamic-dataset eval/dynamic_golden_dataset.json --tier full --description "with dynamic"
+
+# Single case
+PYTHONPATH=. /home/wsluser/projects/calledit/venv/bin/python eval/run_eval.py \
+    --case base-002 --tier full --description "single case"
+
+# Qualifying only (skip non-qualifying cases)
+PYTHONPATH=. /home/wsluser/projects/calledit/venv/bin/python eval/run_eval.py \
+    --qualifying-only --tier full --description "qualifying only"
+
+# Creation only (skip verification)
+PYTHONPATH=. /home/wsluser/projects/calledit/venv/bin/python eval/run_eval.py \
+    --creation-only --tier smoke --description "creation only"
+
+# Verify only (skip creation, use existing DDB bundles)
+PYTHONPATH=. /home/wsluser/projects/calledit/venv/bin/python eval/run_eval.py \
+    --verify-only --tier smoke --description "verify only"
+
+# Resume interrupted run
+PYTHONPATH=. /home/wsluser/projects/calledit/venv/bin/python eval/run_eval.py \
+    --resume --tier full --description "resumed"
+
+# Skip cleanup (leave bundles in eval table)
+PYTHONPATH=. /home/wsluser/projects/calledit/venv/bin/python eval/run_eval.py \
+    --skip-cleanup --tier smoke --description "debug"
 ```
 
-### Single backend with judge
-```bash
-PROMPT_VERSION_PARSER=1 PROMPT_VERSION_CATEGORIZER=2 PROMPT_VERSION_VB=3 PROMPT_VERSION_REVIEW=4 \
-/home/wsluser/projects/calledit/venv/bin/python eval_runner.py \
-    --dataset ../../../../eval/golden_dataset.json --backend single --judge
-```
+### Continuous Eval (create once, verify repeatedly)
 
-### Dry run (no Bedrock calls, check test case count)
 ```bash
-/home/wsluser/projects/calledit/venv/bin/python eval_runner.py \
-    --dataset ../../../../eval/golden_dataset.json --dry-run
-```
+# Full continuous run — create all cases, verify every 15 min, stop after 3 passes
+PYTHONPATH=. /home/wsluser/projects/calledit/venv/bin/python eval/run_eval.py \
+    --continuous --max-passes 3 --tier smoke --description "continuous 3-pass"
 
-### Deterministic only (no judge, cheaper/faster)
-```bash
-PROMPT_VERSION_PARSER=1 PROMPT_VERSION_CATEGORIZER=2 PROMPT_VERSION_VB=3 PROMPT_VERSION_REVIEW=4 \
-/home/wsluser/projects/calledit/venv/bin/python eval_runner.py \
-    --dataset ../../../../eval/golden_dataset.json --backend serial
-```
+# Single case continuous
+PYTHONPATH=. /home/wsluser/projects/calledit/venv/bin/python eval/run_eval.py \
+    --continuous --max-passes 1 --tier smoke --case base-002
 
-### Single prediction test (quick smoke test)
-```bash
-PROMPT_VERSION_PARSER=1 PROMPT_VERSION_CATEGORIZER=2 PROMPT_VERSION_VB=3 PROMPT_VERSION_REVIEW=4 \
-/home/wsluser/projects/calledit/venv/bin/python eval_runner.py \
-    --dataset ../../../../eval/golden_dataset.json --backend serial --judge --name base-001
-```
+# Re-verify only (skip creation, single pass)
+PYTHONPATH=. /home/wsluser/projects/calledit/venv/bin/python eval/run_eval.py \
+    --continuous --once --resume --tier smoke
 
-### With comparison to previous run
-```bash
-/home/wsluser/projects/calledit/venv/bin/python eval_runner.py \
-    --dataset ../../../../eval/golden_dataset.json --judge --compare
-```
+# Resume continuous run from where it left off
+PYTHONPATH=. /home/wsluser/projects/calledit/venv/bin/python eval/run_eval.py \
+    --continuous --resume --max-passes 5 --tier smoke
 
-### List available backends
-```bash
-/home/wsluser/projects/calledit/venv/bin/python eval_runner.py --list-backends
-```
+# Custom interval (30 min between passes)
+PYTHONPATH=. /home/wsluser/projects/calledit/venv/bin/python eval/run_eval.py \
+    --continuous --interval 30 --max-passes 10 --tier smoke
 
-### With verification (--verify, deterministic evaluators only)
-```bash
-source /home/wsluser/projects/calledit/.env
-PROMPT_VERSION_PARSER=1 PROMPT_VERSION_CATEGORIZER=2 PROMPT_VERSION_VB=3 PROMPT_VERSION_REVIEW=4 \
-/home/wsluser/projects/calledit/venv/bin/python eval_runner.py \
-    --dataset ../../../../eval/golden_dataset.json --backend serial --verify
-```
-
-### With verification + judge (all 4 verification evaluators)
-```bash
-source /home/wsluser/projects/calledit/.env
-PROMPT_VERSION_PARSER=1 PROMPT_VERSION_CATEGORIZER=2 PROMPT_VERSION_VB=3 PROMPT_VERSION_REVIEW=4 \
-/home/wsluser/projects/calledit/venv/bin/python eval_runner.py \
-    --dataset ../../../../eval/golden_dataset.json --backend serial --verify --judge
-```
-
-### Single test case with verification (fast iteration, ~20-120s)
-```bash
-source /home/wsluser/projects/calledit/.env
-PROMPT_VERSION_PARSER=1 PROMPT_VERSION_CATEGORIZER=2 PROMPT_VERSION_VB=3 PROMPT_VERSION_REVIEW=4 \
-/home/wsluser/projects/calledit/venv/bin/python eval_runner.py \
-    --dataset ../../../../eval/golden_dataset.json --backend serial --verify --name base-002
+# Re-verify already-resolved cases
+PYTHONPATH=. /home/wsluser/projects/calledit/venv/bin/python eval/run_eval.py \
+    --continuous --once --resume --reverify-resolved --tier smoke
 ```
 
 ## CloudWatch Logs
@@ -392,146 +397,19 @@ source .env
     --tier full --description "full baseline with dynamic dataset"
 ```
 
-## Unified Eval Pipeline (RECOMMENDED)
+## Eval Tests
 
 ```bash
-# Generate fresh dynamic dataset + run unified pipeline
-source .env
-/home/wsluser/projects/calledit/venv/bin/python eval/generate_dynamic_dataset.py && \
-/home/wsluser/projects/calledit/venv/bin/python eval/unified_eval.py \
-    --dataset eval/golden_dataset.json \
-    --dynamic-dataset eval/dynamic_golden_dataset.json \
-    --tier full --description "unified baseline"
+# All eval tests (129 tests — includes property-based + unit)
+/home/wsluser/projects/calledit/venv/bin/python -m pytest eval/tests/ -v
 
-# Dry run — list qualifying cases
-source .env
-/home/wsluser/projects/calledit/venv/bin/python eval/unified_eval.py \
-    --dataset eval/golden_dataset.json \
-    --dynamic-dataset eval/dynamic_golden_dataset.json \
-    --dry-run
+# Continuous eval tests only
+/home/wsluser/projects/calledit/venv/bin/python -m pytest eval/tests/test_continuous_state.py eval/tests/test_continuous_metrics.py eval/tests/test_continuous_runner.py -v
 
-# Single case test
-source .env
-/home/wsluser/projects/calledit/venv/bin/python eval/unified_eval.py \
-    --dataset eval/golden_dataset.json \
-    --dynamic-dataset eval/dynamic_golden_dataset.json \
-    --case dyn-imm-001 --tier full --description "single case test"
-
-# Skip cleanup (debug — leave bundles in eval table)
-source .env
-/home/wsluser/projects/calledit/venv/bin/python eval/unified_eval.py \
-    --dataset eval/golden_dataset.json \
-    --dynamic-dataset eval/dynamic_golden_dataset.json \
-    --tier full --skip-cleanup --description "debug run"
-
-# Resume interrupted run
-source .env
-/home/wsluser/projects/calledit/venv/bin/python eval/unified_eval.py \
-    --dataset eval/golden_dataset.json \
-    --dynamic-dataset eval/dynamic_golden_dataset.json \
-    --tier full --resume --description "resumed run"
+# SDK evaluator tests only
+/home/wsluser/projects/calledit/venv/bin/python -m pytest eval/tests/test_creation_evaluators.py eval/tests/test_verification_evaluators.py -v
 ```
 
-
-## V4 Eval Framework (V4-7a)
-
-```bash
-# Set Cognito credentials (required for agent invocation)
-export COGNITO_USERNAME="<your-cognito-username>"
-export COGNITO_PASSWORD="<your-cognito-password>"
-
-# --- Golden Dataset ---
-
-# Reshape v3 dataset to v4 format (idempotent)
-/home/wsluser/projects/calledit/venv/bin/python eval/reshape_v4.py
-
-# Validate v4 dataset structure
-/home/wsluser/projects/calledit/venv/bin/python eval/validate_v4.py
-
-# --- Creation Agent Eval ---
-
-# Dry run — list cases without invoking agent
-/home/wsluser/projects/calledit/venv/bin/python eval/creation_eval.py --dry-run
-
-# Dry run — full tier (all 45 cases)
-/home/wsluser/projects/calledit/venv/bin/python eval/creation_eval.py --dry-run --tier full
-
-# Smoke test — 12 cases, Tier 1 deterministic only (~2-5 min)
-/home/wsluser/projects/calledit/venv/bin/python eval/creation_eval.py --tier smoke --description "description here"
-
-# Smoke + judges — 12 cases, Tier 1 + Tier 2 LLM judges (~10 min)
-/home/wsluser/projects/calledit/venv/bin/python eval/creation_eval.py --tier smoke+judges --description "description here"
-
-# Smoke + judges with pinned prompt versions (recommended — use numbered versions, not DRAFT)
-PROMPT_VERSION_PREDICTION_PARSER=2 \
-PROMPT_VERSION_VERIFICATION_PLANNER=1 \
-PROMPT_VERSION_PLAN_REVIEWER=2 \
-/home/wsluser/projects/calledit/venv/bin/python eval/creation_eval.py --tier smoke+judges --description "description here"
-
-# Full run — all 45 cases, Tier 1 + Tier 2 (~15 min)
-/home/wsluser/projects/calledit/venv/bin/python eval/creation_eval.py --tier full --description "description here"
-
-# Single case
-/home/wsluser/projects/calledit/venv/bin/python eval/creation_eval.py --case base-001 --description "single case test"
-
-# Reports saved to eval/reports/creation-eval-{timestamp}.json
-```
-
-## Verification Agent Eval (V4-7a-3)
-
-```bash
-# Requires: IAM permissions for eval table (one-time setup)
-# bash infrastructure/agentcore-permissions/setup_eval_table_permissions.sh
-
-# Dry run — list qualifying cases
-/home/wsluser/projects/calledit/venv/bin/python eval/verification_eval.py --dry-run
-
-# Dry run — full tier (all 7 qualifying cases)
-/home/wsluser/projects/calledit/venv/bin/python eval/verification_eval.py --dry-run --tier full
-
-# Smoke test — 2 cases, Tier 1 only (~2-3 min)
-/home/wsluser/projects/calledit/venv/bin/python eval/verification_eval.py --tier smoke --description "description here"
-
-# Smoke + judges — 2 cases, Tier 1 + Tier 2 (~5 min)
-/home/wsluser/projects/calledit/venv/bin/python eval/verification_eval.py --tier smoke+judges --description "description here"
-
-# Full run — all 7 cases, Tier 1 + Tier 2 (~15 min)
-/home/wsluser/projects/calledit/venv/bin/python eval/verification_eval.py --tier full --description "description here"
-
-# Single case
-/home/wsluser/projects/calledit/venv/bin/python eval/verification_eval.py --case base-002 --description "single case test"
-
-# DDB mode — live predictions, no ground truth comparison
-/home/wsluser/projects/calledit/venv/bin/python eval/verification_eval.py --source ddb --description "live data check"
-
-# Reports saved to eval/reports/verification-eval-{timestamp}.json
-# Note: verification agent uses SigV4 auth (no Cognito credentials needed)
-```
-
-
-## Calibration Eval (V4-7a-4)
-
-```bash
-# Requires: COGNITO_USERNAME + COGNITO_PASSWORD env vars (creation agent)
-# Requires: AWS credentials (verification agent SigV4)
-
-# Dry run — list qualifying cases
-/home/wsluser/projects/calledit/venv/bin/python eval/calibration_eval.py --dry-run
-
-# Dry run — full tier
-/home/wsluser/projects/calledit/venv/bin/python eval/calibration_eval.py --dry-run --tier full
-
-# Smoke calibration (2 cases, ~4 min)
-/home/wsluser/projects/calledit/venv/bin/python eval/calibration_eval.py --tier smoke --description "description here"
-
-# Full calibration (7 cases, ~15 min)
-/home/wsluser/projects/calledit/venv/bin/python eval/calibration_eval.py --tier full --description "description here"
-
-# Single case
-/home/wsluser/projects/calledit/venv/bin/python eval/calibration_eval.py --case base-002 --description "single case test"
-
-# Reports saved to eval/reports/calibration-eval-{timestamp}.json + DDB
-```
 
 ## DDB Report Store
 

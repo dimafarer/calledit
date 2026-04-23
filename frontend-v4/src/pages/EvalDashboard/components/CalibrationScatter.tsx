@@ -57,7 +57,7 @@ export default function CalibrationScatter({ cases }: Props) {
         Verifiability Score (x) vs Actual Verification Outcome (y) — green = resolved, red = failed to resolve
       </p>
       <ResponsiveContainer width="100%" height={300}>
-        <ScatterChart margin={{ top: 10, right: 30, bottom: 30, left: 10 }}>
+        <ScatterChart margin={{ top: 10, right: 30, bottom: 30, left: 20 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
           <XAxis
             type="number" dataKey="x" name="Verifiability Score"
@@ -70,7 +70,7 @@ export default function CalibrationScatter({ cases }: Props) {
             domain={[-0.15, 1.15]}
             ticks={[0, 0.5, 1.0]}
             tickFormatter={v => v === 1 ? 'confirmed' : v === 0.5 ? 'inconclusive' : v === 0 ? 'refuted' : ''}
-            stroke="#64748b" width={80}
+            stroke="#64748b" width={95}
           />
           <Tooltip
             content={({ payload }) => {

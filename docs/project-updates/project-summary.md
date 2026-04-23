@@ -228,3 +228,27 @@ Discovered fundamental flaw in golden dataset: time-dependent ground truth goes 
 - Yankees prediction verified incorrectly: agent searched for World Series instead of April 13 game — verification executor prompt needs date anchoring fix
 - Golden dataset gap identified: 55 predictions but only 7 qualifying, none in sports/weather/finance domains where Brave adds most value (backlog item 21)
 - Next: Strands Evals SDK migration (`.kiro/specs/strands-evals-migration/`) → dataset expansion (backlog 21) → dashboard adaptation (Spec B). Then dual-model reflection (backlog 20).
+
+### Update 39 (April 19-20): Strands Evals SDK Migration
+Migrated the entire custom eval framework (~1,200 lines) to the Strands Evals SDK. Clean break — all custom eval orchestration, evaluator interfaces, LLM judge wrappers, and legacy runners deleted. 18 SDK evaluator subclasses (8 creation + 10 verification), new CLI runner, case loader, task function, calibration module. 98 tests (10 property-based). Full baseline: 70 cases, Creation T1=1.00, Qualifying VA=1.00 (19/19). Old Streamlit dashboard deleted. Decision 152 added.
+
+### Update 40 (April 21-23): Continuous Verification Eval — Full Implementation
+Designed and implemented the continuous verification eval system — extending the batched eval pipeline to mirror production's continuous verification behavior. 12 requirements, 7 correctness properties, 12 tasks (55 sub-tasks). All code tasks complete: ContinuousState module, ContinuousMetrics module, ContinuousEvalRunner class with full loop orchestration (SIGINT, token refresh, resume), CLI flags (--continuous, --interval, --max-passes, --once, --reverify-resolved), report schema with continuous-specific fields, and 5 new dashboard components (ContinuousTab, ResolutionRateChart, ResolutionSpeedChart, case color coding, TypeScript types). 31 new tests (7 property-based P1-P7, 24 unit), 129/129 total passing. Manual integration tests remaining.
+
+## Current State (April 23, 2026)
+
+- v4 production COMPLETE — full MVP + eval dashboard + verification modes + Brave Search deployed
+- Eval dashboard live at `https://d2fngmclz6psil.cloudfront.net/eval`
+- Strands Evals SDK migration COMPLETE — replaced ~1,200 lines custom code with SDK primitives (Decision 152)
+- Continuous verification eval COMPLETE — all tasks done, integration tested, dashboard working
+  - `eval/continuous_state.py` — state management with verdict history
+  - `eval/continuous_metrics.py` — resolution rate, stale inconclusive, resolution speed by tier
+  - `ContinuousEvalRunner` class in `eval/run_eval.py` — full loop orchestration
+  - CLI: `--continuous`, `--interval`, `--max-passes`, `--once`, `--reverify-resolved`
+  - Dashboard: Continuous Eval tab with ResolutionRateChart, ResolutionSpeedChart, score grids, scatter plot
+  - Integration tested: base-002 created, verified (confirmed), V-Score=0.92, report in DDB
+  - 31 new tests (7 property-based, 24 unit), 129/129 total passing
+- Eval framework: 18 SDK evaluators (8 creation + 10 verification), 129 eval tests
+- Golden dataset: 70 predictions (54 static + 16 dynamic), 22 qualifying
+- 152 architectural decisions documented across 40 project updates
+- Next: Deploy frontend to production → multi-case continuous eval run → dataset expansion (backlog 21)

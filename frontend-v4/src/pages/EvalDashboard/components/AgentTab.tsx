@@ -91,16 +91,16 @@ export default function AgentTab({ agentType }: Props) {
         </div>
       )}
 
-      {/* Calibration Scatter — the key narrative chart (unified and calibration tabs) */}
-      {(agentType === 'calibration' || agentType === 'unified') && fullReport?.case_results && (
+      {/* Calibration Scatter — the key narrative chart (unified, calibration, and continuous tabs) */}
+      {(agentType === 'calibration' || agentType === 'unified' || agentType === 'continuous') && fullReport?.case_results && (
         <CalibrationScatter cases={fullReport.case_results} />
       )}
 
       {/* Aggregate Scores */}
-      {selectedSummary && agentType !== 'unified' && <AggregateScores scores={selectedSummary.aggregate_scores} />}
+      {selectedSummary && agentType !== 'unified' && agentType !== 'continuous' && <AggregateScores scores={selectedSummary.aggregate_scores} />}
 
-      {/* Unified Pipeline: Three score sections */}
-      {agentType === 'unified' && fullReport && (
+      {/* Unified Pipeline / Continuous: Three score sections */}
+      {(agentType === 'unified' || agentType === 'continuous') && fullReport && (
         <UnifiedScoreSections report={fullReport} />
       )}
 

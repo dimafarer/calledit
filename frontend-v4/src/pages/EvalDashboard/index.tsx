@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { AGENT_TABS } from './types';
 import type { AgentType } from './types';
 import AgentTab from './components/AgentTab';
+import ContinuousTab from './components/ContinuousTab';
 
 export default function EvalDashboard() {
   const [activeTab, setActiveTab] = useState<AgentType>('unified');
@@ -40,7 +41,7 @@ export default function EvalDashboard() {
         ))}
       </div>
 
-      <AgentTab agentType={activeTab} />
+      {activeTab === 'continuous' ? <ContinuousTab /> : <AgentTab agentType={activeTab} />}
     </div>
   );
 }
