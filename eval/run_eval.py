@@ -750,6 +750,9 @@ class ContinuousEvalRunner:
                 cs.verification_error = str(e)
 
         # Build task_outputs for evaluators (all cases, not just eligible)
+        # Load full bundles from DDB so creation evaluators have complete data
+        bundles_by_pid = self._load_bundles_from_ddb()
+
         for case in self.cases:
             case_id = case.name
             cs = self.state.cases.get(case_id)
@@ -771,8 +774,10 @@ class ContinuousEvalRunner:
                     "reasoning": cs.reasoning or "",
                 }
 
-            task_outputs.append({
-                "creation_bundle": {
+            # Use full bundle from DDB if available, fall back to stub from state
+            bundle = bundles_by_pid.get(cs.prediction_id)
+            if not bundle and cs.verifiability_score is not None:
+                bundle = {
                     "plan_review": {
                         "verifiability_score": cs.verifiability_score,
                         "score_tier": cs.score_tier,
@@ -780,7 +785,10 @@ class ContinuousEvalRunner:
                     "parsed_claim": {
                         "verification_date": cs.verification_date,
                     },
-                } if cs.verifiability_score is not None else None,
+                }
+
+            task_outputs.append({
+                "creation_bundle": bundle,
                 "verification_result": vresult,
                 "creation_error": cs.creation_error,
                 "verification_error": cs.verification_error,
@@ -865,6 +873,62 @@ class ContinuousEvalRunner:
                 self._token_time = time.time()
             except Exception as e:
                 logger.error("Token refresh failed: %s", e)
+
+    def _load_bundles_from_ddb(self) -> dict:
+        """Load full creation bundles from DDB by prediction_id. Returns {prediction_id: bundle}."""
+        import boto3
+        from decimal import Decimal
+
+        def decimal_to_float(obj):
+            if isinstance(obj, Decimal):
+                return float(obj)
+            if isinstance(obj, dict):
+                return {k: decimal_to_float(v) for k, v in obj.items()}
+            if isinstance(obj, list):
+                return [decimal_to_float(i) for i in obj]
+            return obj
+
+        bundles = {}
+        prediction_ids = [
+            cs.prediction_id for cs in self.state.cases.values()
+            if cs.prediction_id
+        ]
+        if not prediction_ids:
+            return bundles
+
+        try:
+            ddb = boto3.resource("dynamodb", region_name="us-west-2")
+            table = ddb.Table(self.state.eval_table)
+            for pid in prediction_ids:
+                try:
+                    resp = table.get_item(Key={"PK": f"PRED#{pid}", "SK": "BUNDLE"})
+                    item = resp.get("Item")
+                    if item:
+                        # DDB stores plan_review fields at top level, not nested
+                        plan_review = item.get("plan_review") or {
+                            "verifiability_score": item.get("verifiability_score"),
+                            "score_tier": item.get("score_tier"),
+                            "score_label": item.get("score_label"),
+                            "score_guidance": item.get("score_guidance"),
+                            "verifiability_reasoning": item.get("verifiability_reasoning"),
+                            "dimension_assessments": item.get("dimension_assessments", []),
+                            "reviewable_sections": item.get("reviewable_sections", []),
+                            "verification_mode": item.get("verification_mode", "immediate"),
+                        }
+                        bundle = decimal_to_float({
+                            "parsed_claim": item.get("parsed_claim", {}),
+                            "verification_plan": item.get("verification_plan", {}),
+                            "plan_review": plan_review,
+                            "prediction_id": pid,
+                        })
+                        bundles[pid] = bundle
+                except Exception as e:
+                    logger.warning("Failed to load bundle for %s: %s", pid, e)
+        except Exception as e:
+            logger.warning("DDB bundle load failed: %s", e)
+
+        logger.info("Loaded %d/%d bundles from DDB", len(bundles), len(prediction_ids))
+        return bundles
 
     def _handle_sigint(self, signum, frame):
         """Graceful shutdown on first SIGINT, force exit on second."""
