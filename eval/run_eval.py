@@ -413,9 +413,17 @@ def _load_existing_bundles(cases: list, eval_table_name: str) -> list[dict]:
             resp = table.scan(
                 FilterExpression="raw_prediction = :pt",
                 ExpressionAttributeValues={":pt": case.input},
-                Limit=1,
             )
             items = resp.get("Items", [])
+            if not items:
+                # Paginate if needed
+                while "LastEvaluatedKey" in resp and not items:
+                    resp = table.scan(
+                        FilterExpression="raw_prediction = :pt",
+                        ExpressionAttributeValues={":pt": case.input},
+                        ExclusiveStartKey=resp["LastEvaluatedKey"],
+                    )
+                    items = resp.get("Items", [])
             if items:
                 item = items[0]
                 prediction_id = item.get("prediction_id") or item["PK"].replace("PRED#", "")
@@ -721,6 +729,9 @@ class ContinuousEvalRunner:
 
             self._maybe_refresh_token()
 
+            # Reset DDB status to 'pending' so verification agent accepts it
+            self._reset_ddb_status(case_state.prediction_id)
+
             v_start = time.time()
             try:
                 vresult = self.verification_backend.invoke(
@@ -873,6 +884,21 @@ class ContinuousEvalRunner:
                 self._token_time = time.time()
             except Exception as e:
                 logger.error("Token refresh failed: %s", e)
+
+    def _reset_ddb_status(self, prediction_id: str) -> None:
+        """Reset a prediction's DDB status to 'pending' so the verification agent accepts it."""
+        import boto3
+        try:
+            ddb = boto3.resource("dynamodb", region_name="us-west-2")
+            table = ddb.Table(self.state.eval_table)
+            table.update_item(
+                Key={"PK": f"PRED#{prediction_id}", "SK": "BUNDLE"},
+                UpdateExpression="SET #s = :pending",
+                ExpressionAttributeNames={"#s": "status"},
+                ExpressionAttributeValues={":pending": "pending"},
+            )
+        except Exception as e:
+            logger.warning("Failed to reset status for %s: %s", prediction_id, e)
 
     def _load_bundles_from_ddb(self) -> dict:
         """Load full creation bundles from DDB by prediction_id. Returns {prediction_id: bundle}."""

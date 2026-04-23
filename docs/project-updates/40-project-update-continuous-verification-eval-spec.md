@@ -155,7 +155,10 @@ Integration test ran successfully:
 
 ## What the Next Agent Should Do
 
-1. Run a multi-case continuous eval: `--continuous --max-passes 3 --tier smoke` (all 70 cases)
-2. Deploy frontend to production: `npm run build && aws s3 sync dist/ s3://... --delete && aws cloudfront create-invalidation`
-3. Update `decision-log.md` with any new decisions
-4. Expand golden dataset (backlog item 21) — add qualifying cases in sports/weather/finance domains
+1. Fix known dashboard issues:
+   - Resolution Rate chart: lines invisible at 1.0 — add Y-axis padding (domain [0, 1.05]) or ensure dot markers are visible
+   - Scatter plot: inconclusive cases not appearing — `actual_verdict` not populated for inconclusive cases in continuous case_results (check `_run_verification_pass` task_outputs construction)
+   - Pass numbering: all reports labeled "Pass 1" — pass_number not incrementing across separate `--once` runs (state resets each time)
+2. Run a multi-case continuous eval: `--continuous --max-passes 3 --tier smoke` (all 70 cases)
+3. Deploy frontend to production
+4. Expand golden dataset (backlog item 21)
