@@ -1,0 +1,189 @@
+{
+ "Resources": {
+  "VerificationRolePolicy630C89C5": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:Query"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        "arn:aws:dynamodb:us-west-2:894249332178:table/calledit-v4",
+        "arn:aws:dynamodb:us-west-2:894249332178:table/calledit-v4/index/*"
+       ],
+       "Sid": "CalleditV4DynamoDB"
+      },
+      {
+       "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem"
+       ],
+       "Effect": "Allow",
+       "Resource": "arn:aws:dynamodb:us-west-2:894249332178:table/calledit-v4-eval",
+       "Sid": "CalleditV4EvalDynamoDB"
+      },
+      {
+       "Action": "bedrock:GetPrompt",
+       "Effect": "Allow",
+       "Resource": "arn:aws:bedrock:us-west-2:894249332178:prompt/*",
+       "Sid": "CalleditBedrockPrompts"
+      },
+      {
+       "Action": [
+        "bedrock-agentcore:CreateBrowser",
+        "bedrock-agentcore:GetBrowser",
+        "bedrock-agentcore:DeleteBrowser",
+        "bedrock-agentcore:ListBrowsers",
+        "bedrock-agentcore:StartBrowserSession",
+        "bedrock-agentcore:GetBrowserSession",
+        "bedrock-agentcore:StopBrowserSession",
+        "bedrock-agentcore:ListBrowserSessions",
+        "bedrock-agentcore:UpdateBrowserStream",
+        "bedrock-agentcore:ConnectBrowserAutomationStream",
+        "bedrock-agentcore:ConnectBrowserLiveViewStream"
+       ],
+       "Effect": "Allow",
+       "Resource": "arn:aws:bedrock-agentcore:us-west-2:894249332178:browser/*",
+       "Sid": "BedrockAgentCoreBrowserAccountScoped"
+      },
+      {
+       "Action": [
+        "bedrock-agentcore:GetBrowser",
+        "bedrock-agentcore:StartBrowserSession",
+        "bedrock-agentcore:GetBrowserSession",
+        "bedrock-agentcore:StopBrowserSession",
+        "bedrock-agentcore:ListBrowserSessions",
+        "bedrock-agentcore:UpdateBrowserStream",
+        "bedrock-agentcore:ConnectBrowserAutomationStream",
+        "bedrock-agentcore:ConnectBrowserLiveViewStream"
+       ],
+       "Effect": "Allow",
+       "Resource": "arn:aws:bedrock-agentcore:us-west-2:aws:browser/*",
+       "Sid": "BedrockAgentCoreBrowserSystemOwned"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "VerificationRolePolicy630C89C5",
+    "Roles": [
+     "AmazonBedrockAgentCoreSDKRuntime-us-west-2-37c792a758"
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "agentcore-permissions/VerificationRole/Policy/Resource"
+   }
+  },
+  "CreationRolePolicy232256E5": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem"
+       ],
+       "Effect": "Allow",
+       "Resource": "arn:aws:dynamodb:us-west-2:894249332178:table/calledit-v4-eval",
+       "Sid": "CalleditV4EvalDynamoDB"
+      },
+      {
+       "Action": [
+        "bedrock-agentcore:CreateBrowser",
+        "bedrock-agentcore:GetBrowser",
+        "bedrock-agentcore:DeleteBrowser",
+        "bedrock-agentcore:ListBrowsers",
+        "bedrock-agentcore:StartBrowserSession",
+        "bedrock-agentcore:GetBrowserSession",
+        "bedrock-agentcore:StopBrowserSession",
+        "bedrock-agentcore:ListBrowserSessions",
+        "bedrock-agentcore:UpdateBrowserStream",
+        "bedrock-agentcore:ConnectBrowserAutomationStream",
+        "bedrock-agentcore:ConnectBrowserLiveViewStream"
+       ],
+       "Effect": "Allow",
+       "Resource": "arn:aws:bedrock-agentcore:us-west-2:894249332178:browser/*",
+       "Sid": "BedrockAgentCoreBrowserAccountScoped"
+      },
+      {
+       "Action": [
+        "bedrock-agentcore:GetBrowser",
+        "bedrock-agentcore:StartBrowserSession",
+        "bedrock-agentcore:GetBrowserSession",
+        "bedrock-agentcore:StopBrowserSession",
+        "bedrock-agentcore:ListBrowserSessions",
+        "bedrock-agentcore:UpdateBrowserStream",
+        "bedrock-agentcore:ConnectBrowserAutomationStream",
+        "bedrock-agentcore:ConnectBrowserLiveViewStream"
+       ],
+       "Effect": "Allow",
+       "Resource": "arn:aws:bedrock-agentcore:us-west-2:aws:browser/*",
+       "Sid": "BedrockAgentCoreBrowserSystemOwned"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "CreationRolePolicy232256E5",
+    "Roles": [
+     "AmazonBedrockAgentCoreSDKRuntime-us-west-2-5a297cfdfd"
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "agentcore-permissions/CreationRole/Policy/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/yXGSwqAIBAA0LO018mEFq27QNQBwsxgyg80mYR49xau3pMgewGiUYm43i9ucYO8PEpfbDYU4q0NU4lWVA7yFCzqj42HryuF+bAbOKl9pYBuANGchMjv6B90BubqD5V4e3hlAAAA"
+   },
+   "Metadata": {
+    "aws:cdk:path": "agentcore-permissions/CDKMetadata/Default"
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

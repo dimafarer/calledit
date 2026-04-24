@@ -1,0 +1,101 @@
+# Implementation Plan
+
+- [x] 1. Write bug condition exploration tests
+  - **Property 1: Bug Condition** - Inconclusive Cases Missing from Task Outputs & Pass Numbering Reset on Resume
+  - **CRITICAL**: These tests MUST FAIL on unfixed code — failure confirms the bugs exist
+  - **DO NOT attempt to fix the tests or the code when they fail**
+  - **NOTE**: These tests encode the expected behavior — they will validate the fixes when they pass after implementation
+  - **GOAL**: Surface counterexamples that demonstrate the bugs exist
+  - **Scoped PBT Approach**: Scope properties to concrete failing cases for reproducibility
+  - **Bug 2 — Inconclusive vresult construction**:
+    - Create a `CaseState` with `status="inconclusive"`, `verdict="inconclusive"`, `confidence=0.5`, `evidence=[{"source": "test"}]`, `reasoning="test reasoning"`
+    - Reconstruct the vresult logic from `_run_verification_pass()` (lines ~785-791 of `run_eval.py`): `if cs.verdict and cs.status == "resolved"` → build vresult dict
+    - Property: for any `CaseState` where `cs.status == "inconclusive"` and `cs.verdict == "inconclusive"`, the reconstructed `verification_result` SHOULD be a dict with `verdict`, `confidence`, `evidence`, `reasoning` keys
+    - On UNFIXED code: the condition `cs.status == "resolved"` is `False` for inconclusive cases, so `vresult` is `None` → test FAILS (confirms bug)
+    - Use Hypothesis to generate random confidence values (0.0–1.0) and evidence lists
+  - **Bug 3 — Pass numbering reset**:
+    - Create a `ContinuousState` with `pass_number=N` (N > 0, simulating resumed state)
+    - The `run()` method initializes `pass_num = 0` then increments to 1 regardless of `self.state.pass_number`
+    - Property: for any `state.pass_number = N` where N >= 1, the first verification pass SHOULD be numbered `N + 1`
+    - On UNFIXED code: `pass_num` always starts at 0, increments to 1 → test FAILS (confirms bug)
+    - Use Hypothesis to generate `pass_number` values from 1 to 100
+  - Write tests in `eval/tests/test_continuous_eval_dashboard_fixes.py`
+  - Run tests with `/home/wsluser/projects/calledit/venv/bin/python -m pytest eval/tests/test_continuous_eval_dashboard_fixes.py -v -k "bug_condition"`
+  - **EXPECTED OUTCOME**: Tests FAIL (this is correct — it proves the bugs exist)
+  - Document counterexamples found to understand root cause
+  - Mark task complete when tests are written, run, and failure is documented
+  - _Requirements: 1.3, 1.4, 1.5, 2.3, 2.5_
+
+- [x] 2. Write preservation property tests (BEFORE implementing fix)
+  - **Property 2: Preservation** - Resolved Cases Unchanged & Fresh State Pass Numbering
+  - **IMPORTANT**: Follow observation-first methodology
+  - **Observe behavior on UNFIXED code for non-buggy inputs, then write property-based tests**
+  - **Resolved case preservation (Bug 2 non-bug-condition)**:
+    - Observe: for `CaseState` with `status="resolved"`, `verdict="confirmed"`, the vresult reconstruction logic produces `{"verdict": "confirmed", "confidence": ..., "evidence": ..., "reasoning": ...}`
+    - Observe: for `CaseState` with `status="resolved"`, `verdict="refuted"`, same structure is produced
+    - Observe: for `CaseState` with `status="pending"` or `status="error"` or `verdict=None`, vresult is `None`
+    - Write property-based test: for all `CaseState` where `status == "resolved"` and `verdict in ("confirmed", "refuted")`, the vresult dict contains all four keys with correct values
+    - Write property-based test: for all `CaseState` where `status not in ("resolved", "inconclusive")` or `verdict is None`, vresult is `None`
+    - Use Hypothesis to generate random `CaseState` objects with various status/verdict combinations
+  - **Fresh state pass numbering preservation (Bug 3 non-bug-condition)**:
+    - Observe: for `ContinuousState` with `pass_number=0` (fresh state), the first pass is numbered 1
+    - Write property-based test: when `state.pass_number == 0`, first pass is always 1
+    - This confirms fresh-state behavior is identical before and after fix
+  - Write tests in `eval/tests/test_continuous_eval_dashboard_fixes.py`
+  - Run tests with `/home/wsluser/projects/calledit/venv/bin/python -m pytest eval/tests/test_continuous_eval_dashboard_fixes.py -v -k "preservation"`
+  - **EXPECTED OUTCOME**: Tests PASS (this confirms baseline behavior to preserve)
+  - Mark task complete when tests are written, run, and passing on unfixed code
+  - _Requirements: 3.3, 3.4, 3.5, 3.6_
+
+- [x] 3. Fix for continuous eval dashboard bugs (chart visibility, inconclusive cases, pass numbering)
+
+  - [x] 3.1 Fix ResolutionRateChart Y-axis domain and dot radius (Bug 1)
+    - In `frontend-v4/src/pages/EvalDashboard/components/ResolutionRateChart.tsx`:
+    - Change `<YAxis domain={[0, 1]}` to `<YAxis domain={[-0.05, 1.05]}`
+    - Change `dot={{ r: 4 }}` to `dot={{ r: 6 }}` on both `<Line>` elements
+    - _Bug_Condition: isBugCondition(input) where input.data.resolution_rate == 1.0 OR input.data.stale_inconclusive_rate == 0.0_
+    - _Expected_Behavior: Y-axis domain [-0.05, 1.05] provides visible padding; dot radius 6 is clearly visible at boundaries_
+    - _Preservation: Mid-range values (0.05–0.95) continue to render clearly within the chart area_
+    - _Requirements: 1.1, 1.2, 2.1, 2.2, 3.1, 3.2_
+
+  - [x] 3.2 Widen status filter in _run_verification_pass() vresult construction (Bug 2)
+    - In `eval/run_eval.py`, in `_run_verification_pass()` method, in the task output reconstruction block:
+    - Change `if cs.verdict and cs.status == "resolved":` to `if cs.verdict and cs.status in ("resolved", "inconclusive"):`
+    - This ensures inconclusive cases get a `verification_result` dict with verdict, confidence, evidence, reasoning
+    - _Bug_Condition: isBugCondition(input) where input.data.case_status == "inconclusive" AND input.data.case_verdict == "inconclusive"_
+    - _Expected_Behavior: verification_result dict is constructed for inconclusive cases, populating actual_verdict_
+    - _Preservation: Resolved cases with "confirmed"/"refuted" verdicts continue to produce identical vresult dicts; pending/error cases continue to produce None_
+    - _Requirements: 1.3, 1.4, 2.3, 2.4, 3.3, 3.4_
+
+  - [x] 3.3 Initialize pass_num from state in run() (Bug 3)
+    - In `eval/run_eval.py`, in `ContinuousEvalRunner.run()` method:
+    - Change `pass_num = 0` to `pass_num = self.state.pass_number`
+    - When resuming with pass_number=N, the loop increments pass_num before use, so next pass = N+1
+    - For fresh state (pass_number=0), behavior is identical: 0+1=1
+    - _Bug_Condition: isBugCondition(input) where input.data.state_pass_number > 0 AND input.data.is_resumed == true_
+    - _Expected_Behavior: first pass numbered state.pass_number + 1, sequential from there_
+    - _Preservation: Fresh state (pass_number=0) starts at pass 1, identical to original_
+    - _Requirements: 1.5, 2.5, 3.5, 3.6_
+
+  - [x] 3.4 Verify bug condition exploration tests now pass
+    - **Property 1: Expected Behavior** - Inconclusive Cases in Task Outputs & Sequential Pass Numbering
+    - **IMPORTANT**: Re-run the SAME tests from task 1 — do NOT write new tests
+    - The tests from task 1 encode the expected behavior
+    - When these tests pass, it confirms the expected behavior is satisfied
+    - Run: `/home/wsluser/projects/calledit/venv/bin/python -m pytest eval/tests/test_continuous_eval_dashboard_fixes.py -v -k "bug_condition"`
+    - **EXPECTED OUTCOME**: Tests PASS (confirms bugs are fixed)
+    - _Requirements: 2.3, 2.4, 2.5_
+
+  - [x] 3.5 Verify preservation tests still pass
+    - **Property 2: Preservation** - Resolved Cases Unchanged & Fresh State Pass Numbering
+    - **IMPORTANT**: Re-run the SAME tests from task 2 — do NOT write new tests
+    - Run: `/home/wsluser/projects/calledit/venv/bin/python -m pytest eval/tests/test_continuous_eval_dashboard_fixes.py -v -k "preservation"`
+    - **EXPECTED OUTCOME**: Tests PASS (confirms no regressions)
+    - Confirm all preservation tests still pass after fix
+
+- [x] 4. Checkpoint — Ensure all tests pass
+  - Run full test suite: `/home/wsluser/projects/calledit/venv/bin/python -m pytest eval/tests/ -v`
+  - Expect 129+ tests passed (existing 129 + new property tests)
+  - Ensure no regressions in existing tests
+  - Ask the user to verify Bug 1 (chart visibility) visually by running `cd frontend-v4 && npm run dev` and checking the ResolutionRateChart with boundary values
+  - Ask the user if questions arise

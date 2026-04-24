@@ -38,7 +38,7 @@ export function evalApiPlugin(): Plugin {
             TableName: TABLE,
             KeyConditionExpression: 'PK = :pk',
             ExpressionAttributeValues: { ':pk': `AGENT#${agent}` },
-            ProjectionExpression: 'PK, SK, run_metadata, aggregate_scores',
+            ProjectionExpression: 'PK, SK, run_metadata, aggregate_scores, creation_scores, verification_scores, calibration_scores',
             ScanIndexForward: false,
           }));
 

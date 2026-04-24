@@ -1,0 +1,32 @@
+{
+  "/agentcore-permissions/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    }
+  ],
+  "/agentcore-permissions/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    }
+  ],
+  "/agentcore-permissions/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    }
+  ],
+  "/agentcore-permissions/VerificationRole/Policy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "VerificationRolePolicy630C89C5"
+    }
+  ],
+  "/agentcore-permissions/CreationRole/Policy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CreationRolePolicy232256E5"
+    }
+  ]
+}

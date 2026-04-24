@@ -87,20 +87,6 @@ echo "strands-agents>=1.7.0" >> backend/calledit-backend/handlers/strands_make_c
 - Other developers can install exact dependencies
 - CI/CD pipelines need requirements.txt
 
-## TTY Error Handling - RESOLVED (March 27, 2026)
-
-**STATUS**: The TTY issue has been fixed. Agent commands should now work normally.
-
-**Root Cause**: Amazon Q CLI shell integration (`q init bash pre/post`) injected `PROMPT_COMMAND` hooks (`__bp_precmd_invoke_cmd`, `__fig_post_prompt`) that conflicted with Kiro's own shell integration for capturing command output. This caused `Exit Code: -1` and empty output on the agent side, even though commands executed successfully in the user's terminal.
-
-**Fix Applied** (in `~/.bashrc`):
-1. Both Amazon Q pre/post blocks wrapped with `if [[ "$TERM_PROGRAM" != "kiro" ]]` guards
-2. `unset TTY` at the end of `.bashrc` as a safety net for the `TTY=not a tty` env var pollution
-
-**If TTY errors reappear**: The fix may have been overwritten by an Amazon Q CLI update (it manages those blocks). Re-apply the guards in `~/.bashrc`. Check with `head -5 ~/.bashrc && tail -7 ~/.bashrc`.
-
-**For `agentcore` commands**: `agentcore launch` and `agentcore invoke` still require a real TTY — ask the user to run those manually and paste output.
-
 ---
 
 ## Core Principles

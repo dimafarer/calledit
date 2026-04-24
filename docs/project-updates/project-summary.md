@@ -235,7 +235,10 @@ Migrated the entire custom eval framework (~1,200 lines) to the Strands Evals SD
 ### Update 40 (April 21-23): Continuous Verification Eval — Full Implementation
 Designed and implemented the continuous verification eval system — extending the batched eval pipeline to mirror production's continuous verification behavior. 12 requirements, 7 correctness properties, 12 tasks (55 sub-tasks). All code tasks complete: ContinuousState module, ContinuousMetrics module, ContinuousEvalRunner class with full loop orchestration (SIGINT, token refresh, resume), CLI flags (--continuous, --interval, --max-passes, --once, --reverify-resolved), report schema with continuous-specific fields, and 5 new dashboard components (ContinuousTab, ResolutionRateChart, ResolutionSpeedChart, case color coding, TypeScript types). 31 new tests (7 property-based P1-P7, 24 unit), 129/129 total passing. Manual integration tests remaining.
 
-## Current State (April 23, 2026)
+### Update 41 (April 24): Continuous Eval Dashboard Fixes Spec
+Specced three bugfixes discovered during Update 40 integration testing. Bug 1: ResolutionRateChart lines invisible at Y-axis boundaries (1.0 and 0.0) — fix via padded domain `[-0.05, 1.05]` + larger dots (Decision 153). Bug 2: Inconclusive cases missing from CalibrationScatter because `_run_verification_pass()` only constructs vresult for `status == "resolved"`, excluding `status == "inconclusive"` — fix by widening condition to include inconclusive (Decision 154). Bug 3: Pass numbering always "Pass 1" because `pass_num` starts at 0 on every CLI invocation instead of resuming from saved state — fix by initializing from `self.state.pass_number` on `--resume` (Decision 155). Bugfix requirements complete (5 defect + 5 fix + 6 regression prevention clauses). Design and tasks pending.
+
+## Current State (April 24, 2026)
 
 - v4 production COMPLETE — full MVP + eval dashboard + verification modes + Brave Search deployed
 - Eval dashboard live at `https://d2fngmclz6psil.cloudfront.net/eval`
@@ -248,7 +251,8 @@ Designed and implemented the continuous verification eval system — extending t
   - Dashboard: Continuous Eval tab with ResolutionRateChart, ResolutionSpeedChart, score grids, scatter plot
   - Integration tested: base-002 created, verified (confirmed), V-Score=0.92, report in DDB
   - 31 new tests (7 property-based, 24 unit), 129/129 total passing
+- Continuous eval dashboard fixes SPECCED — 3 bugs (chart visibility, scatter plot, pass numbering), requirements complete, design + tasks pending
 - Eval framework: 18 SDK evaluators (8 creation + 10 verification), 129 eval tests
 - Golden dataset: 70 predictions (54 static + 16 dynamic), 22 qualifying
-- 152 architectural decisions documented across 40 project updates
-- Next: Deploy frontend to production → multi-case continuous eval run → dataset expansion (backlog 21)
+- 158 architectural decisions documented across 41 project updates
+- Next: Execute AgentCore CDK migration spec → Run continuous eval Pass 3 → dataset expansion (backlog 21)

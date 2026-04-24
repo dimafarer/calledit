@@ -1,0 +1,21 @@
+{
+  "version": "53.0.0",
+  "files": {
+    "336306ca7e7dea1f81194b8c4fb0fa0af34f3447cc581fdf1053fe7f2c4abeec": {
+      "displayName": "agentcore-permissions Template",
+      "source": {
+        "path": "agentcore-permissions.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "894249332178-us-west-2-0a964bcb": {
+          "bucketName": "cdk-hnb659fds-assets-894249332178-us-west-2",
+          "objectKey": "336306ca7e7dea1f81194b8c4fb0fa0af34f3447cc581fdf1053fe7f2c4abeec.json",
+          "region": "us-west-2",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::894249332178:role/cdk-hnb659fds-file-publishing-role-894249332178-us-west-2"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

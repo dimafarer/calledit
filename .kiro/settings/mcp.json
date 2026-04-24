@@ -11,7 +11,8 @@
         "navigate_page",
         "take_screenshot",
         "take_snapshot",
-        "click"
+        "click",
+        "evaluate_script"
       ],
       "disabled": false
     },
@@ -35,7 +36,7 @@
         "AWS_REGION": "us-west-2",
         "FASTMCP_LOG_LEVEL": "ERROR"
       },
-      "disabled": false,
+      "disabled": true,
       "autoApprove": [
         "search_cloudformation_documentation",
         "read_iac_documentation_page",

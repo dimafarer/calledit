@@ -25,6 +25,12 @@ logger = logging.getLogger(__name__)
 BRAVE_API_KEY = os.environ.get("BRAVE_API_KEY", "")
 BRAVE_SEARCH_URL = "https://api.search.brave.com/res/v1/web/search"
 
+if not BRAVE_API_KEY:
+    logger.warning(
+        "BRAVE_API_KEY not set — brave_web_search will return errors. "
+        "Set BRAVE_API_KEY env var before launching the agent."
+    )
+
 
 @tool
 def brave_web_search(query: str, count: int = 5) -> str:
@@ -44,7 +50,9 @@ def brave_web_search(query: str, count: int = 5) -> str:
     """
     if not BRAVE_API_KEY:
         return json.dumps({
-            "error": "BRAVE_API_KEY not configured",
+            "error": "BRAVE_API_KEY environment variable is not set. "
+                     "The verification agent cannot search the web without it. "
+                     "Set BRAVE_API_KEY before launching the agent.",
             "results": [],
         })
 

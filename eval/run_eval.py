@@ -612,7 +612,7 @@ class ContinuousEvalRunner:
             self._load_existing_into_state()
 
         # Verification loop
-        pass_num = 0
+        pass_num = self.state.pass_number
         while True:
             if self._shutdown_requested:
                 break
@@ -777,7 +777,7 @@ class ContinuousEvalRunner:
 
             # Reconstruct task output from state
             vresult = None
-            if cs.verdict and cs.status == "resolved":
+            if cs.verdict and cs.status in ("resolved", "inconclusive"):
                 vresult = {
                     "verdict": cs.verdict,
                     "confidence": cs.confidence,

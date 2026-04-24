@@ -90,6 +90,13 @@ def build_tools(verification_tools_env: str | None) -> list:
 
 TOOLS = build_tools(os.environ.get("VERIFICATION_TOOLS"))
 
+# Validate critical env vars at startup
+if not os.environ.get("BRAVE_API_KEY"):
+    logger.error(
+        "BRAVE_API_KEY not set — verification agent will not be able to "
+        "search the web. Set this env var before deploying."
+    )
+
 
 def _make_inconclusive(reasoning: str) -> VerificationResult:
     """Build a standard inconclusive result for error cases."""

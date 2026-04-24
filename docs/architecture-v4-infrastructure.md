@@ -268,3 +268,59 @@ These items don't affect your 5 real predictions (the ListPredictions Lambda fil
 - Delete the 64 non-real items (user_id != f8f16330-...)
 - Add a `source` field to eval-created bundles so the scanner can skip them
 - Both
+
+
+---
+
+## Planned: AgentCore CDK Migration (Spec: agentcore-cdk-migration)
+
+**Date:** April 24, 2026
+**Status:** Specced (requirements + design + tasks complete), not yet executed
+
+### Current Deployment (Deprecated)
+
+Both AgentCore agents are deployed via the deprecated `.bedrock_agentcore.yaml` Python toolkit:
+- `calleditv4/.bedrock_agentcore.yaml` → Creation Agent
+- `calleditv4-verification/.bedrock_agentcore.yaml` → Verification Agent
+- `infrastructure/agentcore-permissions/setup_agentcore_permissions.sh` → Manual IAM script
+
+**Problem:** Environment variables are not declaratively configured. The `BRAVE_API_KEY` was missing from the deployed verification agent (Decision 157), causing all verifications to silently fail. The `--env KEY=VALUE` flag must be manually passed on every `agentcore deploy` command.
+
+### Target Deployment (CDK + agentcore.json)
+
+```
+calleditv4/
+├── agentcore.json          ← NEW: declarative config (replaces .bedrock_agentcore.yaml)
+├── deploy.sh               ← NEW: simple deploy wrapper
+└── src/main.py             ← UNCHANGED
+
+calleditv4-verification/
+├── agentcore.json          ← NEW: declarative config with env var declarations
+├── deploy.sh               ← NEW: validates BRAVE_API_KEY before deploy
+└── src/main.py             ← UNCHANGED
+
+infrastructure/agentcore-cdk/
+├── bin/agentcore-cdk.ts    ← NEW: CDK app entry
+├── lib/agentcore-permissions-stack.ts  ← NEW: IAM policies (replaces shell script)
+├── package.json
+├── cdk.json
+└── README.md
+```
+
+**Deployment order:** CDK stack (IAM) → Creation Agent → Verification Agent
+
+### What Changes
+
+| Component | Before | After |
+|---|---|---|
+| Agent config | `.bedrock_agentcore.yaml` (deprecated) | `agentcore.json` (`@aws/agentcore` CLI) |
+| IAM permissions | Manual shell script | CDK stack (CloudFormation) |
+| Env vars | Manual `--env` flags | Declared in deploy script, validated before deploy |
+| Agent source code | Python | **UNCHANGED** |
+| SAM stacks | 4 stacks | **UNCHANGED** |
+| Agent IDs/ARNs | Existing | **PRESERVED** |
+
+### Decisions
+
+- Decision 157: Missing BRAVE_API_KEY root cause → motivates declarative env vars
+- Decision 158 (planned): CDK migration for AgentCore deployment

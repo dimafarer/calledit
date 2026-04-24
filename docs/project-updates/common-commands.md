@@ -218,6 +218,18 @@ git push origin main
 ## AgentCore v4 (calleditv4/)
 
 ```bash
+# Deploy creation agent to AgentCore (uses deploy.sh wrapper)
+source /home/wsluser/projects/calledit/.env
+cd /home/wsluser/projects/calledit/calleditv4 && ./deploy.sh
+
+# Deploy verification agent to AgentCore (validates BRAVE_API_KEY)
+source /home/wsluser/projects/calledit/.env
+cd /home/wsluser/projects/calledit/calleditv4-verification && ./deploy.sh
+
+# Deploy CDK permissions stack (IAM policies for both execution roles)
+cd /home/wsluser/projects/calledit/infrastructure/agentcore-cdk
+npm install && npx cdk deploy
+
 # Start dev server (requires TTY — run in terminal)
 cd /home/wsluser/projects/calledit/calleditv4 && agentcore dev
 
@@ -363,9 +375,9 @@ aws cloudfront create-invalidation --distribution-id E1V0EF85NP9DXQ --paths "/*"
 aws cloudformation describe-stacks --stack-name calledit-v4-persistent-resources --query "Stacks[0].Outputs" --output table
 aws cloudformation describe-stacks --stack-name calledit-v4-frontend --query "Stacks[0].Outputs" --output table
 
-# Launch agents (requires TTY)
-cd /home/wsluser/projects/calledit/calleditv4 && agentcore launch
-cd /home/wsluser/projects/calledit/calleditv4-verification && agentcore launch
+# Launch agents (use deploy.sh scripts instead of raw commands)
+cd /home/wsluser/projects/calledit/calleditv4 && ./deploy.sh
+source /home/wsluser/projects/calledit/.env && cd /home/wsluser/projects/calledit/calleditv4-verification && ./deploy.sh
 
 # Agent status
 cd /home/wsluser/projects/calledit/calleditv4 && agentcore status

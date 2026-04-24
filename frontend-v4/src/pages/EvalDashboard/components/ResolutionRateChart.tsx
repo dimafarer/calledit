@@ -41,7 +41,7 @@ export default function ResolutionRateChart({ reports }: Props) {
         <LineChart data={data} margin={{ top: 10, right: 30, bottom: 30, left: 10 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
           <XAxis dataKey="label" stroke="#64748b" fontSize={11} />
-          <YAxis domain={[0, 1]} stroke="#64748b" />
+          <YAxis domain={[-0.05, 1.05]} stroke="#64748b" />
           <Tooltip
             contentStyle={{ background: '#1e293b', border: '1px solid #475569', fontSize: '0.8rem' }}
             labelStyle={{ color: '#e2e8f0' }}
@@ -49,9 +49,9 @@ export default function ResolutionRateChart({ reports }: Props) {
           />
           <Legend wrapperStyle={{ fontSize: '0.8rem' }} />
           <Line type="monotone" dataKey="resolution_rate" name="Resolution Rate"
-            stroke="#22c55e" strokeWidth={2} dot={{ r: 4 }} connectNulls />
+            stroke="#22c55e" strokeWidth={2} dot={{ r: 6 }} connectNulls />
           <Line type="monotone" dataKey="stale_inconclusive_rate" name="Stale Inconclusive"
-            stroke="#ef4444" strokeWidth={2} dot={{ r: 4 }} connectNulls />
+            stroke="#ef4444" strokeWidth={2} dot={{ r: 6 }} connectNulls />
         </LineChart>
       </ResponsiveContainer>
     </div>

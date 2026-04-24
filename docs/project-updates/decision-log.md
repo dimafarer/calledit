@@ -1363,3 +1363,80 @@ Migrated the entire custom eval framework (~1,200 lines) to the Strands Evals SD
 
 **Test coverage:** 98 automated tests (10 property-based with Hypothesis, 88 unit tests) covering all evaluators, case loader, task function, calibration, CLI, and baseline comparison.
 
+
+
+---
+
+## Decision 153: Dev Server DDB Projection Missing calibration_scores (Real Root Cause of Bug 1)
+
+**Source:** [Project Update 41](41-project-update-continuous-eval-dashboard-fixes-spec.md)
+**Date:** April 24, 2026
+
+The ResolutionRateChart appeared completely empty — zero lines, zero dots, zero Y-axis ticks — despite having 6 reports with valid calibration data. Root cause: the Vite dev server's report list API (`frontend-v4/server/eval-api.ts`) used `ProjectionExpression: 'PK, SK, run_metadata, aggregate_scores'`, omitting `calibration_scores`. The chart reads `resolution_rate` and `stale_inconclusive_rate` from `calibration_scores`, so both values were `null` and Recharts rendered nothing. The production Lambda handler (`infrastructure/v4-frontend/list_eval_reports/handler.py`) already included `calibration_scores` in its projection — this was a dev-only bug. Fix: aligned the dev server projection with production by adding `calibration_scores`, `creation_scores`, and `verification_scores`. Also applied Y-axis domain padding (`[-0.05, 1.05]`) and increased dot radius (4→6) as a secondary improvement for boundary visibility. Discovered via Chrome DevTools MCP — inspecting the chart's SVG revealed a 14x14px legend icon instead of the expected 1200x280 chart, then JS evaluation confirmed zero data in the Recharts wrapper.
+
+---
+
+## Decision 154: Include Inconclusive Cases in Verification Result Construction
+
+**Source:** [Project Update 41](41-project-update-continuous-eval-dashboard-fixes-spec.md)
+**Date:** April 24, 2026
+
+The `_run_verification_pass()` vresult construction condition changes from `cs.status == "resolved"` to `cs.status in ("resolved", "inconclusive")`. Inconclusive is a valid verification outcome — the agent attempted verification and couldn't reach a definitive answer. The CalibrationScatter chart requires both `verifiability_score` and `actual_verdict` to be non-null; without this fix, inconclusive cases have `actual_verdict=None` and are silently filtered out. The scatter plot should show inconclusive cases (at `y=0.5`) so users see the full distribution of verification outcomes. Cases with no verdict (`cs.verdict is None`, status `"pending"` or `"error"`) continue to be excluded — these represent cases that haven't been attempted yet, not cases with an inconclusive outcome.
+
+---
+
+## Decision 155: Resume Pass Numbering from Saved State
+
+**Source:** [Project Update 41](41-project-update-continuous-eval-dashboard-fixes-spec.md)
+**Date:** April 24, 2026
+
+When `--resume` loads existing state, `pass_num` initializes from `self.state.pass_number` (the last completed pass number) instead of hardcoded 0. The `run()` method's loop then increments to `pass_num + 1` as the next pass. Fresh state (no `--resume`) continues to start from 0, so the first pass is always numbered 1. This ensures sequential pass numbering across separate CLI invocations: if the last run completed pass 3, the next `--once --resume` run produces pass 4. Without this fix, every invocation produces "Pass 1" regardless of history, making it impossible to track verification progress over time in the dashboard.
+
+
+---
+
+## Decision 156: Local Strands Script for Verification Agent Smoke Testing
+
+**Source:** [Project Update 41](41-project-update-continuous-eval-dashboard-fixes-spec.md)
+**Date:** April 24, 2026
+
+Before deploying prompt or code changes to AgentCore, test locally with a plain Strands Agent script (`eval/test_verification_prompt.py`). This bypasses AgentCore entirely — same model (Claude Sonnet 4), same prompt (from Bedrock Prompt Management), same tools (brave_web_search + current_time), direct Bedrock invocation. The script loads a prediction bundle from DDB, builds the user message exactly like the deployed handler, creates a Strands Agent, and invokes it. Faster iteration (30-120s vs 5min AgentCore timeout), no deployment needed, and isolates prompt/agent issues from runtime issues. Discovered during investigation of base-004 "No prediction statement" error — the local script correctly verified the prediction as REFUTED while the deployed agent returned inconclusive. This proved the issue was in the deployment, not the prompt.
+
+
+---
+
+## Decision 157: Missing BRAVE_API_KEY Was Root Cause of Verification Agent "No Prediction Statement" Failures
+
+**Source:** [Project Update 41](41-project-update-continuous-eval-dashboard-fixes-spec.md)
+**Date:** April 24, 2026
+
+The deployed verification agent was returning `inconclusive` with reasoning "No prediction statement or verification plan was provided" for all cases. Root cause: the agent was deployed without the `BRAVE_API_KEY` environment variable. Every `brave_web_search` call returned `{"error": "BRAVE_API_KEY not configured", "results": []}` — a soft error that the LLM interpreted as "no evidence available" and produced vague inconclusive reasoning.
+
+**Diagnosis path:** (1) Local Strands script with same prompt/model/tools correctly verified base-004 as REFUTED. (2) `agentcore dev` locally also returned REFUTED. (3) Deployed agent returned "No prediction statement." (4) Redeployed with `--env "BRAVE_API_KEY=$BRAVE_API_KEY"` → deployed agent returned REFUTED correctly.
+
+**Fix:** `agentcore deploy --env "BRAVE_API_KEY=$BRAVE_API_KEY" --env "VERIFICATION_TOOLS=brave"`. Added startup warning in `main.py` and clearer error message in `brave_search.py` when the key is missing.
+
+**Lesson:** The `agentcore deploy` command does not inherit shell environment variables — they must be explicitly passed via `--env KEY=VALUE`. This is the same class of bug as Decision 151 (scanner Lambda SnapStart env vars) — env vars silently missing in the deployed runtime. The `.bedrock_agentcore.yaml` config has no mechanism to declare required env vars. Consider migrating to CDK-based deployment (`agentcore deploy` with `agentcore.json`) which supports declarative env var configuration.
+
+
+---
+
+## Decision 158: Migrate AgentCore Deployment to CDK-Based `agentcore.json`
+
+**Source:** [Project Update 41](41-project-update-continuous-eval-dashboard-fixes-spec.md) / Spec: agentcore-cdk-migration
+**Date:** April 24, 2026
+
+Migrate both AgentCore agent deployments from the deprecated `.bedrock_agentcore.yaml` Python toolkit to the `@aws/agentcore` npm CLI with `agentcore.json` configuration and a CDK stack for IAM permissions. Motivated by Decision 157 (missing BRAVE_API_KEY) and the toolkit deprecation notice in the AgentCore runtime guide.
+
+**What changes:**
+- Two `.bedrock_agentcore.yaml` files → two `agentcore.json` files (one per agent directory)
+- Manual `setup_agentcore_permissions.sh` → CDK TypeScript stack in `infrastructure/agentcore-cdk/`
+- Manual `--env KEY=VALUE` flags → deploy helper scripts with validation
+
+**What stays the same:**
+- Agent Python source code (zero changes)
+- Four SAM/CloudFormation stacks (untouched)
+- Agent IDs and ARNs (preserved for scanner Lambda compatibility)
+- Execution roles (imported by ARN, not recreated)
+
+**Why CDK for IAM but not for everything:** The SAM stacks are stable and appropriate for Lambda-based infrastructure. CDK is used only for the AgentCore-specific IAM permissions that were previously managed by a manual shell script. This avoids a full IaC migration while solving the immediate problem (declarative env vars + IaC for permissions).
