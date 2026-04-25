@@ -745,7 +745,6 @@ def get_all_templates() -> list:
         template_today_is_january,
         # Immediate — brave
         template_us_president,
-        template_python_released,
         # At-date — deterministic
         template_yesterday_day_of_week,
         template_yesterday_was_weekend,

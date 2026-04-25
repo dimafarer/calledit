@@ -490,28 +490,43 @@ def run_creation_phase(cases: list, creation_backend, token_refresher=None) -> t
 
         print(f"  [{i+1}/{len(cases)}] Creating {case_id}...", end=" ", flush=True)
         case_start = time.time()
-        try:
-            bundle = creation_backend.invoke(prediction_text=case.input, case_id=case_id)
-            dur = time.time() - case_start
-            print(f"OK ({dur:.0f}s, id={bundle.get('prediction_id', '?')[:12]})")
-            results.append({
-                "case": case,
-                "creation_bundle": bundle,
-                "prediction_id": bundle.get("prediction_id"),
-                "creation_error": None,
-                "creation_duration": dur,
-            })
-        except Exception as e:
+        max_retries = 3
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                bundle = creation_backend.invoke(prediction_text=case.input, case_id=case_id)
+                dur = time.time() - case_start
+                print(f"OK ({dur:.0f}s, id={bundle.get('prediction_id', '?')[:12]})")
+                results.append({
+                    "case": case,
+                    "creation_bundle": bundle,
+                    "prediction_id": bundle.get("prediction_id"),
+                    "creation_error": None,
+                    "creation_duration": dur,
+                })
+                last_error = None
+                break
+            except Exception as e:
+                last_error = e
+                if attempt < max_retries - 1 and "HTTP 500" in str(e):
+                    wait = 5 * (2 ** attempt)  # 5s, 10s
+                    print(f"RETRY ({attempt+1}/{max_retries}, wait {wait}s)...", end=" ", flush=True)
+                    time.sleep(wait)
+        if last_error is not None:
             dur = time.time() - case_start
             print(f"FAILED ({dur:.0f}s)")
-            logger.error("Case %s: creation failed: %s", case_id, e)
+            logger.error("Case %s: creation failed: %s", case_id, last_error)
             results.append({
                 "case": case,
                 "creation_bundle": None,
                 "prediction_id": None,
-                "creation_error": str(e),
+                "creation_error": str(last_error),
                 "creation_duration": dur,
             })
+
+        # Small delay between invocations to avoid AgentCore rate limits
+        if i < len(cases) - 1:
+            time.sleep(2)
 
     return results, time.time() - start
 
@@ -867,7 +882,12 @@ class ContinuousEvalRunner:
         """Write Continuous_Report to DDB Reports_Table."""
         try:
             from eval.report_store import write_report
-            write_report("continuous", report)
+            # Slim case_results to avoid exceeding DDB 400KB item limit
+            report_for_ddb = dict(report)
+            report_for_ddb["case_results"] = slim_case_results(
+                report.get("case_results", [])
+            )
+            write_report("continuous", report_for_ddb)
             print("Report written to DDB (agent=continuous)")
         except Exception as e:
             logger.warning("DDB report write failed: %s", e)

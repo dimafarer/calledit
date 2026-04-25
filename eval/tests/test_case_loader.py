@@ -224,21 +224,21 @@ class TestLoadCasesWithRealDataset:
     """Unit tests using the actual golden_dataset.json."""
 
     def test_load_static_dataset_count(self):
-        """Static dataset has 55 predictions."""
+        """Static dataset has 58 predictions."""
         cases = load_cases("eval/golden_dataset.json")
-        assert len(cases) == 55
+        assert len(cases) == 58
 
     def test_load_merged_dataset_count(self):
-        """Merged dataset has 70 predictions (55 static - replacements + 16 dynamic)."""
+        """Merged dataset has 66 predictions (58 static - 1 replaced + 9 dynamic)."""
         cases = load_cases(
             "eval/golden_dataset.json", "eval/dynamic_golden_dataset.json"
         )
-        assert len(cases) == 70
+        assert len(cases) == 66
 
     def test_smoke_filter_count(self):
-        """Smoke filter returns exactly 12 cases."""
+        """Smoke filter returns exactly 13 cases."""
         cases = load_cases("eval/golden_dataset.json", tier="smoke")
-        assert len(cases) == 12
+        assert len(cases) == 13
 
     def test_base_001_fields(self):
         """base-001 has correct field values."""
@@ -262,18 +262,18 @@ class TestLoadCasesWithRealDataset:
         assert c.expected_output == "confirmed"
 
     def test_qualifying_count_static(self):
-        """Static dataset has 7 qualifying cases (non-null expected outcome)."""
+        """Static dataset has 11 qualifying cases (non-null expected outcome)."""
         cases = load_cases("eval/golden_dataset.json")
         qualifying = [c for c in cases if c.metadata["qualifying"]]
-        assert len(qualifying) == 7
+        assert len(qualifying) == 11
 
     def test_qualifying_count_merged(self):
-        """Merged dataset has 22 qualifying cases."""
+        """Merged dataset has 19 qualifying cases."""
         cases = load_cases(
             "eval/golden_dataset.json", "eval/dynamic_golden_dataset.json"
         )
         qualifying = [c for c in cases if c.metadata["qualifying"]]
-        assert len(qualifying) == 22
+        assert len(qualifying) == 19
 
     def test_non_qualifying_has_none_expected(self):
         """Non-qualifying cases have expected_output=None."""

@@ -1440,3 +1440,42 @@ Migrate both AgentCore agent deployments from the deprecated `.bedrock_agentcore
 - Execution roles (imported by ARN, not recreated)
 
 **Why CDK for IAM but not for everything:** The SAM stacks are stable and appropriate for Lambda-based infrastructure. CDK is used only for the AgentCore-specific IAM permissions that were previously managed by a manual shell script. This avoids a full IaC migration while solving the immediate problem (declarative env vars + IaC for permissions).
+
+
+---
+
+## Decision 159: Eval Runner Retry Logic for AgentCore 500s
+
+**Source:** [Project Update 43](43-project-update-dataset-v5-execution-and-pipeline-analysis.md)
+**Date:** April 25, 2026
+
+Added retry logic to the eval runner's creation phase: 3 attempts with exponential backoff (5s, 10s) on HTTP 500 errors from AgentCore, plus a 2-second delay between invocations. Root cause was 4 concurrent eval runner instances accidentally spawned, all hammering the same AgentCore endpoint. CloudWatch confirmed zero Bedrock model throttling — the 500s came from the AgentCore runtime layer itself.
+
+**What changed:** `run_creation_phase()` in `eval/run_eval.py` now retries on HTTP 500 with backoff and adds inter-invocation delay.
+
+---
+
+## Decision 160: Slim Case Results Before DDB Report Write
+
+**Source:** [Project Update 43](43-project-update-dataset-v5-execution-and-pipeline-analysis.md)
+**Date:** April 25, 2026
+
+The continuous eval report with 58 full case bundles (including nested `creation_bundle` and `verification_result`) exceeded DynamoDB's 400KB item limit. The existing `write_report()` split logic moved case_results to a companion `#CASES` item, but that item also exceeded 400KB and silently failed. Dashboard showed "No cases in this run."
+
+**Fix:** Wired the existing `slim_case_results()` function into `ContinuousEvalRunner._write_report()`. This strips `creation_bundle` and `verification_result` nested data before DDB write, keeping only flat summary fields (case_id, verdict, score, status, etc.). The full nested data is still available in `continuous_state.json` for local analysis.
+
+---
+
+## Decision 161: Dashboard Color Scheme for Inconclusive Subcategories
+
+**Source:** [Project Update 43](43-project-update-dataset-v5-execution-and-pipeline-analysis.md)
+**Date:** April 25, 2026
+
+The dashboard currently shows all inconclusive cases in the same color, but they have very different meanings. New color scheme based on system health (did the system work?), not prediction truth value:
+
+- **Green** (`#22c55e`) — Resolved (confirmed OR refuted). The system delivered a definitive verdict.
+- **Amber** (`#f59e0b`) — Inconclusive, future-dated. Waiting for verification_date to arrive. Not a problem, just needs time.
+- **Red** (`#ef4444`) — Inconclusive, personal/subjective (low verifiability score). Expected to never resolve — user gave a vague or subjective prediction without clarification.
+- **Orange** (`#f97316`) — Inconclusive, should have resolved. Immediate mode with high verifiability but still inconclusive. This signals a real system problem worth investigating.
+
+Key insight: refuted is green, not red. Both confirmed and refuted mean the system worked — it found a definitive answer. The color reflects system health, not prediction outcome.

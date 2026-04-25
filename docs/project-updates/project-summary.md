@@ -235,24 +235,26 @@ Migrated the entire custom eval framework (~1,200 lines) to the Strands Evals SD
 ### Update 40 (April 21-23): Continuous Verification Eval — Full Implementation
 Designed and implemented the continuous verification eval system — extending the batched eval pipeline to mirror production's continuous verification behavior. 12 requirements, 7 correctness properties, 12 tasks (55 sub-tasks). All code tasks complete: ContinuousState module, ContinuousMetrics module, ContinuousEvalRunner class with full loop orchestration (SIGINT, token refresh, resume), CLI flags (--continuous, --interval, --max-passes, --once, --reverify-resolved), report schema with continuous-specific fields, and 5 new dashboard components (ContinuousTab, ResolutionRateChart, ResolutionSpeedChart, case color coding, TypeScript types). 31 new tests (7 property-based P1-P7, 24 unit), 129/129 total passing. Manual integration tests remaining.
 
-### Update 41 (April 24): Continuous Eval Dashboard Fixes Spec
-Specced three bugfixes discovered during Update 40 integration testing. Bug 1: ResolutionRateChart lines invisible at Y-axis boundaries (1.0 and 0.0) — fix via padded domain `[-0.05, 1.05]` + larger dots (Decision 153). Bug 2: Inconclusive cases missing from CalibrationScatter because `_run_verification_pass()` only constructs vresult for `status == "resolved"`, excluding `status == "inconclusive"` — fix by widening condition to include inconclusive (Decision 154). Bug 3: Pass numbering always "Pass 1" because `pass_num` starts at 0 on every CLI invocation instead of resuming from saved state — fix by initializing from `self.state.pass_number` on `--resume` (Decision 155). Bugfix requirements complete (5 defect + 5 fix + 6 regression prevention clauses). Design and tasks pending.
+### Update 41 (April 24): Continuous Eval Dashboard Fixes + Verification Agent BRAVE_API_KEY Fix
+Fixed three dashboard bugs: Resolution Rate chart invisible (dev server DDB projection missing calibration_scores — Decision 153), inconclusive cases missing from scatter plot (vresult construction widened — Decision 154), pass numbering always "Pass 1" (resume from state — Decision 155). Diagnosed verification agent returning "No prediction statement" — root cause was missing BRAVE_API_KEY in deployed runtime (Decision 157). Local Strands script and agentcore dev both worked correctly, proving the issue was deployment-only. Redeployed with --env BRAVE_API_KEY, resolution rate jumped 0.25→0.50. Built CDK permissions stack replacing manual shell script (Decision 158). Deploy helper scripts with BRAVE_API_KEY validation. 134/134 tests, 6 new decisions (153-158).
 
-## Current State (April 24, 2026)
+### Update 42 (April 24): Dataset Cleanup Planning
+Audited golden dataset for full continuous eval run. Identified 3 duplicate pairs, 2 far-future cases to shorten, missing coverage for recently-happened events. Personal/subjective cases kept as sad-path baselines and future memory integration tests. Golden dataset v5 spec planned.
+
+### Update 43 (April 25): Dataset v5 Execution & Pipeline Analysis
+Executed all 6 golden dataset v5 tasks: removed 2 duplicates, shortened 2 far-future predictions, added 5 recently-happened event predictions (base-056 through base-060), removed duplicate dynamic template, updated test assertions. Full continuous eval baseline: Pass 1 resolved 20/58 (34%), Pass 2 resolved 22/58 (38%). All 5 new predictions confirmed. Fixed eval runner (added retry logic for AgentCore 500s) and DDB report write (slim case_results to avoid 400KB limit). Investigated base-047 pipeline bug: creation agent timezone resolution and verification agent premature at_date exit. Created comprehensive pipeline documentation (`docs/creation-verification-pipeline.md`). Planned dashboard color scheme for inconclusive subcategories (Decision 161). Three new decisions (159-161).
+
+## Current State (April 25, 2026)
 
 - v4 production COMPLETE — full MVP + eval dashboard + verification modes + Brave Search deployed
 - Eval dashboard live at `https://d2fngmclz6psil.cloudfront.net/eval`
-- Strands Evals SDK migration COMPLETE — replaced ~1,200 lines custom code with SDK primitives (Decision 152)
-- Continuous verification eval COMPLETE — all tasks done, integration tested, dashboard working
-  - `eval/continuous_state.py` — state management with verdict history
-  - `eval/continuous_metrics.py` — resolution rate, stale inconclusive, resolution speed by tier
-  - `ContinuousEvalRunner` class in `eval/run_eval.py` — full loop orchestration
-  - CLI: `--continuous`, `--interval`, `--max-passes`, `--once`, `--reverify-resolved`
-  - Dashboard: Continuous Eval tab with ResolutionRateChart, ResolutionSpeedChart, score grids, scatter plot
-  - Integration tested: base-002 created, verified (confirmed), V-Score=0.92, report in DDB
-  - 31 new tests (7 property-based, 24 unit), 129/129 total passing
-- Continuous eval dashboard fixes SPECCED — 3 bugs (chart visibility, scatter plot, pass numbering), requirements complete, design + tasks pending
-- Eval framework: 18 SDK evaluators (8 creation + 10 verification), 129 eval tests
-- Golden dataset: 70 predictions (54 static + 16 dynamic), 22 qualifying
-- 158 architectural decisions documented across 41 project updates
-- Next: Execute AgentCore CDK migration spec → Run continuous eval Pass 3 → dataset expansion (backlog 21)
+- Golden dataset v5: 58 base + 23 fuzzy predictions (schema 5.0), 13 smoke test cases
+- Continuous eval: 2 passes on full tier, resolution_rate=0.38 (22/58 resolved)
+- Inconclusive breakdown: 18 personal/subjective (expected), 17 future-dated (waiting), 1 immediate (base-013)
+- Pipeline bugs found: creation agent timezone resolution, verification agent premature at_date exit
+- Eval runner hardened: retry logic (3 attempts, exponential backoff) + 2s inter-invocation delay
+- DDB report write fixed: slim case_results before write to avoid 400KB limit
+- Pipeline documentation: `docs/creation-verification-pipeline.md`
+- Eval framework: 18 SDK evaluators, 134 eval tests
+- 161 architectural decisions documented across 43 project updates
+- Next: Dashboard color scheme for inconclusive subcategories → fix creation agent timezone → fix verification agent at_date premature exit
